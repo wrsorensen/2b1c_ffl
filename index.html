@@ -18,15 +18,20 @@
     <section class="login-panel">
       <div class="app-icon">FFL</div>
       <h1>2B1C<br><span>FFL</span></h1>
-      <p class="lead">Private fantasy football clubhouse. Rules, draft info, payments, and trash talk.</p>
+      <p class="lead">Select your manager name and enter your PIN one time. After that, this device opens straight to the league hub.</p>
 
-      <label class="sr-only" for="passwordInput">League password</label>
-      <input id="passwordInput" type="password" placeholder="League password" autocomplete="current-password">
+      <label class="field-label" for="loginManagerSelect">Manager</label>
+      <select id="loginManagerSelect">
+        <option value="">Loading managers...</option>
+      </select>
+
+      <label class="field-label" for="loginPinInput">PIN</label>
+      <input id="loginPinInput" type="text" inputmode="numeric" placeholder="PIN" autocomplete="off">
 
       <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
       <button class="secondary-btn" id="clearBtn" type="button">Reset Saved Login</button>
 
-      <p id="loginStatus" class="status-line">v0.3.2a auto-login polish</p>
+      <p id="loginStatus" class="status-line">v0.3.3 manager PIN login</p>
     </section>
   </main>
 
@@ -46,18 +51,18 @@
       <section class="hero-card">
         <div class="pill">🏈 Private League HQ</div>
         <h2>Talk shit.<br><span>Win trophies.</span></h2>
-        <p>Draft info, league rules, champions, payouts, and the league trash board.</p>
+        <p>Draft info, league rules, champions, payouts, and the league board.</p>
         <div class="hero-actions">
           <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
-          <button class="secondary-btn" type="button">Open ESPN</button>
+          <button class="secondary-btn" id="espnBtn" type="button">Open ESPN</button>
         </div>
         <div class="stat-grid">
           <article class="stat-card">
-            <strong>Sept. 3</strong>
+            <strong id="draftDateStat">Sept. 3</strong>
             <span>Draft Date</span>
           </article>
           <article class="stat-card">
-            <strong>$100</strong>
+            <strong id="buyInStat">$100</strong>
             <span>Buy-In</span>
           </article>
         </div>
@@ -65,9 +70,9 @@
 
       <section class="card">
         <h3>Draft Central</h3>
-        <p><b>Date:</b> September 3, 2026</p>
-        <p><b>Time:</b> 7:00 PM</p>
-        <p><b>Location:</b> TBD</p>
+        <p><b>Date:</b> <span id="draftDateText">September 3, 2026</span></p>
+        <p><b>Time:</b> <span id="draftTimeText">7:00 PM</span></p>
+        <p><b>Location:</b> <span id="draftLocationText">TBD</span></p>
         <p class="muted">Snake draft. 60 seconds per pick. Order randomized 1 hour before draft.</p>
       </section>
 
@@ -81,78 +86,56 @@
     <section id="rules" class="page">
       <section class="card">
         <h3>Rules</h3>
-        <p class="muted">Static placeholder for v0.3.0-alpha. Later this will load from the Google Sheet through Apps Script API.</p>
-      </section>
-      <section class="card rule-card">
-        <h3>Waivers</h3>
-        <p>Change to rolling waivers with no weekly reset.</p>
-        <span class="tag">Needs ESPN save</span>
-      </section>
-      <section class="card rule-card">
-        <h3>Trade Vetoes</h3>
-        <p>Vetoes are only for collusion, roster dumping, or league-integrity issues.</p>
-        <span class="tag">Communication only</span>
+        <p class="muted">Loading rules...</p>
       </section>
     </section>
 
     <section id="champs" class="page">
       <section class="card">
         <h3>Champions Wall</h3>
-        <p class="muted">Placeholder until Sheet history/champions data is cleaned up.</p>
-      </section>
-      <section class="card champ-card">
-        <span class="year">2025</span>
-        <h3>TBD</h3>
-        <p>Historical champion data coming soon.</p>
+        <p class="muted">Loading champions...</p>
       </section>
     </section>
 
     <section id="pay" class="page">
       <section class="card">
         <h3>Buy-In</h3>
-        <p><b>Amount:</b> $100</p>
-        <p><b>Payouts:</b> 1st $800 / 2nd $300 / 3rd $100</p>
+        <p><b>Amount:</b> <span id="buyInText">$100</span></p>
+        <p><b>Payouts:</b> <span id="payoutsText">1st $800 / 2nd $300 / 3rd $100</span></p>
         <p class="muted">Payment tracking should come from the Sheet, not hard-coded.</p>
       </section>
       <section class="qr-grid">
-        <div class="qr-card">Venmo QR<br>coming soon</div>
-        <div class="qr-card">Cash App QR<br>coming soon</div>
+        <div class="qr-card" id="venmoBox">Venmo QR<br>coming soon</div>
+        <div class="qr-card" id="cashAppBox">Cash App QR<br>coming soon</div>
       </section>
     </section>
 
     <section id="trash" class="page">
       <section class="card">
-        <h3>Trash Talk Board</h3>
-        <p class="muted">Verify manager/PIN once on this device. After that, this device remembers your manager.</p>
+        <h3>Trash Board</h3>
+        <p class="muted">More like a thread board than live chat. Text group is still king for instant trash talk.</p>
 
-        <div id="verifiedBox" class="verified-box hidden">
-          <span class="mini-label">Posting as</span>
+        <div class="verified-box">
+          <span class="mini-label">Signed in as</span>
           <strong id="verifiedManagerName"></strong>
-          <button class="secondary-btn danger-btn" id="forgetManagerBtn" type="button">Forget This Manager</button>
         </div>
 
-        <div id="verifyBox" class="verify-grid">
-          <label for="managerSelect">Manager</label>
-          <select id="managerSelect"></select>
-
-          <label for="pinInput">4-digit PIN</label>
-          <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN">
-
-          <button class="secondary-btn" id="verifyManagerBtn" type="button">Verify Manager</button>
-          <p id="verifyStatus" class="status-line"></p>
-        </div>
+        <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
+        <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
 
         <label class="mini-label" for="trashMessage">Message</label>
-        <textarea id="trashMessage" maxlength="280" placeholder="Drop the matchup bulletin..."></textarea>
-        <button class="primary-btn" id="postTrashBtn" type="button">Post Trash Talk</button>
+        <textarea id="trashMessage" maxlength="500" placeholder="Add trash, league note, or reply..."></textarea>
+
+        <button class="primary-btn" id="postTrashBtn" type="button">Add Trash</button>
         <p id="trashStatus" class="status-line"></p>
       </section>
 
       <section class="card">
-        <h3>Latest Posts</h3>
-        <p class="muted">Auto-refreshes every 25 seconds while this tab is open.</p>
+        <h3>Threads</h3>
+        <p class="muted">Tap a thread to reply.</p>
         <button class="secondary-btn" id="refreshTrashBtn" type="button">Refresh Now</button>
-        <div id="trashList" class="trash-list"></div>
+        <div id="threadReplyNotice" class="reply-notice hidden"></div>
+        <div id="trashList" class="thread-list"></div>
       </section>
     </section>
 
