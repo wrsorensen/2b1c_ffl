@@ -544,3 +544,24 @@ select option {
   font-size: .72rem;
   font-weight: 950;
 }
+
+
+/* v0.3.2a auto-login polish */
+.login-screen.auto-loading .login-panel {
+  justify-content: center;
+}
+
+.login-screen.auto-loading input,
+.login-screen.auto-loading #enterBtn,
+.login-screen.auto-loading #clearBtn {
+  display: none;
+}
+
+.login-screen.auto-loading .lead {
+  margin-bottom: 12px;
+}
+
+.login-screen.auto-loading .status-line {
+  color: var(--gold);
+  font-weight: 950;
+}
