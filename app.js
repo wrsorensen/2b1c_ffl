@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.1 — GitHub frontend + Apps Script API bridge
+  v0.3.2a — auto-login polish
 
   If your Apps Script web app URL changes, replace this value.
 */
@@ -56,11 +56,18 @@ function init() {
     passwordInput.value = state.password;
   }
 
-  loginStatus.innerHTML = `v0.3.1 API bridge <span class="api-badge">GitHub + GAS</span>`;
+  
+  if (state.password) {
+    loginScreen.classList.add("auto-loading");
+    setLoginStatus("Saved login found. Loading league hub...");
+    setTimeout(() => login(true), 60);
+  } else {
+    loginStatus.innerHTML = `v0.3.2a auto-login polish <span class="api-badge">GitHub + GAS</span>`;
+  }
 }
 
-async function login() {
-  const password = passwordInput.value.trim();
+async function login(isAutoLogin = false) {
+  const password = state.password || passwordInput.value.trim();
 
   if (!password) {
     setLoginStatus("Enter the league password.");
@@ -73,7 +80,15 @@ async function login() {
     const response = await api("checkPassword", { password });
 
     if (!response.valid) {
-      setLoginStatus("Wrong password.");
+      if (isAutoLogin) {
+        localStorage.removeItem("leaguePassword");
+        state.password = "";
+        passwordInput.value = "";
+        loginScreen.classList.remove("auto-loading");
+        setLoginStatus("Saved login expired. Enter league password.");
+      } else {
+        setLoginStatus("Wrong password.");
+      }
       return;
     }
 
@@ -88,6 +103,7 @@ async function login() {
     appScreen.classList.remove("hidden");
     startAutoRefresh();
   } catch (error) {
+    loginScreen.classList.remove("auto-loading");
     setLoginStatus("Login failed: " + error.message);
   }
 }
@@ -96,7 +112,8 @@ function clearSaved() {
   localStorage.removeItem("leaguePassword");
   state.password = "";
   passwordInput.value = "";
-  setLoginStatus("Saved password cleared.");
+  loginScreen.classList.remove("auto-loading");
+  setLoginStatus("Saved login cleared.");
 }
 
 function logout() {
@@ -137,7 +154,7 @@ function renderApp() {
   const settings = data.settings || {};
 
   document.getElementById("managerLine").textContent = state.verifiedManager
-    ? `Posting as ${state.verifiedManager}`
+    ? `Manager: ${state.verifiedManager}`
     : "Connected to league data";
 
   renderManagers(data.managers || []);
