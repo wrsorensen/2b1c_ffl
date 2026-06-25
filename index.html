@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="2B1C FFL">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>2B1C FFL</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-bg"></div>
+
+  <main id="loginScreen" class="login-screen">
+    <section class="login-panel">
+      <div class="app-icon">FFL</div>
+      <h1>2B1C<br><span>FFL</span></h1>
+      <p class="lead">Private fantasy football clubhouse. Rules, draft info, payments, and trash talk.</p>
+
+      <label class="sr-only" for="passwordInput">League password</label>
+      <input id="passwordInput" type="password" placeholder="League password" autocomplete="current-password">
+
+      <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
+      <button class="secondary-btn" id="clearBtn" type="button">Clear Saved Password</button>
+
+      <p id="loginStatus" class="status-line">v0.3.1 API bridge</p>
+    </section>
+  </main>
+
+  <main id="appScreen" class="app-shell hidden">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-icon">FFL</div>
+        <div>
+          <div class="brand-title">2B1C FFL</div>
+          <div id="managerLine" class="brand-sub">GitHub shell prototype</div>
+        </div>
+      </div>
+      <button class="ghost-btn" id="logoutBtn" type="button">Logout</button>
+    </header>
+
+    <section id="home" class="page active">
+      <section class="hero-card">
+        <div class="pill">🏈 Private League HQ</div>
+        <h2>Talk shit.<br><span>Win trophies.</span></h2>
+        <p>Draft info, league rules, champions, payouts, and the league trash board.</p>
+        <div class="hero-actions">
+          <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
+          <button class="secondary-btn" type="button">Open ESPN</button>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card">
+            <strong>Sept. 3</strong>
+            <span>Draft Date</span>
+          </article>
+          <article class="stat-card">
+            <strong>$100</strong>
+            <span>Buy-In</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="card">
+        <h3>Draft Central</h3>
+        <p><b>Date:</b> September 3, 2026</p>
+        <p><b>Time:</b> 7:00 PM</p>
+        <p><b>Location:</b> TBD</p>
+        <p class="muted">Snake draft. 60 seconds per pick. Order randomized 1 hour before draft.</p>
+      </section>
+
+      <section class="card">
+        <h3>2026 Preseason Focus</h3>
+        <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
+        <p class="muted">No ESPN setting changes should be saved until final review.</p>
+      </section>
+    </section>
+
+    <section id="rules" class="page">
+      <section class="card">
+        <h3>Rules</h3>
+        <p class="muted">Static placeholder for v0.3.0-alpha. Later this will load from the Google Sheet through Apps Script API.</p>
+      </section>
+      <section class="card rule-card">
+        <h3>Waivers</h3>
+        <p>Change to rolling waivers with no weekly reset.</p>
+        <span class="tag">Needs ESPN save</span>
+      </section>
+      <section class="card rule-card">
+        <h3>Trade Vetoes</h3>
+        <p>Vetoes are only for collusion, roster dumping, or league-integrity issues.</p>
+        <span class="tag">Communication only</span>
+      </section>
+    </section>
+
+    <section id="champs" class="page">
+      <section class="card">
+        <h3>Champions Wall</h3>
+        <p class="muted">Placeholder until Sheet history/champions data is cleaned up.</p>
+      </section>
+      <section class="card champ-card">
+        <span class="year">2025</span>
+        <h3>TBD</h3>
+        <p>Historical champion data coming soon.</p>
+      </section>
+    </section>
+
+    <section id="pay" class="page">
+      <section class="card">
+        <h3>Buy-In</h3>
+        <p><b>Amount:</b> $100</p>
+        <p><b>Payouts:</b> 1st $800 / 2nd $300 / 3rd $100</p>
+        <p class="muted">Payment tracking should come from the Sheet, not hard-coded.</p>
+      </section>
+      <section class="qr-grid">
+        <div class="qr-card">Venmo QR<br>coming soon</div>
+        <div class="qr-card">Cash App QR<br>coming soon</div>
+      </section>
+    </section>
+
+    <section id="trash" class="page">
+      <section class="card">
+        <h3>Trash Talk Board</h3>
+        <p class="muted">Verify manager/PIN once on this device. After that, this device remembers your manager.</p>
+
+        <div id="verifiedBox" class="verified-box hidden">
+          <span class="mini-label">Posting as</span>
+          <strong id="verifiedManagerName"></strong>
+          <button class="secondary-btn danger-btn" id="forgetManagerBtn" type="button">Forget This Manager</button>
+        </div>
+
+        <div id="verifyBox" class="verify-grid">
+          <label for="managerSelect">Manager</label>
+          <select id="managerSelect"></select>
+
+          <label for="pinInput">4-digit PIN</label>
+          <input id="pinInput" type="password" inputmode="numeric" placeholder="PIN">
+
+          <button class="secondary-btn" id="verifyManagerBtn" type="button">Verify Manager</button>
+          <p id="verifyStatus" class="status-line"></p>
+        </div>
+
+        <label class="mini-label" for="trashMessage">Message</label>
+        <textarea id="trashMessage" maxlength="280" placeholder="Drop the matchup bulletin..."></textarea>
+        <button class="primary-btn" id="postTrashBtn" type="button">Post Trash Talk</button>
+        <p id="trashStatus" class="status-line"></p>
+      </section>
+
+      <section class="card">
+        <h3>Latest Posts</h3>
+        <p class="muted">Auto-refreshes every 25 seconds while this tab is open.</p>
+        <button class="secondary-btn" id="refreshTrashBtn" type="button">Refresh Now</button>
+        <div id="trashList" class="trash-list"></div>
+      </section>
+    </section>
+
+    <nav class="bottom-nav" aria-label="Primary">
+      <button class="active" data-tab="home" type="button">Home</button>
+      <button data-tab="rules" type="button">Rules</button>
+      <button data-tab="champs" type="button">Champs</button>
+      <button data-tab="pay" type="button">Pay</button>
+      <button data-tab="trash" type="button">Trash</button>
+    </nav>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
