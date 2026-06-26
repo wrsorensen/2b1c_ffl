@@ -777,3 +777,53 @@ select option {
 @keyframes fflSpin {
   to { transform: rotate(360deg); }
 }
+
+
+/* v0.3.5 mobile loading + compact thread order */
+.compact-thread-body {
+  gap: 6px;
+}
+
+.compact-post {
+  display: block;
+  padding: 7px 8px;
+  border-radius: 10px;
+  font-size: .82rem;
+  line-height: 1.25;
+  background: rgba(255,255,255,.045);
+  border: 1px solid rgba(255,255,255,.075);
+}
+
+.compact-post b {
+  color: #fff;
+}
+
+.compact-post .post-time {
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.compact-post .post-dash {
+  color: var(--muted);
+  margin: 0 2px;
+}
+
+.compact-post .post-message {
+  color: var(--text);
+}
+
+.login-screen.auto-loading .login-panel {
+  min-height: 360px;
+  justify-content: center;
+}
+
+.login-screen.auto-loading .lead {
+  display: none !important;
+}
+
+.login-screen.auto-loading .status-line {
+  margin-top: 12px;
+  font-size: .95rem;
+  color: var(--gold);
+  min-height: 38px;
+}
