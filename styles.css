@@ -1149,3 +1149,77 @@ select option {
     max-height: 84vh;
   }
 }
+
+
+/* v0.3.8 simplify accordions and new thread flow */
+.rule-accordion-head {
+  min-height: 54px;
+}
+
+.rule-accordion-head::after,
+.thread-head::after {
+  content: "›";
+  font-size: 1.35rem;
+  font-weight: 950;
+  color: var(--gold);
+  transform: rotate(0deg);
+  transition: transform .16s ease;
+}
+
+.rule-accordion.open .rule-accordion-head::after,
+.thread-card.open .thread-head::after {
+  transform: rotate(90deg);
+}
+
+.rule-accordion-head small,
+.rule-toggle,
+.thread-toggle {
+  display: none !important;
+}
+
+.add-trash-pill-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.add-trash-pill {
+  width: 100%;
+  border-radius: 999px;
+  min-height: 48px;
+  font-size: .98rem;
+  box-shadow: 0 12px 28px rgba(245, 183, 75, .16);
+}
+
+.add-trash-card {
+  margin-top: 0;
+}
+
+.add-trash-card.hidden,
+.add-trash-pill.hidden {
+  display: none !important;
+}
+
+.new-thread-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.new-thread-actions .compact-btn {
+  min-width: 110px;
+}
+
+.thread-head {
+  align-items: center;
+}
+
+.thread-meta {
+  padding-right: 2px;
+}
+
+@media (max-width: 460px) {
+  .new-thread-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
