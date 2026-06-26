@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.7 — frontend review polish
+  v0.3.8 — simplify accordions and new thread flow
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
@@ -38,6 +38,8 @@ if (hasSavedLogin) {
 document.getElementById("enterBtn").addEventListener("click", () => login(false));
 document.getElementById("clearBtn").addEventListener("click", clearSaved);
 document.getElementById("logoutBtn").addEventListener("click", logout);
+document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewThreadForm);
+document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
 document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
 
@@ -275,9 +277,7 @@ function renderRules(rules) {
     btn.innerHTML = `
       <span>
         <b>${escapeHtml(area)}</b>
-        <small>${rows.length} setting${rows.length === 1 ? "" : "s"}</small>
       </span>
-      <span class="rule-toggle">${isOpen ? "Hide" : "Show"}</span>
     `;
     btn.addEventListener("click", () => toggleRuleArea(area));
 
@@ -330,7 +330,7 @@ function renderChampions(champions, history = []) {
   section.innerHTML = `
     <section class="card champs-intro-card">
       <h3>Champions Wall</h3>
-      <p class="muted">Tap a season card to view full final standings.</p>
+      <p class="muted">Champions by season. Click a season for final standings.</p>
     </section>
   `;
 
@@ -439,7 +439,6 @@ function renderThreads(posts) {
     head.innerHTML = `
       <span class="thread-title">${escapeHtml(thread.title)}</span>
       <span class="thread-meta">${thread.posts.length} post${thread.posts.length === 1 ? "" : "s"} · Latest ${escapeHtml(thread.latestLabel)}</span>
-      <span class="thread-toggle">${isOpen ? "Hide posts" : "Show posts"}</span>
     `;
     head.addEventListener("click", () => toggleThread(thread.root.id));
 
@@ -604,6 +603,35 @@ function toggleThread(threadId) {
   renderThreads(state.appData?.trash || []);
 }
 
+function openNewThreadForm() {
+  const form = document.getElementById("newThreadForm");
+  const openBtn = document.getElementById("openNewThreadBtn");
+  const textarea = document.getElementById("trashMessage");
+
+  if (!form || !openBtn) return;
+
+  form.classList.remove("hidden");
+  openBtn.classList.add("hidden");
+  setTimeout(() => textarea?.focus(), 0);
+}
+
+function closeNewThreadForm() {
+  const form = document.getElementById("newThreadForm");
+  const openBtn = document.getElementById("openNewThreadBtn");
+  const titleInput = document.getElementById("threadTitleInput");
+  const textarea = document.getElementById("trashMessage");
+  const status = document.getElementById("trashStatus");
+
+  if (!form || !openBtn) return;
+
+  form.classList.add("hidden");
+  openBtn.classList.remove("hidden");
+
+  if (titleInput) titleInput.value = "";
+  if (textarea) textarea.value = "";
+  if (status) status.textContent = "";
+}
+
 function setButtonBusy(buttons, isBusy, label) {
   buttons.filter(Boolean).forEach((button) => {
     if (isBusy) {
@@ -637,13 +665,14 @@ async function postTrash() {
     parentId: "",
     threadTitle,
     status,
-    buttons: [button],
+    buttons: [button, document.getElementById("cancelNewThreadBtn")],
     postingLabel: "Posting..."
   });
 
   if (response) {
     textarea.value = "";
     titleInput.value = "";
+    closeNewThreadForm();
   }
 }
 
