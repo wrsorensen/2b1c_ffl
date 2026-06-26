@@ -1223,3 +1223,88 @@ select option {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+
+/* v0.3.8a trash placement and alignment */
+#trash {
+  display: flex;
+  flex-direction: column;
+}
+
+#trash .threads-card {
+  order: 1;
+}
+
+#trash .add-trash-pill-wrap {
+  order: 2;
+  margin: 8px auto 0;
+  width: min(220px, 72%);
+}
+
+#trash .add-trash-pill {
+  min-height: 40px;
+  padding: 8px 16px;
+  font-size: .88rem;
+  width: 100%;
+}
+
+#trash .add-trash-card {
+  width: min(100%, 520px);
+  margin: 0 auto;
+}
+
+.thread-card {
+  overflow: hidden;
+}
+
+.thread-head {
+  min-height: 72px;
+  padding-bottom: 10px;
+}
+
+.thread-head::after {
+  align-self: center;
+}
+
+.compact-thread-body {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.075);
+}
+
+.compact-post {
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  align-items: baseline;
+  gap: 4px;
+  width: 100%;
+}
+
+.compact-post.root-post {
+  margin-left: 0;
+}
+
+.compact-post.reply-post {
+  width: calc(100% - 18px);
+  margin-left: 18px;
+}
+
+.compact-post .post-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 460px) {
+  #trash .add-trash-pill-wrap {
+    width: min(190px, 70%);
+  }
+
+  .compact-post {
+    grid-template-columns: auto auto auto minmax(0, 1fr);
+    font-size: .78rem;
+  }
+
+  .compact-post.reply-post {
+    width: calc(100% - 12px);
+    margin-left: 12px;
+  }
+}
