@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.5 — mobile loading + compact thread order
+  v0.3.6 — clean Sheet data wiring
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
@@ -61,7 +61,7 @@ async function init() {
     if (hasSavedLogin) {
       setLoginStatus(randomLoadingLine());
     } else {
-      setLoginStatus("Loading managers…");
+      setLoginStatus("Loading teams…");
     }
 
     await loadData();
@@ -73,7 +73,7 @@ async function init() {
       return;
     }
 
-    setLoginStatus("Ready. Pick your manager and enter PIN.");
+    setLoginStatus("Ready. Pick your team and enter PIN.");
   } catch (error) {
     loginScreen.classList.remove("auto-loading");
     setLoginStatus("Startup failed: " + error.message);
@@ -85,11 +85,11 @@ async function login(isAutoLogin = false) {
   const pin = isAutoLogin ? state.pin : loginPinInput.value.trim();
 
   if (!manager || !pin) {
-    setLoginStatus("Select manager and enter PIN.");
+    setLoginStatus("Select team and enter PIN.");
     return;
   }
 
-  setLoginStatus(isAutoLogin ? randomLoadingLine() : "Checking manager PIN...");
+  setLoginStatus(isAutoLogin ? randomLoadingLine() : "Checking team PIN...");
 
   try {
     const response = await api("managerLogin", { manager, pin });
@@ -145,7 +145,7 @@ function logout() {
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   renderLoginManagers();
-  setLoginStatus("Logged out. Select manager and enter PIN.");
+  setLoginStatus("Logged out. Select team and enter PIN.");
 }
 
 async function loadData() {
@@ -175,12 +175,24 @@ async function refreshData(silent = false) {
 
 function renderLoginManagers() {
   const managers = state.appData?.managers || [];
-  loginManagerSelect.innerHTML = `<option value="">Select manager</option>`;
+  loginManagerSelect.innerHTML = `<option value="">Select team</option>`;
+
+  const teamCounts = managers.reduce((acc, m) => {
+    const team = cleanTeamName(m);
+    if (team) acc[team] = (acc[team] || 0) + 1;
+    return acc;
+  }, {});
 
   managers.forEach((m) => {
     const option = document.createElement("option");
+    const team = cleanTeamName(m);
     option.value = m.manager;
-    option.textContent = m.teamName ? `${m.teamName} — ${m.manager}` : m.manager;
+
+    // Duplicate team names need manager shown, or Top Dog co-managers cannot tell which PIN belongs to which login.
+    option.textContent = team
+      ? (teamCounts[team] > 1 ? `${team} — ${m.manager}` : team)
+      : m.manager;
+
     loginManagerSelect.appendChild(option);
   });
 
@@ -190,21 +202,18 @@ function renderLoginManagers() {
 function renderApp() {
   const data = state.appData || {};
   const settings = data.settings || {};
+  const title = state.teamName || settings.appName || "2B1C FFL";
 
-  document.getElementById("managerLine").textContent = state.teamName
-    ? `${state.teamName} — ${state.manager}`
-    : `Manager: ${state.manager}`;
+  const brandTitle = document.getElementById("brandTitle");
+  if (brandTitle) brandTitle.textContent = title;
 
-  const verifiedManagerName = document.getElementById("verifiedManagerName");
-  if (verifiedManagerName) {
-    verifiedManagerName.textContent = state.teamName
-      ? `${state.teamName} — ${state.manager}`
-      : state.manager;
-  }
+  document.getElementById("managerLine").textContent = state.manager
+    ? `Manager: ${state.manager}`
+    : "League data connected";
 
   renderHome(settings);
-  renderRules(data.rules || []);
-  renderChampions(data.champions || []);
+  renderRules(data.rules || data.ruleSettings || []);
+  renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
 }
 
@@ -235,53 +244,110 @@ function renderRules(rules) {
   const section = document.getElementById("rules");
   section.innerHTML = `
     <section class="card">
-      <h3>Rules</h3>
-      <p class="muted">Loaded from league backend. Rule wording cleanup comes next.</p>
+      <h3>Rule Review</h3>
+      <p class="muted">Baseline/current ESPN settings only. Proposed changes are not final until commissioner review.</p>
     </section>
   `;
 
   if (!rules.length) {
-    section.innerHTML += `<section class="card"><p class="muted">No rules loaded yet.</p></section>`;
+    section.innerHTML += `<section class="card"><p class="muted">No rule rows loaded yet.</p></section>`;
     return;
   }
 
   rules.forEach((rule) => {
+    const title = rule.title || rule.ruleArea || "Rule";
+    const setting = rule.setting || "";
+    const baseline = rule.baselineValue || rule.baseline || "";
+    const proposed = rule.proposedValue || rule.proposed || "";
+    const finalValue = rule.finalValue || "";
+    const saved = rule.espnSaved || "";
+    const notes = rule.notes || "";
+    const status = finalValue ? "Final" : (saved ? `ESPN Saved: ${saved}` : "Needs review");
+
     const card = document.createElement("section");
     card.className = "card rule-card";
     card.innerHTML = `
-      <h3>${escapeHtml(rule.title)}</h3>
-      <p><b>Issue:</b> ${escapeHtml(rule.issue)}</p>
-      <p><b>Solution:</b> ${escapeHtml(rule.solution)}</p>
-      <span class="tag">${escapeHtml(rule.status)}</span>
+      <h3>${escapeHtml(title)}</h3>
+      ${setting ? `<p><b>Setting:</b> ${escapeHtml(setting)}</p>` : ""}
+      ${baseline ? `<p><b>Baseline:</b> ${escapeHtml(baseline)}</p>` : ""}
+      ${proposed ? `<p><b>Proposed:</b> ${escapeHtml(proposed)}</p>` : ""}
+      ${finalValue ? `<p><b>Final:</b> ${escapeHtml(finalValue)}</p>` : ""}
+      ${notes ? `<p class="muted">${escapeHtml(notes)}</p>` : ""}
+      <span class="tag">${escapeHtml(status)}</span>
     `;
     section.appendChild(card);
   });
 }
 
-function renderChampions(champions) {
+
+function renderChampions(champions, history = []) {
   const section = document.getElementById("champs");
   section.innerHTML = `
     <section class="card">
       <h3>Champions Wall</h3>
-      <p class="muted">Loaded from the Champions tab.</p>
+      <p class="muted">Loaded from cleaned Champions and LeagueHistory tabs.</p>
     </section>
   `;
 
   if (!champions.length) {
     section.innerHTML += `<section class="card"><p class="muted">No champion rows loaded yet.</p></section>`;
-    return;
+  } else {
+    [...champions]
+      .sort((a, b) => Number(b.year || 0) - Number(a.year || 0))
+      .forEach((champ) => {
+        const card = document.createElement("section");
+        card.className = "card champ-card";
+        card.innerHTML = `
+          <span class="year">${escapeHtml(champ.year)}</span>
+          <h3>${escapeHtml(champ.championTeam || champ.champion || "TBD")}</h3>
+          <p><b>Manager:</b> ${escapeHtml(champ.championManager || "TBD")}</p>
+          <p><b>Runner-up:</b> ${escapeHtml(champ.runnerUpTeam || champ.runnerUp || "TBD")}</p>
+          <p class="muted">Manager: ${escapeHtml(champ.runnerUpManager || "TBD")}</p>
+          ${champ.notes ? `<p class="muted">${escapeHtml(champ.notes)}</p>` : ""}
+        `;
+        section.appendChild(card);
+      });
   }
 
-  champions.forEach((champ) => {
-    const card = document.createElement("section");
-    card.className = "card champ-card";
-    card.innerHTML = `
-      <span class="year">${escapeHtml(champ.year)}</span>
-      <h3>${escapeHtml(champ.champion || "TBD")}</h3>
-      <p>Runner-up: ${escapeHtml(champ.runnerUp || "TBD")}</p>
-      <p class="muted">${escapeHtml(champ.notes || "")}</p>
+  renderLeagueHistory(section, history);
+}
+
+function renderLeagueHistory(section, history) {
+  if (!history.length) return;
+
+  const seasons = [...new Set(history.map((row) => row.season).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a));
+
+  seasons.forEach((season) => {
+    const rows = history
+      .filter((row) => String(row.season) === String(season))
+      .sort((a, b) => Number(a.finalRank || 999) - Number(b.finalRank || 999));
+
+    const wrap = document.createElement("section");
+    wrap.className = "card history-card";
+    wrap.innerHTML = `
+      <h3>${escapeHtml(season)} Final Standings</h3>
+      <div class="history-list"></div>
     `;
-    section.appendChild(card);
+
+    const list = wrap.querySelector(".history-list");
+
+    rows.forEach((row) => {
+      const managerLine = row.coManager
+        ? `${row.manager} / ${row.coManager}`
+        : row.manager;
+
+      const item = document.createElement("div");
+      item.className = "history-row";
+      item.innerHTML = `
+        <strong>#${escapeHtml(row.finalRank || "")} ${escapeHtml(row.teamName || "Team")}</strong>
+        <span>Manager: ${escapeHtml(managerLine || "TBD")}</span>
+        <span>${escapeHtml(row.record || "")}${row.playoffFinish ? ` · ${escapeHtml(row.playoffFinish)}` : ""}</span>
+      `;
+      list.appendChild(item);
+    });
+
+    section.appendChild(wrap);
   });
 }
 
@@ -316,7 +382,8 @@ function renderThreads(posts) {
 
     thread.posts.forEach((post) => {
       const div = document.createElement("div");
-      div.className = "thread-post compact-post";
+      const isReply = Boolean(post.parentId);
+      div.className = "thread-post compact-post" + (isReply ? " reply-post" : " root-post");
       div.innerHTML = `
         <b>${escapeHtml(displayPoster(post))}:</b>
         <span class="post-time">${escapeHtml(post.timestamp || "")}</span>
@@ -480,6 +547,10 @@ async function postTrash() {
   }
 }
 
+function cleanTeamName(m) {
+  return String(m?.teamName || "").trim();
+}
+
 function displayPoster(post) {
   if (post.teamName && post.manager) return `${post.teamName} — ${post.manager}`;
   return post.manager || "League";
@@ -561,8 +632,9 @@ function api(action, params = {}) {
 
 function randomLoadingLine() {
   const lines = [
-    "Checking if your team still has a pulse…",
+    "Your team is shit. Why are you here?",
     "Loading league drama…",
+    "Checking if your roster still has a pulse…",
     "Counting excuses before kickoff…",
     "Opening the trash board…",
     "Verifying manager. Judging roster silently…",
