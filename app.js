@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.4 — frontend UX polish
+  v0.3.5 — mobile loading + compact thread order
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
@@ -25,6 +25,12 @@ const loginStatus = document.getElementById("loginStatus");
 const loginManagerSelect = document.getElementById("loginManagerSelect");
 const loginPinInput = document.getElementById("loginPinInput");
 const trashList = document.getElementById("trashList");
+
+const hasSavedLogin = Boolean(state.manager && state.pin);
+if (hasSavedLogin) {
+  loginScreen.classList.add("auto-loading");
+  setLoginStatus(randomLoadingLine());
+}
 
 document.getElementById("enterBtn").addEventListener("click", login);
 document.getElementById("clearBtn").addEventListener("click", clearSaved);
@@ -52,19 +58,24 @@ init();
 
 async function init() {
   try {
-    setLoginStatus("Loading league hub…");
+    if (hasSavedLogin) {
+      setLoginStatus(randomLoadingLine());
+    } else {
+      setLoginStatus("Loading managers…");
+    }
+
     await loadData();
     renderLoginManagers();
 
-    if (state.manager && state.pin) {
-      loginScreen.classList.add("auto-loading");
-      setLoginStatus("Saved login found. Opening league hub…");
+    if (hasSavedLogin) {
+      setLoginStatus(randomLoadingLine());
       await login(true);
       return;
     }
 
-    setLoginStatus("v0.3.4 frontend UX polish");
+    setLoginStatus("Ready. Pick your manager and enter PIN.");
   } catch (error) {
+    loginScreen.classList.remove("auto-loading");
     setLoginStatus("Startup failed: " + error.message);
   }
 }
@@ -78,7 +89,7 @@ async function login(isAutoLogin = false) {
     return;
   }
 
-  setLoginStatus("Checking manager PIN...");
+  setLoginStatus(isAutoLogin ? randomLoadingLine() : "Checking manager PIN...");
 
   try {
     const response = await api("managerLogin", { manager, pin });
@@ -295,20 +306,22 @@ function renderThreads(posts) {
     head.type = "button";
     head.innerHTML = `
       <span class="thread-title">${escapeHtml(thread.title)}</span>
-      <span class="thread-meta">${thread.posts.length} post${thread.posts.length === 1 ? "" : "s"} · Started by ${escapeHtml(displayPoster(thread.root))}</span>
+      <span class="thread-meta">${thread.posts.length} post${thread.posts.length === 1 ? "" : "s"} · Latest ${escapeHtml(thread.latestLabel)}</span>
       <span class="thread-toggle">${isOpen ? "Hide posts" : "Show posts"}</span>
     `;
     head.addEventListener("click", () => toggleThread(thread.root.id));
 
     const body = document.createElement("div");
-    body.className = "thread-body";
+    body.className = "thread-body compact-thread-body";
 
     thread.posts.forEach((post) => {
       const div = document.createElement("div");
-      div.className = "thread-post";
+      div.className = "thread-post compact-post";
       div.innerHTML = `
-        <span class="post-meta">${escapeHtml(displayPoster(post))} · ${escapeHtml(post.timestamp || "")}</span>
-        ${escapeHtml(post.message)}
+        <b>${escapeHtml(displayPoster(post))}:</b>
+        <span class="post-time">${escapeHtml(post.timestamp || "")}</span>
+        <span class="post-dash">—</span>
+        <span class="post-message">${escapeHtml(post.message)}</span>
       `;
       body.appendChild(div);
     });
@@ -327,15 +340,21 @@ function renderThreads(posts) {
 }
 
 function buildThreads(posts) {
+  const decorated = posts.map((post, index) => ({
+    ...post,
+    _sourceIndex: index,
+    _timeValue: getPostTimeValue(post)
+  }));
+
   const byId = new Map();
-  posts.forEach((post) => {
+  decorated.forEach((post) => {
     if (post.id) byId.set(post.id, post);
   });
 
   const roots = [];
   const repliesByParent = new Map();
 
-  posts.forEach((post) => {
+  decorated.forEach((post) => {
     if (post.parentId && byId.has(post.parentId)) {
       if (!repliesByParent.has(post.parentId)) repliesByParent.set(post.parentId, []);
       repliesByParent.get(post.parentId).push(post);
@@ -344,15 +363,39 @@ function buildThreads(posts) {
     }
   });
 
-  return roots.map((root) => {
+  const threads = roots.map((root) => {
     const replies = repliesByParent.get(root.id) || [];
+    const threadPosts = [root, ...replies].sort(sortPostsOldestFirst);
+    const latestPost = threadPosts[threadPosts.length - 1] || root;
     const title = root.threadTitle || root.message.slice(0, 60) || "Trash Thread";
+
     return {
       title,
       root,
-      posts: [root, ...replies].reverse()
+      posts: threadPosts,
+      latestTime: latestPost._timeValue,
+      latestLabel: latestPost.timestamp || "recently"
     };
   });
+
+  return threads.sort((a, b) => {
+    if (a.latestTime !== b.latestTime) return b.latestTime - a.latestTime;
+    return String(b.root.id || "").localeCompare(String(a.root.id || ""));
+  });
+}
+
+function sortPostsOldestFirst(a, b) {
+  if (a._timeValue !== b._timeValue) return a._timeValue - b._timeValue;
+  return b._sourceIndex - a._sourceIndex;
+}
+
+function getPostTimeValue(post) {
+  const raw = String(post.timestamp || "").trim();
+  const parsed = raw ? Date.parse(raw) : NaN;
+  if (!Number.isNaN(parsed)) return parsed;
+
+  // Fallback: backend currently returns newest first, so reverse the source index.
+  return Number.MAX_SAFE_INTEGER - (post._sourceIndex || 0);
 }
 
 function toggleThread(threadId) {
@@ -514,6 +557,19 @@ function api(action, params = {}) {
       if (script.parentNode) script.parentNode.removeChild(script);
     }
   });
+}
+
+function randomLoadingLine() {
+  const lines = [
+    "Checking if your team still has a pulse…",
+    "Loading league drama…",
+    "Counting excuses before kickoff…",
+    "Opening the trash board…",
+    "Verifying manager. Judging roster silently…",
+    "Loading 2B1C business…"
+  ];
+
+  return lines[Math.floor(Math.random() * lines.length)];
 }
 
 function setLoginStatus(message) {
