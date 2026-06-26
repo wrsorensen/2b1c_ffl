@@ -32,11 +32,11 @@ if (hasSavedLogin) {
   setLoginStatus(randomLoadingLine());
 }
 
-document.getElementById("enterBtn").addEventListener("click", login);
+document.getElementById("enterBtn").addEventListener("click", () => login(false));
 document.getElementById("clearBtn").addEventListener("click", clearSaved);
 document.getElementById("logoutBtn").addEventListener("click", logout);
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
-document.getElementById("refreshTrashBtn").addEventListener("click", refreshData);
+document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
