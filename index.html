@@ -18,11 +18,11 @@
     <section class="login-panel">
       <div class="app-icon">FFL</div>
       <h1>2B1C<br><span>FFL</span></h1>
-      <p class="lead">Select your manager name and enter your PIN one time. After that, this device opens straight to the league hub.</p>
+      <p class="lead">Select your team and enter your PIN one time. After that, this device opens straight to the league hub.</p>
 
-      <label class="field-label" for="loginManagerSelect">Manager</label>
+      <label class="field-label" for="loginManagerSelect">Team</label>
       <select id="loginManagerSelect">
-        <option value="">Loading managers...</option>
+        <option value="">Loading teams...</option>
       </select>
 
       <label class="field-label" for="loginPinInput">PIN</label>
@@ -31,7 +31,7 @@
       <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
       <button class="secondary-btn" id="clearBtn" type="button">Reset Saved Login</button>
 
-      <p id="loginStatus" class="status-line">v0.3.4 frontend UX polish</p>
+      <p id="loginStatus" class="status-line">v0.3.6 team data wiring</p>
     </section>
   </main>
 
@@ -40,7 +40,7 @@
       <div class="brand">
         <div class="brand-icon">FFL</div>
         <div>
-          <div class="brand-title">2B1C FFL</div>
+          <div id="brandTitle" class="brand-title">2B1C FFL</div>
           <div id="managerLine" class="brand-sub">League data connected</div>
         </div>
       </div>
