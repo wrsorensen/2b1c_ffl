@@ -31,7 +31,7 @@
       <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
       <button class="secondary-btn" id="clearBtn" type="button">Reset Saved Login</button>
 
-      <p id="loginStatus" class="status-line">v0.3.3 manager PIN login</p>
+      <p id="loginStatus" class="status-line">v0.3.4 frontend UX polish</p>
     </section>
   </main>
 
@@ -111,14 +111,21 @@
     </section>
 
     <section id="trash" class="page">
-      <section class="card">
-        <h3>Trash Board</h3>
-        <p class="muted">More like a thread board than live chat. Text group is still king for instant trash talk.</p>
-
-        <div class="verified-box">
-          <span class="mini-label">Signed in as</span>
-          <strong id="verifiedManagerName"></strong>
+      <section class="card threads-card">
+        <div class="section-head">
+          <div>
+            <h3>Threads</h3>
+            <p class="muted">Tap a thread title to expand/collapse posts. Tap Reply to add to that thread.</p>
+          </div>
+          <button class="secondary-btn compact-btn" id="refreshTrashBtn" type="button">Refresh</button>
         </div>
+        <div id="threadReplyNotice" class="reply-notice hidden"></div>
+        <div id="trashList" class="thread-list"></div>
+      </section>
+
+      <section class="card add-trash-card">
+        <h3>Add Trash</h3>
+        <p class="muted">Start a new thread or reply to the selected thread.</p>
 
         <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
         <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
@@ -128,14 +135,6 @@
 
         <button class="primary-btn" id="postTrashBtn" type="button">Add Trash</button>
         <p id="trashStatus" class="status-line"></p>
-      </section>
-
-      <section class="card">
-        <h3>Threads</h3>
-        <p class="muted">Tap a thread to reply.</p>
-        <button class="secondary-btn" id="refreshTrashBtn" type="button">Refresh Now</button>
-        <div id="threadReplyNotice" class="reply-notice hidden"></div>
-        <div id="trashList" class="thread-list"></div>
       </section>
     </section>
 
