@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.3 — Manager PIN login + thread-style Trash Board
+  v0.3.4 — frontend UX polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
@@ -14,6 +14,7 @@ const state = {
   currentTab: "home",
   appData: null,
   trashTimer: null,
+  expandedThreads: new Set(),
   replyingToId: "",
   replyingToTitle: ""
 };
@@ -51,18 +52,18 @@ init();
 
 async function init() {
   try {
-    setLoginStatus("Loading league hub...");
+    setLoginStatus("Loading league hub…");
     await loadData();
     renderLoginManagers();
 
     if (state.manager && state.pin) {
       loginScreen.classList.add("auto-loading");
-      setLoginStatus("Saved login found. Loading league hub...");
+      setLoginStatus("Saved login found. Opening league hub…");
       await login(true);
       return;
     }
 
-    setLoginStatus("v0.3.3 manager PIN login");
+    setLoginStatus("v0.3.4 frontend UX polish");
   } catch (error) {
     setLoginStatus("Startup failed: " + error.message);
   }
@@ -183,9 +184,12 @@ function renderApp() {
     ? `${state.teamName} — ${state.manager}`
     : `Manager: ${state.manager}`;
 
-  document.getElementById("verifiedManagerName").textContent = state.teamName
-    ? `${state.teamName} — ${state.manager}`
-    : state.manager;
+  const verifiedManagerName = document.getElementById("verifiedManagerName");
+  if (verifiedManagerName) {
+    verifiedManagerName.textContent = state.teamName
+      ? `${state.teamName} — ${state.manager}`
+      : state.manager;
+  }
 
   renderHome(settings);
   renderRules(data.rules || []);
@@ -274,15 +278,17 @@ function renderThreads(posts) {
   trashList.innerHTML = "";
 
   if (!posts.length) {
-    trashList.innerHTML = `<p class="muted">No trash yet. Start a thread.</p>`;
+    trashList.innerHTML = `<p class="muted">No trash yet. Start a thread below.</p>`;
     return;
   }
 
   const threads = buildThreads(posts);
 
   threads.forEach((thread) => {
+    const isOpen = state.expandedThreads.has(thread.root.id);
+
     const card = document.createElement("div");
-    card.className = "thread-card";
+    card.className = "thread-card" + (isOpen ? " open" : "");
 
     const head = document.createElement("button");
     head.className = "thread-head";
@@ -290,8 +296,9 @@ function renderThreads(posts) {
     head.innerHTML = `
       <span class="thread-title">${escapeHtml(thread.title)}</span>
       <span class="thread-meta">${thread.posts.length} post${thread.posts.length === 1 ? "" : "s"} · Started by ${escapeHtml(displayPoster(thread.root))}</span>
+      <span class="thread-toggle">${isOpen ? "Hide posts" : "Show posts"}</span>
     `;
-    head.addEventListener("click", () => setReplyThread(thread.root.id, thread.title));
+    head.addEventListener("click", () => toggleThread(thread.root.id));
 
     const body = document.createElement("div");
     body.className = "thread-body";
@@ -305,6 +312,13 @@ function renderThreads(posts) {
       `;
       body.appendChild(div);
     });
+
+    const replyButton = document.createElement("button");
+    replyButton.className = "secondary-btn compact-btn thread-reply-btn";
+    replyButton.type = "button";
+    replyButton.textContent = "Reply";
+    replyButton.addEventListener("click", () => setReplyThread(thread.root.id, thread.title));
+    body.appendChild(replyButton);
 
     card.appendChild(head);
     card.appendChild(body);
@@ -341,6 +355,18 @@ function buildThreads(posts) {
   });
 }
 
+function toggleThread(threadId) {
+  if (!threadId) return;
+
+  if (state.expandedThreads.has(threadId)) {
+    state.expandedThreads.delete(threadId);
+  } else {
+    state.expandedThreads.add(threadId);
+  }
+
+  renderThreads(state.appData?.trash || []);
+}
+
 function setReplyThread(parentId, title) {
   state.replyingToId = parentId || "";
   state.replyingToTitle = title || "";
@@ -349,13 +375,16 @@ function setReplyThread(parentId, title) {
   const titleInput = document.getElementById("threadTitleInput");
 
   if (state.replyingToId) {
+    state.expandedThreads.add(state.replyingToId);
     titleInput.value = state.replyingToTitle;
     notice.classList.remove("hidden");
     notice.innerHTML = `
       Replying to: <b>${escapeHtml(state.replyingToTitle)}</b><br>
-      <button class="secondary-btn" type="button" id="newThreadBtn">Start New Thread</button>
+      <button class="secondary-btn compact-btn" type="button" id="newThreadBtn">Start New Thread</button>
     `;
     document.getElementById("newThreadBtn").addEventListener("click", clearReplyThread);
+    renderThreads(state.appData?.trash || []);
+    document.querySelector(".add-trash-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
     document.getElementById("trashMessage").focus();
   }
 }
@@ -392,9 +421,11 @@ async function postTrash() {
       threadTitle
     });
 
+    const postedParentId = state.replyingToId;
     textarea.value = "";
     if (!state.replyingToId) titleInput.value = "";
     clearReplyThread();
+    if (postedParentId) state.expandedThreads.add(postedParentId);
     status.textContent = "Added. Refreshing...";
     await refreshData(true);
     status.textContent = "Added.";
