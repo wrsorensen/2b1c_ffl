@@ -31,7 +31,7 @@
       <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
       <button class="secondary-btn" id="clearBtn" type="button">Reset Saved Login</button>
 
-      <p id="loginStatus" class="status-line">v0.3.6 team data wiring</p>
+      <p id="loginStatus" class="status-line">v0.3.8 simplified thread flow</p>
     </section>
   </main>
 
@@ -123,18 +123,24 @@
         <div id="trashList" class="thread-list"></div>
       </section>
 
-      <section class="card add-trash-card">
-        <h3>Add Trash</h3>
-        <p class="muted">Start a new thread or reply to the selected thread.</p>
+      <section class="add-trash-pill-wrap">
+        <button class="primary-btn add-trash-pill" id="openNewThreadBtn" type="button">Add Trash</button>
 
-        <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
-        <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
+        <div id="newThreadForm" class="card add-trash-card hidden">
+          <h3>New Trash Thread</h3>
 
-        <label class="mini-label" for="trashMessage">Message</label>
-        <textarea id="trashMessage" maxlength="500" placeholder="Add trash, league note, or reply..."></textarea>
+          <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
+          <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
 
-        <button class="primary-btn" id="postTrashBtn" type="button">Add Trash</button>
-        <p id="trashStatus" class="status-line"></p>
+          <label class="mini-label" for="trashMessage">Message</label>
+          <textarea id="trashMessage" maxlength="500" placeholder="Start a new thread..."></textarea>
+
+          <div class="new-thread-actions">
+            <button class="primary-btn compact-btn" id="postTrashBtn" type="button">Post Thread</button>
+            <button class="secondary-btn compact-btn" id="cancelNewThreadBtn" type="button">Cancel</button>
+          </div>
+          <p id="trashStatus" class="status-line"></p>
+        </div>
       </section>
     </section>
 
