@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.6 — clean Sheet data wiring
+  v0.3.7 — frontend review polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
@@ -15,6 +15,9 @@ const state = {
   appData: null,
   trashTimer: null,
   expandedThreads: new Set(),
+  expandedRuleAreas: new Set(),
+  activeReplyThreadId: "",
+  isPostingTrash: false,
   replyingToId: "",
   replyingToTitle: ""
 };
@@ -243,7 +246,7 @@ function renderHome(settings) {
 function renderRules(rules) {
   const section = document.getElementById("rules");
   section.innerHTML = `
-    <section class="card">
+    <section class="card rules-intro-card">
       <h3>Rule Review</h3>
       <p class="muted">Baseline/current ESPN settings only. Proposed changes are not final until commissioner review.</p>
     </section>
@@ -254,102 +257,164 @@ function renderRules(rules) {
     return;
   }
 
-  rules.forEach((rule) => {
-    const title = rule.title || rule.ruleArea || "Rule";
-    const setting = rule.setting || "";
-    const baseline = rule.baselineValue || rule.baseline || "";
-    const proposed = rule.proposedValue || rule.proposed || "";
-    const finalValue = rule.finalValue || "";
-    const saved = rule.espnSaved || "";
-    const notes = rule.notes || "";
-    const status = finalValue ? "Final" : (saved ? `ESPN Saved: ${saved}` : "Needs review");
+  const grouped = rules.reduce((acc, rule) => {
+    const area = rule.ruleArea || rule.title || "Rules";
+    if (!acc[area]) acc[area] = [];
+    acc[area].push(rule);
+    return acc;
+  }, {});
 
+  Object.entries(grouped).forEach(([area, rows]) => {
+    const isOpen = state.expandedRuleAreas.has(area);
     const card = document.createElement("section");
-    card.className = "card rule-card";
-    card.innerHTML = `
-      <h3>${escapeHtml(title)}</h3>
-      ${setting ? `<p><b>Setting:</b> ${escapeHtml(setting)}</p>` : ""}
-      ${baseline ? `<p><b>Baseline:</b> ${escapeHtml(baseline)}</p>` : ""}
-      ${proposed ? `<p><b>Proposed:</b> ${escapeHtml(proposed)}</p>` : ""}
-      ${finalValue ? `<p><b>Final:</b> ${escapeHtml(finalValue)}</p>` : ""}
-      ${notes ? `<p class="muted">${escapeHtml(notes)}</p>` : ""}
-      <span class="tag">${escapeHtml(status)}</span>
+    card.className = "card rule-accordion" + (isOpen ? " open" : "");
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "rule-accordion-head";
+    btn.innerHTML = `
+      <span>
+        <b>${escapeHtml(area)}</b>
+        <small>${rows.length} setting${rows.length === 1 ? "" : "s"}</small>
+      </span>
+      <span class="rule-toggle">${isOpen ? "Hide" : "Show"}</span>
     `;
+    btn.addEventListener("click", () => toggleRuleArea(area));
+
+    const body = document.createElement("div");
+    body.className = "rule-accordion-body";
+
+    rows.forEach((rule) => {
+      const setting = rule.setting || "Setting";
+      const baseline = rule.baselineValue || rule.baseline || "";
+      const proposed = rule.proposedValue || rule.proposed || "";
+      const finalValue = rule.finalValue || "";
+      const saved = rule.espnSaved || "";
+      const notes = rule.notes || "";
+      const status = finalValue ? "Final" : (saved || "Needs review");
+
+      const row = document.createElement("div");
+      row.className = "rule-row";
+      row.innerHTML = `
+        <div>
+          <strong>${escapeHtml(setting)}</strong>
+          ${baseline ? `<span><b>Baseline:</b> ${escapeHtml(baseline)}</span>` : ""}
+          ${proposed ? `<span><b>Proposed:</b> ${escapeHtml(proposed)}</span>` : ""}
+          ${finalValue ? `<span><b>Final:</b> ${escapeHtml(finalValue)}</span>` : ""}
+          ${notes ? `<em>${escapeHtml(notes)}</em>` : ""}
+        </div>
+        <small>${escapeHtml(status)}</small>
+      `;
+      body.appendChild(row);
+    });
+
+    card.appendChild(btn);
+    card.appendChild(body);
     section.appendChild(card);
   });
+}
+
+function toggleRuleArea(area) {
+  if (state.expandedRuleAreas.has(area)) {
+    state.expandedRuleAreas.delete(area);
+  } else {
+    state.expandedRuleAreas.add(area);
+  }
+
+  renderRules(state.appData?.rules || state.appData?.ruleSettings || []);
 }
 
 
 function renderChampions(champions, history = []) {
   const section = document.getElementById("champs");
   section.innerHTML = `
-    <section class="card">
+    <section class="card champs-intro-card">
       <h3>Champions Wall</h3>
-      <p class="muted">Loaded from cleaned Champions and LeagueHistory tabs.</p>
+      <p class="muted">Tap a season card to view full final standings.</p>
     </section>
   `;
 
   if (!champions.length) {
     section.innerHTML += `<section class="card"><p class="muted">No champion rows loaded yet.</p></section>`;
-  } else {
-    [...champions]
-      .sort((a, b) => Number(b.year || 0) - Number(a.year || 0))
-      .forEach((champ) => {
-        const card = document.createElement("section");
-        card.className = "card champ-card";
-        card.innerHTML = `
-          <span class="year">${escapeHtml(champ.year)}</span>
-          <h3>${escapeHtml(champ.championTeam || champ.champion || "TBD")}</h3>
-          <p><b>Manager:</b> ${escapeHtml(champ.championManager || "TBD")}</p>
-          <p><b>Runner-up:</b> ${escapeHtml(champ.runnerUpTeam || champ.runnerUp || "TBD")}</p>
-          <p class="muted">Manager: ${escapeHtml(champ.runnerUpManager || "TBD")}</p>
-          ${champ.notes ? `<p class="muted">${escapeHtml(champ.notes)}</p>` : ""}
-        `;
-        section.appendChild(card);
-      });
+    return;
   }
 
-  renderLeagueHistory(section, history);
-}
+  const grid = document.createElement("section");
+  grid.className = "champ-grid";
 
-function renderLeagueHistory(section, history) {
-  if (!history.length) return;
-
-  const seasons = [...new Set(history.map((row) => row.season).filter(Boolean))]
-    .sort((a, b) => Number(b) - Number(a));
-
-  seasons.forEach((season) => {
-    const rows = history
-      .filter((row) => String(row.season) === String(season))
-      .sort((a, b) => Number(a.finalRank || 999) - Number(b.finalRank || 999));
-
-    const wrap = document.createElement("section");
-    wrap.className = "card history-card";
-    wrap.innerHTML = `
-      <h3>${escapeHtml(season)} Final Standings</h3>
-      <div class="history-list"></div>
-    `;
-
-    const list = wrap.querySelector(".history-list");
-
-    rows.forEach((row) => {
-      const managerLine = row.coManager
-        ? `${row.manager} / ${row.coManager}`
-        : row.manager;
-
-      const item = document.createElement("div");
-      item.className = "history-row";
-      item.innerHTML = `
-        <strong>#${escapeHtml(row.finalRank || "")} ${escapeHtml(row.teamName || "Team")}</strong>
-        <span>Manager: ${escapeHtml(managerLine || "TBD")}</span>
-        <span>${escapeHtml(row.record || "")}${row.playoffFinish ? ` · ${escapeHtml(row.playoffFinish)}` : ""}</span>
+  [...champions]
+    .sort((a, b) => Number(b.year || 0) - Number(a.year || 0))
+    .forEach((champ) => {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "champ-year-card";
+      card.innerHTML = `
+        <span class="champ-year">${escapeHtml(champ.year)}</span>
+        <strong>${escapeHtml(champ.championTeam || champ.champion || "TBD")}</strong>
+        <small>Manager: ${escapeHtml(champ.championManager || "TBD")}</small>
+        <span class="runner-line">Runner-up: ${escapeHtml(champ.runnerUpTeam || champ.runnerUp || "TBD")}</span>
       `;
-      list.appendChild(item);
+      card.addEventListener("click", () => openSeasonStandings(champ.year));
+      grid.appendChild(card);
     });
 
-    section.appendChild(wrap);
-  });
+  section.appendChild(grid);
 }
+
+function openSeasonStandings(season) {
+  const history = state.appData?.leagueHistory || [];
+  const rows = history
+    .filter((row) => String(row.season) === String(season))
+    .sort((a, b) => Number(a.finalRank || 999) - Number(b.finalRank || 999));
+
+  const existing = document.getElementById("standingsModal");
+  if (existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "standingsModal";
+  modal.className = "modal-backdrop";
+  modal.innerHTML = `
+    <section class="modal-card" role="dialog" aria-modal="true" aria-label="${escapeHtml(season)} final standings">
+      <div class="modal-head">
+        <div>
+          <span class="mini-label">Final Standings</span>
+          <h3>${escapeHtml(season)}</h3>
+        </div>
+        <button class="ghost-btn modal-close" type="button">Close</button>
+      </div>
+      <div class="modal-body">
+        ${rows.length ? rows.map(renderStandingRow).join("") : `<p class="muted">No standings rows loaded for ${escapeHtml(season)}.</p>`}
+      </div>
+    </section>
+  `;
+
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeSeasonStandings();
+  });
+
+  document.body.appendChild(modal);
+  modal.querySelector(".modal-close").addEventListener("click", closeSeasonStandings);
+}
+
+function closeSeasonStandings() {
+  const modal = document.getElementById("standingsModal");
+  if (modal) modal.remove();
+}
+
+function renderStandingRow(row) {
+  const managerLine = row.coManager
+    ? `${row.manager} / ${row.coManager}`
+    : row.manager;
+
+  return `
+    <div class="modal-standing-row">
+      <strong>#${escapeHtml(row.finalRank || "")} ${escapeHtml(row.teamName || "Team")}</strong>
+      <span>Manager: ${escapeHtml(managerLine || "TBD")}</span>
+      <small>${escapeHtml(row.record || "")}${row.playoffFinish ? ` · ${escapeHtml(row.playoffFinish)}` : ""}</small>
+    </div>
+  `;
+}
+
 
 function renderThreads(posts) {
   trashList.innerHTML = "";
@@ -363,6 +428,7 @@ function renderThreads(posts) {
 
   threads.forEach((thread) => {
     const isOpen = state.expandedThreads.has(thread.root.id);
+    const isReplying = state.activeReplyThreadId === thread.root.id;
 
     const card = document.createElement("div");
     card.className = "thread-card" + (isOpen ? " open" : "");
@@ -393,18 +459,79 @@ function renderThreads(posts) {
       body.appendChild(div);
     });
 
-    const replyButton = document.createElement("button");
-    replyButton.className = "secondary-btn compact-btn thread-reply-btn";
-    replyButton.type = "button";
-    replyButton.textContent = "Reply";
-    replyButton.addEventListener("click", () => setReplyThread(thread.root.id, thread.title));
-    body.appendChild(replyButton);
+    if (isReplying) {
+      body.appendChild(buildInlineReplyBox(thread));
+    } else {
+      const replyButton = document.createElement("button");
+      replyButton.className = "secondary-btn compact-btn thread-reply-btn";
+      replyButton.type = "button";
+      replyButton.textContent = "Reply";
+      replyButton.addEventListener("click", () => startInlineReply(thread.root.id));
+      body.appendChild(replyButton);
+    }
 
     card.appendChild(head);
     card.appendChild(body);
     trashList.appendChild(card);
   });
 }
+
+function buildInlineReplyBox(thread) {
+  const wrap = document.createElement("div");
+  wrap.className = "inline-reply-box";
+  wrap.innerHTML = `
+    <label class="mini-label" for="replyText_${escapeHtml(thread.root.id)}">Reply to ${escapeHtml(thread.title)}</label>
+    <textarea id="replyText_${escapeHtml(thread.root.id)}" maxlength="500" placeholder="Talk your shit..."></textarea>
+    <div class="inline-reply-actions">
+      <button class="primary-btn compact-btn post-reply-btn" type="button">Post Reply</button>
+      <button class="secondary-btn compact-btn cancel-reply-btn" type="button">Cancel</button>
+    </div>
+    <p class="inline-reply-status status-line"></p>
+  `;
+
+  const textarea = wrap.querySelector("textarea");
+  const postBtn = wrap.querySelector(".post-reply-btn");
+  const cancelBtn = wrap.querySelector(".cancel-reply-btn");
+  const status = wrap.querySelector(".inline-reply-status");
+
+  postBtn.addEventListener("click", () => postInlineReply(thread, textarea, postBtn, cancelBtn, status));
+  cancelBtn.addEventListener("click", () => {
+    state.activeReplyThreadId = "";
+    renderThreads(state.appData?.trash || []);
+  });
+
+  setTimeout(() => textarea.focus(), 0);
+  return wrap;
+}
+
+function startInlineReply(threadId) {
+  if (!threadId) return;
+  state.activeReplyThreadId = threadId;
+  state.expandedThreads.add(threadId);
+  renderThreads(state.appData?.trash || []);
+}
+
+async function postInlineReply(thread, textarea, postBtn, cancelBtn, status) {
+  const message = textarea.value.trim();
+
+  if (!message) {
+    status.textContent = "Type a reply first.";
+    return;
+  }
+
+  await submitTrashMessage({
+    message,
+    parentId: thread.root.id,
+    threadTitle: thread.title,
+    status,
+    buttons: [postBtn, cancelBtn],
+    postingLabel: "Posting reply..."
+  });
+
+  state.activeReplyThreadId = "";
+  state.expandedThreads.add(thread.root.id);
+}
+
 
 function buildThreads(posts) {
   const decorated = posts.map((post, index) => ({
@@ -477,73 +604,80 @@ function toggleThread(threadId) {
   renderThreads(state.appData?.trash || []);
 }
 
-function setReplyThread(parentId, title) {
-  state.replyingToId = parentId || "";
-  state.replyingToTitle = title || "";
-
-  const notice = document.getElementById("threadReplyNotice");
-  const titleInput = document.getElementById("threadTitleInput");
-
-  if (state.replyingToId) {
-    state.expandedThreads.add(state.replyingToId);
-    titleInput.value = state.replyingToTitle;
-    notice.classList.remove("hidden");
-    notice.innerHTML = `
-      Replying to: <b>${escapeHtml(state.replyingToTitle)}</b><br>
-      <button class="secondary-btn compact-btn" type="button" id="newThreadBtn">Start New Thread</button>
-    `;
-    document.getElementById("newThreadBtn").addEventListener("click", clearReplyThread);
-    renderThreads(state.appData?.trash || []);
-    document.querySelector(".add-trash-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    document.getElementById("trashMessage").focus();
-  }
-}
-
-function clearReplyThread() {
-  state.replyingToId = "";
-  state.replyingToTitle = "";
-  document.getElementById("threadTitleInput").value = "";
-  const notice = document.getElementById("threadReplyNotice");
-  notice.classList.add("hidden");
-  notice.innerHTML = "";
+function setButtonBusy(buttons, isBusy, label) {
+  buttons.filter(Boolean).forEach((button) => {
+    if (isBusy) {
+      button.dataset.originalText = button.textContent;
+      button.textContent = label || "Posting...";
+      button.disabled = true;
+      button.classList.add("is-busy");
+    } else {
+      button.textContent = button.dataset.originalText || button.textContent;
+      button.disabled = false;
+      button.classList.remove("is-busy");
+    }
+  });
 }
 
 async function postTrash() {
   const titleInput = document.getElementById("threadTitleInput");
   const textarea = document.getElementById("trashMessage");
+  const button = document.getElementById("postTrashBtn");
+  const status = document.getElementById("trashStatus");
   const message = textarea.value.trim();
   const threadTitle = titleInput.value.trim();
-  const status = document.getElementById("trashStatus");
 
   if (!message) {
     status.textContent = "Type a message first.";
     return;
   }
 
-  status.textContent = "Adding trash...";
+  const response = await submitTrashMessage({
+    message,
+    parentId: "",
+    threadTitle,
+    status,
+    buttons: [button],
+    postingLabel: "Posting..."
+  });
+
+  if (response) {
+    textarea.value = "";
+    titleInput.value = "";
+  }
+}
+
+async function submitTrashMessage({ message, parentId = "", threadTitle = "", status, buttons = [], postingLabel = "Posting..." }) {
+  if (state.isPostingTrash) return false;
+
+  state.isPostingTrash = true;
+  status.textContent = postingLabel;
+  setButtonBusy(buttons, true, postingLabel);
 
   try {
     await api("submitTrashTalk", {
       manager: state.manager,
       pin: state.pin,
       message,
-      parentId: state.replyingToId,
+      parentId,
       threadTitle
     });
 
-    const postedParentId = state.replyingToId;
-    textarea.value = "";
-    if (!state.replyingToId) titleInput.value = "";
-    clearReplyThread();
-    if (postedParentId) state.expandedThreads.add(postedParentId);
-    status.textContent = "Added. Refreshing...";
+    status.textContent = "Posted. Refreshing...";
     await refreshData(true);
-    status.textContent = "Added.";
+    status.textContent = "Posted.";
+
     setTimeout(() => {
-      if (status.textContent === "Added.") status.textContent = "";
+      if (status.textContent === "Posted.") status.textContent = "";
     }, 1400);
+
+    return true;
   } catch (error) {
     status.textContent = "Post failed: " + error.message;
+    return false;
+  } finally {
+    state.isPostingTrash = false;
+    setButtonBusy(buttons, false);
   }
 }
 
@@ -552,8 +686,26 @@ function cleanTeamName(m) {
 }
 
 function displayPoster(post) {
-  if (post.teamName && post.manager) return `${post.teamName} — ${post.manager}`;
-  return post.manager || "League";
+  const team = String(post.teamName || "").trim();
+  const manager = String(post.manager || "").trim();
+
+  if (!team) return manager || "League";
+
+  const duplicateTeam = (state.appData?.managers || [])
+    .filter((m) => String(m.teamName || "").trim() === team).length > 1;
+
+  if (duplicateTeam && manager) return `${team} (${managerInitials(manager)})`;
+  return team;
+}
+
+function managerInitials(name) {
+  return String(name || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 3);
 }
 
 function showTab(id) {
