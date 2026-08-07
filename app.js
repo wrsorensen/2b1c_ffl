@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.0 — branded league dashboard
+  v0.5.1 — live team names + image cleanup
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -127,7 +127,12 @@ async function login(isAutoLogin = false) {
 
     state.loggedIn = true;
     state.manager = result.manager || manager;
-    state.teamName = result.teamName || "";
+
+    const bootstrapManager = Array.isArray(state.loginBootstrap?.managers)
+      ? state.loginBootstrap.managers.find((m) => m.manager === state.manager)
+      : null;
+
+    state.teamName = cleanTeamName(bootstrapManager) || result.teamName || "";
     state.pin = pin;
 
     localStorage.setItem("managerName", state.manager);
@@ -196,6 +201,7 @@ async function loadData() {
   }
 
   state.appData = data;
+  syncLiveTeamNameFromAppData(data);
   state.lastUpdatedAt = new Date();
   cacheAppData(data);
   return data;
@@ -307,7 +313,6 @@ function renderAuthenticatedShell() {
       : "League data connected";
   }
 
-  renderHomeIdentity();
   updateLastUpdatedText();
 }
 
@@ -323,7 +328,6 @@ function renderApp() {
     ? `Manager: ${state.manager}`
     : "League data connected";
 
-  renderHomeIdentity();
   updateLastUpdatedText();
   renderHome(settings);
   renderRules(data.rules || data.ruleSettings || []);
@@ -355,22 +359,18 @@ function renderHome(settings) {
   }
 }
 
-function renderHomeIdentity() {
-  const identity = document.getElementById("homeIdentityLine");
-  if (!identity) return;
+function syncLiveTeamNameFromAppData(data) {
+  if (!state.manager || !Array.isArray(data?.managers)) return;
 
-  const team = String(state.teamName || "").trim();
-  const manager = String(state.manager || "").trim();
+  const match = data.managers.find((m) =>
+    String(m?.manager || "").trim() === String(state.manager || "").trim()
+  );
+  const liveTeamName = cleanTeamName(match);
 
-  if (team && manager) {
-    identity.textContent = `${team} · ${manager}`;
-  } else if (team) {
-    identity.textContent = team;
-  } else if (manager) {
-    identity.textContent = `Manager: ${manager}`;
-  } else {
-    identity.textContent = "Private league dashboard";
-  }
+  if (!liveTeamName || liveTeamName === state.teamName) return;
+
+  state.teamName = liveTeamName;
+  localStorage.setItem("teamName", state.teamName);
 }
 
 function updateLastUpdatedText() {
