@@ -19,15 +19,12 @@
   <main id="loginScreen" class="login-screen">
     <section class="login-panel">
       <div class="login-crest" aria-hidden="true">
-        <span class="crest-kicker">2B1C</span>
-        <strong>FFL</strong>
-        <span class="crest-football">🏈</span>
+        <img class="login-crest-logo" src="assets/2b1c-ffl-logo-primary.png" alt="">
       </div>
 
       <div class="login-copy">
         <span class="eyebrow">Private League Clubhouse</span>
-        <h1>Two Balls.<br><span>One Cup.</span></h1>
-        <p class="lead">Pick your team, enter your PIN, and get to the league business.</p>
+        <p class="lead">You're team is shit.</p>
       </div>
 
       <div class="login-fields">
@@ -40,10 +37,10 @@
         <input id="loginPinInput" type="text" inputmode="numeric" placeholder="PIN" autocomplete="off">
 
         <button class="primary-btn" id="enterBtn" type="button">Enter League HQ</button>
-        <button class="secondary-btn subtle-btn" id="clearBtn" type="button">Reset Saved Login</button>
+        <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line">v0.5.1 live team names + image cleanup</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.5 mobile logo fit</p>
     </section>
   </main>
 
@@ -157,7 +154,7 @@
       <section class="home-meta" aria-label="App status">
         <button id="refreshHomeBtn" class="text-btn" type="button">Refresh data</button>
         <span id="lastUpdatedText">Syncing league data…</span>
-        <span class="home-version">v0.5.1</span>
+        <span class="home-version">v0.5.5</span>
       </section>
     </section>
 
