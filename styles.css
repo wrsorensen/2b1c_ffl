@@ -94,6 +94,13 @@ button {
   user-select: none;
 }
 
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
 input,
 textarea,
 select {
@@ -248,41 +255,24 @@ select:focus {
 }
 
 .login-crest {
-  width: 106px;
-  height: 106px;
-  margin: 0 auto 20px;
-  border: 1px solid rgba(216,180,93,.48);
-  border-radius: 28px 28px 34px 34px;
+  width: min(58vw, 200px);
+  aspect-ratio: 2 / 3;
+  margin: 0 auto 18px;
   display: grid;
   place-items: center;
-  grid-template-rows: auto 1fr auto;
-  padding: 10px 8px 8px;
-  color: var(--text-strong);
-  background:
-    linear-gradient(180deg, rgba(43,130,189,.34), rgba(43,130,189,.08)),
-    rgba(5,10,17,.82);
-  box-shadow:
-    inset 0 0 0 4px rgba(255,255,255,.035),
-    0 16px 40px rgba(0,0,0,.35);
-  transform: rotate(-1.5deg);
+  filter: drop-shadow(0 18px 34px rgba(0,0,0,.42));
+  transform: rotate(-1deg);
 }
 
-.crest-kicker {
-  color: var(--gold-soft);
-  font-size: .68rem;
-  font-weight: 1000;
-  letter-spacing: .16em;
+.login-crest img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
 }
 
-.login-crest strong {
-  align-self: center;
-  font-size: 2.7rem;
-  line-height: .9;
-  letter-spacing: -.08em;
-}
-
-.crest-football {
-  font-size: 1.05rem;
+.login-crest-logo {
+  border-radius: 0;
 }
 
 .login-copy {
@@ -340,6 +330,32 @@ select:focus {
   font-size: .74rem;
 }
 
+#loginStatus {
+  min-height: 22px;
+  margin: 16px auto 0;
+  font-size: .82rem;
+  font-weight: 760;
+  max-width: 460px;
+}
+
+#loginStatus[data-kind="error"] {
+  min-height: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(181,77,73,.48);
+  border-radius: 14px;
+  color: #ffd7d5;
+  background: rgba(181,77,73,.15);
+  box-shadow: 0 12px 26px rgba(181,77,73,.12);
+  font-size: .98rem;
+  font-weight: 950;
+}
+
+#loginStatus[data-kind="loading"] {
+  color: var(--gold-soft);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
 .login-screen.auto-loading .login-fields,
 .login-screen.auto-loading .lead,
 .login-screen.auto-loading .eyebrow {
@@ -347,30 +363,43 @@ select:focus {
 }
 
 .login-screen.auto-loading .login-panel {
-  min-height: 360px;
+  min-height: 430px;
   justify-content: center;
 }
 
-.login-screen.auto-loading .status-line {
-  margin-top: 10px;
+.login-screen.auto-loading .login-crest {
+  width: min(70vw, 230px);
+  margin-bottom: 22px;
+  animation: fflPulse 1.15s ease-in-out infinite;
+}
+
+.login-screen.auto-loading #loginStatus {
+  margin-top: 12px;
   color: var(--gold-soft);
-  font-size: .9rem;
+  font-size: 1.08rem;
   font-weight: 900;
 }
 
 .login-screen.auto-loading .login-panel::after {
   content: "";
-  width: 32px;
-  height: 32px;
-  margin: 16px auto 0;
+  width: 46px;
+  height: 46px;
+  margin: 20px auto 0;
   border-radius: 50%;
-  border: 3px solid rgba(255,255,255,.13);
+  border: 4px solid rgba(255,255,255,.13);
   border-top-color: var(--gold);
   animation: fflSpin .75s linear infinite;
 }
 
 @keyframes fflSpin {
   to { transform: rotate(360deg); }
+}
+
+@keyframes fflPulse {
+  50% {
+    transform: rotate(-1deg) scale(1.025);
+    filter: drop-shadow(0 22px 42px rgba(216,180,93,.24));
+  }
 }
 
 /* APP SHELL */
@@ -790,13 +819,15 @@ select:focus {
 .champs-intro-card::after {
   content: "";
   position: absolute;
-  right: -8px;
-  top: 50%;
+  right: -10px;
+  top: -12px;
   width: 126px;
   height: 126px;
-  opacity: .16;
-  transform: translateY(-50%);
+  opacity: .24;
   background: url("assets/2b1c-ffl-champion-badge-primary.png") center / contain no-repeat;
+  mix-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(circle, #000 56%, rgba(0,0,0,.72) 66%, transparent 78%);
+  mask-image: radial-gradient(circle, #000 56%, rgba(0,0,0,.72) 66%, transparent 78%);
   pointer-events: none;
 }
 
@@ -1316,6 +1347,52 @@ select:focus {
 }
 
 @media (max-width: 460px) {
+  .login-screen {
+    padding: 10px 8px max(10px, env(safe-area-inset-bottom));
+  }
+
+  .login-panel {
+    min-height: calc(100svh - 20px);
+    padding: 22px 14px 16px;
+  }
+
+  .login-crest {
+    width: min(54vw, 178px);
+    margin-bottom: 13px;
+  }
+
+  .login-copy {
+    margin-bottom: 15px;
+  }
+
+  .lead {
+    font-size: .96rem;
+  }
+
+  .field-label {
+    margin: 7px 0 5px;
+  }
+
+  .login-fields .primary-btn {
+    margin-top: 11px;
+  }
+
+  .login-fields .secondary-btn {
+    margin-top: 7px;
+  }
+
+  #loginStatus {
+    margin-top: 11px;
+  }
+
+  .login-screen.auto-loading .login-panel {
+    min-height: calc(100svh - 20px);
+  }
+
+  .login-screen.auto-loading .login-crest {
+    width: min(68vw, 230px);
+  }
+
   .brand-title,
   .brand-sub {
     max-width: 150px;
@@ -1369,6 +1446,37 @@ select:focus {
   .home-meta {
     flex-wrap: wrap;
     gap: 5px;
+  }
+}
+
+@media (max-width: 460px) and (max-height: 740px) {
+  .login-panel {
+    padding: 16px 12px 12px;
+  }
+
+  .login-crest {
+    width: min(45vw, 154px);
+    margin-bottom: 10px;
+  }
+
+  .login-copy {
+    margin-bottom: 10px;
+  }
+
+  .lead {
+    font-size: .9rem;
+  }
+
+  .field-label {
+    margin: 5px 0 4px;
+  }
+
+  .login-fields .primary-btn {
+    margin-top: 9px;
+  }
+
+  #loginStatus {
+    margin-top: 9px;
   }
 }
 
