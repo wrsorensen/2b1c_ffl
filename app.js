@@ -1,9 +1,10 @@
 /*
   2B1C FFL
-  v0.4.1 — fast login boot
+  v0.5.0 — branded league dashboard
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
+const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -14,6 +15,7 @@ const state = {
   teamName: localStorage.getItem("teamName") || "",
   currentTab: "home",
   appData: readCachedAppData(),
+  lastUpdatedAt: readCachedAppDataTime(),
   loginBootstrap: null,
   trashTimer: null,
   expandedThreads: new Set(),
@@ -44,6 +46,7 @@ document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewTh
 document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
 document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
+document.getElementById("refreshHomeBtn")?.addEventListener("click", () => refreshData(false));
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
@@ -193,6 +196,7 @@ async function loadData() {
   }
 
   state.appData = data;
+  state.lastUpdatedAt = new Date();
   cacheAppData(data);
   return data;
 }
@@ -212,9 +216,20 @@ function readCachedAppData() {
   }
 }
 
+function readCachedAppDataTime() {
+  try {
+    const raw = localStorage.getItem(APP_DATA_CACHE_TIME_KEY);
+    const time = raw ? Number(raw) : NaN;
+    return Number.isFinite(time) ? new Date(time) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
 function cacheAppData(data) {
   try {
     localStorage.setItem(APP_DATA_CACHE_KEY, JSON.stringify(data));
+    localStorage.setItem(APP_DATA_CACHE_TIME_KEY, String(Date.now()));
   } catch (_) {
     // Cache failure must never block the live app.
   }
@@ -224,19 +239,32 @@ async function refreshData(silent = false) {
   if (!state.loggedIn) return;
 
   const trashStatus = document.getElementById("trashStatus");
-  if (!silent && trashStatus) trashStatus.textContent = "Refreshing...";
+  const lastUpdatedText = document.getElementById("lastUpdatedText");
+
+  if (!silent && trashStatus && state.currentTab === "trash") {
+    trashStatus.textContent = "Refreshing...";
+  }
+  if (!silent && lastUpdatedText) {
+    lastUpdatedText.textContent = "Refreshing league data…";
+  }
 
   try {
     await loadData();
     renderApp();
-    if (!silent && trashStatus) trashStatus.textContent = "Updated.";
-    if (!silent && trashStatus) {
+
+    if (!silent && trashStatus && state.currentTab === "trash") {
+      trashStatus.textContent = "Updated.";
       setTimeout(() => {
         if (trashStatus.textContent === "Updated.") trashStatus.textContent = "";
       }, 1200);
     }
   } catch (error) {
-    if (trashStatus) trashStatus.textContent = "Refresh failed: " + error.message;
+    if (trashStatus && state.currentTab === "trash") {
+      trashStatus.textContent = "Refresh failed: " + error.message;
+    }
+    if (lastUpdatedText) {
+      lastUpdatedText.textContent = "Refresh failed";
+    }
   }
 }
 
@@ -270,7 +298,7 @@ function renderLoginManagers() {
 
 function renderAuthenticatedShell() {
   const brandTitle = document.getElementById("brandTitle");
-  if (brandTitle) brandTitle.textContent = state.teamName || "2B1C FFL";
+  if (brandTitle) brandTitle.textContent = state.teamName || "League HQ";
 
   const managerLine = document.getElementById("managerLine");
   if (managerLine) {
@@ -278,6 +306,9 @@ function renderAuthenticatedShell() {
       ? `Manager: ${state.manager}`
       : "League data connected";
   }
+
+  renderHomeIdentity();
+  updateLastUpdatedText();
 }
 
 function renderApp() {
@@ -292,6 +323,8 @@ function renderApp() {
     ? `Manager: ${state.manager}`
     : "League data connected";
 
+  renderHomeIdentity();
+  updateLastUpdatedText();
   renderHome(settings);
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
@@ -307,6 +340,7 @@ function renderHome(settings) {
 
   document.getElementById("draftDateStat").textContent = draftDate.replace("September", "Sept.").replace(", 2026", "");
   document.getElementById("buyInStat").textContent = buyIn;
+  document.getElementById("homeDuesAmount").textContent = buyIn;
   document.getElementById("draftDateText").textContent = draftDate;
   document.getElementById("draftTimeText").textContent = draftTime;
   document.getElementById("draftLocationText").textContent = draftLocation;
@@ -319,6 +353,45 @@ function renderHome(settings) {
   if (settings.espnUrl) {
     espnBtn.onclick = () => window.open(settings.espnUrl, "_blank", "noopener");
   }
+}
+
+function renderHomeIdentity() {
+  const identity = document.getElementById("homeIdentityLine");
+  if (!identity) return;
+
+  const team = String(state.teamName || "").trim();
+  const manager = String(state.manager || "").trim();
+
+  if (team && manager) {
+    identity.textContent = `${team} · ${manager}`;
+  } else if (team) {
+    identity.textContent = team;
+  } else if (manager) {
+    identity.textContent = `Manager: ${manager}`;
+  } else {
+    identity.textContent = "Private league dashboard";
+  }
+}
+
+function updateLastUpdatedText() {
+  const el = document.getElementById("lastUpdatedText");
+  if (!el) return;
+
+  if (!state.lastUpdatedAt) {
+    el.textContent = state.appData ? "Cached data · syncing…" : "Syncing league data…";
+    return;
+  }
+
+  const stamp = state.lastUpdatedAt instanceof Date
+    ? state.lastUpdatedAt
+    : new Date(state.lastUpdatedAt);
+
+  if (Number.isNaN(stamp.getTime())) {
+    el.textContent = "League data loaded";
+    return;
+  }
+
+  el.textContent = `Updated ${stamp.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
 function renderRules(rules) {
