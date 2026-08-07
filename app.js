@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.6 - loading line polish
+  v0.5.7 - final login polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -976,7 +976,20 @@ function randomLoadingLine() {
     "Checking bad decisions…",
     "Judging your bench…",
     "Finding your L…",
-    "Warming up the shit talk…"
+    "Warming up shit talk…",
+    "Checking waiver regrets…",
+    "Polishing last place…",
+    "Loading weak rosters…",
+    "Auditing your Ls…",
+    "Summoning bad trades…",
+    "Reviewing poor choices…",
+    "Checking bench sadness…",
+    "Loading fake confidence…",
+    "Preparing excuses…",
+    "Scanning draft trauma…",
+    "Ranking bad takes…",
+    "Finding playoff lies…",
+    "Checking toilet bowl odds…"
   ];
 
   let lastLine = "";
