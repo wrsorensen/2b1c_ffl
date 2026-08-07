@@ -1,10 +1,11 @@
 /*
   2B1C FFL
-  v0.5.5 - mobile logo fit
+  v0.5.6 - loading line polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
 const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
+const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -968,16 +969,29 @@ function api(action, params = {}) {
 
 function randomLoadingLine() {
   const lines = [
-    "Your team is shit. Why are you here?",
     "Loading league drama…",
-    "Checking if your roster still has a pulse…",
-    "Counting excuses before kickoff…",
-    "Opening the trash board…",
-    "Verifying manager. Judging roster silently…",
-    "Loading 2B1C business…"
+    "Counting excuses…",
+    "Roster still mid…",
+    "Opening trash talk…",
+    "Checking bad decisions…",
+    "Judging your bench…",
+    "Finding your L…",
+    "Warming up the shit talk…"
   ];
 
-  return lines[Math.floor(Math.random() * lines.length)];
+  let lastLine = "";
+  try {
+    lastLine = localStorage.getItem(LAST_LOADING_LINE_KEY) || "";
+  } catch (error) {}
+
+  const choices = lines.length > 1 ? lines.filter((line) => line !== lastLine) : lines;
+  const nextLine = choices[Math.floor(Math.random() * choices.length)] || lines[0];
+
+  try {
+    localStorage.setItem(LAST_LOADING_LINE_KEY, nextLine);
+  } catch (error) {}
+
+  return nextLine;
 }
 
 function setLoginBusy(isBusy, message) {
