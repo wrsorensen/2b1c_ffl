@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.1 — live team names + image cleanup
+  v0.5.5 - mobile logo fit
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -31,16 +31,17 @@ const appScreen = document.getElementById("appScreen");
 const loginStatus = document.getElementById("loginStatus");
 const loginManagerSelect = document.getElementById("loginManagerSelect");
 const loginPinInput = document.getElementById("loginPinInput");
+const enterBtn = document.getElementById("enterBtn");
+const clearBtn = document.getElementById("clearBtn");
 const trashList = document.getElementById("trashList");
 
 const hasSavedLogin = Boolean(state.manager && state.pin);
 if (hasSavedLogin) {
-  loginScreen.classList.add("auto-loading");
-  setLoginStatus(randomLoadingLine());
+  setLoginBusy(true, randomLoadingLine());
 }
 
-document.getElementById("enterBtn").addEventListener("click", () => login(false));
-document.getElementById("clearBtn").addEventListener("click", clearSaved);
+enterBtn.addEventListener("click", () => login(false));
+clearBtn.addEventListener("click", clearSaved);
 document.getElementById("logoutBtn").addEventListener("click", logout);
 document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewThreadForm);
 document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
@@ -67,8 +68,10 @@ document.addEventListener("visibilitychange", () => {
 init();
 
 async function init() {
+  updateClearSavedVisibility();
+
   if (hasSavedLogin) {
-    setLoginStatus(randomLoadingLine());
+    setLoginBusy(true, randomLoadingLine());
     await login(true);
     return;
   }
@@ -78,7 +81,7 @@ async function init() {
     renderLoginManagers();
     setLoginStatus("Ready. Pick your team and enter PIN.");
   } else {
-    setLoginStatus("Loading teams…");
+    setLoginStatus("Loading teams…", "loading");
   }
 
   try {
@@ -99,11 +102,11 @@ async function login(isAutoLogin = false) {
   const pin = isAutoLogin ? state.pin : loginPinInput.value.trim();
 
   if (!manager || !pin) {
-    setLoginStatus("Select team and enter PIN.");
+    setLoginStatus("Select team and enter PIN.", "error");
     return;
   }
 
-  setLoginStatus(isAutoLogin ? randomLoadingLine() : "Checking team PIN...");
+  setLoginBusy(true, isAutoLogin ? randomLoadingLine() : "Checking team PIN...");
 
   try {
     const response = await api("managerLogin", { manager, pin });
@@ -112,15 +115,16 @@ async function login(isAutoLogin = false) {
     if (!result.ok) {
       if (isAutoLogin) {
         clearSaved(false);
-        loginScreen.classList.remove("auto-loading");
+        setLoginBusy(false);
         renderLoginManagers();
-        setLoginStatus("Saved login expired. Login again.");
+        setLoginStatus("Saved login expired. Login again.", "error");
 
         loadLoginBootstrap()
           .then(() => renderLoginManagers())
           .catch(() => {});
       } else {
-        setLoginStatus(result.message || "Invalid manager/PIN combo.");
+        setLoginBusy(false);
+        setLoginStatus(result.message || "Invalid manager/PIN combo.", "error");
       }
       return;
     }
@@ -140,7 +144,7 @@ async function login(isAutoLogin = false) {
     localStorage.setItem("teamName", state.teamName);
 
     loginScreen.classList.add("hidden");
-    loginScreen.classList.remove("auto-loading");
+    setLoginBusy(false);
     appScreen.classList.remove("hidden");
 
     if (state.appData) {
@@ -154,8 +158,8 @@ async function login(isAutoLogin = false) {
     // Full app data loads after authentication so it cannot block the login path.
     refreshData(true);
   } catch (error) {
-    loginScreen.classList.remove("auto-loading");
-    setLoginStatus("Login failed: " + error.message);
+    setLoginBusy(false);
+    setLoginStatus("Login failed: " + error.message, "error");
   }
 }
 
@@ -168,7 +172,8 @@ function clearSaved(showStatus = true) {
   state.teamName = "";
   state.loggedIn = false;
   loginPinInput.value = "";
-  loginScreen.classList.remove("auto-loading");
+  setLoginBusy(false);
+  updateClearSavedVisibility();
   if (showStatus) setLoginStatus("Saved login cleared.");
 }
 
@@ -177,6 +182,7 @@ function logout() {
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   renderLoginManagers();
+  updateClearSavedVisibility();
   setLoginStatus("Logged out. Select team and enter PIN.");
 }
 
@@ -974,8 +980,28 @@ function randomLoadingLine() {
   return lines[Math.floor(Math.random() * lines.length)];
 }
 
-function setLoginStatus(message) {
+function setLoginBusy(isBusy, message) {
+  loginScreen.classList.toggle("auto-loading", isBusy);
+  loginManagerSelect.disabled = isBusy;
+  loginPinInput.disabled = isBusy;
+  enterBtn.disabled = isBusy;
+  clearBtn.disabled = isBusy;
+
+  if (message) setLoginStatus(message, isBusy ? "loading" : "");
+}
+
+function updateClearSavedVisibility() {
+  const hasSaved = Boolean(localStorage.getItem("managerName") && localStorage.getItem("managerPin"));
+  clearBtn.classList.toggle("hidden", !hasSaved);
+}
+
+function setLoginStatus(message, kind = "") {
   loginStatus.textContent = message;
+  if (kind) {
+    loginStatus.dataset.kind = kind;
+  } else {
+    delete loginStatus.dataset.kind;
+  }
 }
 
 function escapeHtml(value) {
