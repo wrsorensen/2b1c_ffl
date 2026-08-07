@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#05070d">
+  <meta name="theme-color" content="#07111e">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="2B1C FFL">
   <meta name="mobile-web-app-capable" content="yes">
@@ -14,35 +14,46 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-bg"></div>
+  <div class="app-bg" aria-hidden="true"></div>
 
   <main id="loginScreen" class="login-screen">
     <section class="login-panel">
-      <div class="app-icon">FFL</div>
-      <h1>2B1C<br><span>FFL</span></h1>
-      <p class="lead">Select your team and enter your PIN one time. After that, this device opens straight to the league hub.</p>
+      <div class="login-crest" aria-hidden="true">
+        <span class="crest-kicker">2B1C</span>
+        <strong>FFL</strong>
+        <span class="crest-football">🏈</span>
+      </div>
 
-      <label class="field-label" for="loginManagerSelect">Team</label>
-      <select id="loginManagerSelect">
-        <option value="">Loading teams...</option>
-      </select>
+      <div class="login-copy">
+        <span class="eyebrow">Private League Clubhouse</span>
+        <h1>Two Balls.<br><span>One Cup.</span></h1>
+        <p class="lead">Pick your team, enter your PIN, and get to the league business.</p>
+      </div>
 
-      <label class="field-label" for="loginPinInput">PIN</label>
-      <input id="loginPinInput" type="text" inputmode="numeric" placeholder="PIN" autocomplete="off">
+      <div class="login-fields">
+        <label class="field-label" for="loginManagerSelect">Team</label>
+        <select id="loginManagerSelect">
+          <option value="">Loading teams...</option>
+        </select>
 
-      <button class="primary-btn" id="enterBtn" type="button">Enter Hub</button>
-      <button class="secondary-btn" id="clearBtn" type="button">Reset Saved Login</button>
+        <label class="field-label" for="loginPinInput">PIN</label>
+        <input id="loginPinInput" type="text" inputmode="numeric" placeholder="PIN" autocomplete="off">
 
-      <p id="loginStatus" class="status-line">v0.4.1 fast login boot</p>
+        <button class="primary-btn" id="enterBtn" type="button">Enter League HQ</button>
+        <button class="secondary-btn subtle-btn" id="clearBtn" type="button">Reset Saved Login</button>
+      </div>
+
+      <p id="loginStatus" class="status-line">v0.5.0 branded league dashboard</p>
     </section>
   </main>
 
   <main id="appScreen" class="app-shell hidden">
     <header class="topbar">
       <div class="brand">
-        <div class="brand-icon">FFL</div>
-        <div>
-          <div id="brandTitle" class="brand-title">2B1C FFL</div>
+        <div class="brand-icon" aria-hidden="true">2B</div>
+        <div class="brand-copy">
+          <span class="brand-kicker">2B1C FFL</span>
+          <div id="brandTitle" class="brand-title">League HQ</div>
           <div id="managerLine" class="brand-sub">League data connected</div>
         </div>
       </div>
@@ -50,38 +61,105 @@
     </header>
 
     <section id="home" class="page active">
-      <section class="hero-card">
-        <div class="pill">🏈 Private League HQ</div>
-        <h2>Talk shit.<br><span>Win trophies.</span></h2>
-        <p>Draft info, league rules, champions, payouts, and the league board.</p>
-        <div class="hero-actions">
-          <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
-          <button class="secondary-btn" id="espnBtn" type="button">Open ESPN</button>
+      <section class="hero-card dashboard-hero">
+        <div class="hero-copy">
+          <span class="eyebrow">2026 League Headquarters</span>
+          <h2>Talk shit.<br><span>Win trophies.</span></h2>
+          <p id="homeIdentityLine" class="hero-identity">Your team dashboard is loading.</p>
+
+          <div class="hero-actions">
+            <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
+            <button class="secondary-btn" id="espnBtn" type="button">Open ESPN</button>
+          </div>
         </div>
-        <div class="stat-grid">
+
+        <div class="hero-stats">
           <article class="stat-card">
+            <span class="stat-label">Draft</span>
             <strong id="draftDateStat">Sept. 3</strong>
-            <span>Draft Date</span>
           </article>
           <article class="stat-card">
+            <span class="stat-label">Buy-In</span>
             <strong id="buyInStat">$100</strong>
-            <span>Buy-In</span>
+          </article>
+          <article class="stat-card">
+            <span class="stat-label">Season</span>
+            <strong>Preseason</strong>
           </article>
         </div>
       </section>
 
-      <section class="card">
-        <h3>Draft Central</h3>
-        <p><b>Date:</b> <span id="draftDateText">September 3, 2026</span></p>
-        <p><b>Time:</b> <span id="draftTimeText">7:00 PM</span></p>
-        <p><b>Location:</b> <span id="draftLocationText">TBD</span></p>
-        <p class="muted">Snake draft. 60 seconds per pick. Order randomized 1 hour before draft.</p>
+      <section class="dashboard-grid">
+        <article class="card feature-card scoreboard-card">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">Game Center</span>
+              <h3>Scoreboard</h3>
+            </div>
+            <span class="status-chip">Coming Soon</span>
+          </div>
+          <p class="big-placeholder">Weekly matchups will land here after the draft.</p>
+          <p class="muted">ESPN stays the football source. 2B1C adds the personality.</p>
+        </article>
+
+        <article class="card standings-card">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">League Race</span>
+              <h3>Standings</h3>
+            </div>
+            <span class="status-dot" aria-hidden="true"></span>
+          </div>
+          <div class="placeholder-rows" aria-label="Standings placeholder">
+            <div><b>1</b><span>Season standings</span><small>After Week 1</small></div>
+            <div><b>2</b><span>Division race</span><small>After Week 1</small></div>
+            <div><b>3</b><span>Points leaders</span><small>After Week 1</small></div>
+          </div>
+        </article>
+
+        <article class="card league-business-card">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">League Business</span>
+              <h3>Draft Central</h3>
+            </div>
+          </div>
+          <div class="detail-grid">
+            <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
+            <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
+            <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
+          </div>
+          <p class="muted compact-note">Snake draft · 60 seconds per pick · order randomized 1 hour before draft.</p>
+        </article>
+
+        <article class="card dues-card">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">Money</span>
+              <h3>Dues</h3>
+            </div>
+            <span class="status-chip neutral">Tracking Soon</span>
+          </div>
+          <div class="dues-amount" id="homeDuesAmount">$100</div>
+          <p class="muted">Payment status will plug into this card without changing the dashboard layout.</p>
+        </article>
       </section>
 
-      <section class="card">
-        <h3>2026 Preseason Focus</h3>
+      <section class="card preseason-card">
+        <div class="card-head">
+          <div>
+            <span class="mini-label">Commissioner Desk</span>
+            <h3>2026 Preseason Focus</h3>
+          </div>
+        </div>
         <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
-        <p class="muted">No ESPN setting changes should be saved until final review.</p>
+        <p class="muted">No ESPN setting changes should be saved until final commissioner review.</p>
+      </section>
+
+      <section class="home-meta" aria-label="App status">
+        <button id="refreshHomeBtn" class="text-btn" type="button">Refresh data</button>
+        <span id="lastUpdatedText">Syncing league data…</span>
+        <span class="home-version">v0.5.0</span>
       </section>
     </section>
 
@@ -100,12 +178,13 @@
     </section>
 
     <section id="pay" class="page">
-      <section class="card">
-        <h3>Buy-In</h3>
-        <p><b>Amount:</b> <span id="buyInText">$100</span></p>
+      <section class="card pay-hero-card">
+        <span class="mini-label">League Dues</span>
+        <h3>Buy-In & Payouts</h3>
+        <div class="pay-amount"><span>Buy-In</span><strong id="buyInText">$100</strong></div>
         <p><b>Payouts:</b> <span id="payoutsText">1st $800 / 2nd $300 / 3rd $100</span></p>
-        <p class="muted">Payment tracking should come from the Sheet, not hard-coded.</p>
       </section>
+
       <section class="qr-grid">
         <div class="qr-card" id="venmoBox">Venmo QR<br>coming soon</div>
         <div class="qr-card" id="cashAppBox">Cash App QR<br>coming soon</div>
@@ -116,7 +195,8 @@
       <section class="card threads-card">
         <div class="section-head">
           <div>
-            <h3>Threads</h3>
+            <span class="mini-label">League Board</span>
+            <h3>Trash Talk</h3>
             <p class="muted">Click a thread to open or close it.</p>
           </div>
           <button class="secondary-btn compact-btn" id="refreshTrashBtn" type="button">Refresh</button>
@@ -147,11 +227,11 @@
     </section>
 
     <nav class="bottom-nav" aria-label="Primary">
-      <button class="active" data-tab="home" type="button">Home</button>
-      <button data-tab="rules" type="button">Rules</button>
-      <button data-tab="champs" type="button">Champs</button>
-      <button data-tab="pay" type="button">Pay</button>
-      <button data-tab="trash" type="button">Trash</button>
+      <button class="active" data-tab="home" type="button"><span>⌂</span>Home</button>
+      <button data-tab="rules" type="button"><span>§</span>Rules</button>
+      <button data-tab="champs" type="button"><span>★</span>Champs</button>
+      <button data-tab="pay" type="button"><span>$</span>Pay</button>
+      <button data-tab="trash" type="button"><span>☄</span>Trash</button>
     </nav>
   </main>
 
