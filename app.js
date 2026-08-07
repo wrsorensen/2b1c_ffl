@@ -1,8 +1,9 @@
 /*
   2B1C FFL
-  v0.3.9 — branding asset plumbing
+  v0.4.1 — fast login boot
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
+const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -12,7 +13,8 @@ const state = {
   pin: localStorage.getItem("managerPin") || "",
   teamName: localStorage.getItem("teamName") || "",
   currentTab: "home",
-  appData: null,
+  appData: readCachedAppData(),
+  loginBootstrap: null,
   trashTimer: null,
   expandedThreads: new Set(),
   expandedRuleAreas: new Set(),
@@ -62,26 +64,30 @@ document.addEventListener("visibilitychange", () => {
 init();
 
 async function init() {
-  try {
-    if (hasSavedLogin) {
-      setLoginStatus(randomLoadingLine());
-    } else {
-      setLoginStatus("Loading teams…");
-    }
+  if (hasSavedLogin) {
+    setLoginStatus(randomLoadingLine());
+    await login(true);
+    return;
+  }
 
-    await loadData();
+  const cachedManagers = state.appData?.managers || [];
+  if (cachedManagers.length) {
     renderLoginManagers();
+    setLoginStatus("Ready. Pick your team and enter PIN.");
+  } else {
+    setLoginStatus("Loading teams…");
+  }
 
-    if (hasSavedLogin) {
-      setLoginStatus(randomLoadingLine());
-      await login(true);
-      return;
-    }
-
+  try {
+    await loadLoginBootstrap();
+    renderLoginManagers();
     setLoginStatus("Ready. Pick your team and enter PIN.");
   } catch (error) {
-    loginScreen.classList.remove("auto-loading");
-    setLoginStatus("Startup failed: " + error.message);
+    if (cachedManagers.length) {
+      setLoginStatus("Using saved team list. Enter PIN.");
+    } else {
+      setLoginStatus("Could not load teams: " + error.message);
+    }
   }
 }
 
@@ -104,7 +110,12 @@ async function login(isAutoLogin = false) {
       if (isAutoLogin) {
         clearSaved(false);
         loginScreen.classList.remove("auto-loading");
+        renderLoginManagers();
         setLoginStatus("Saved login expired. Login again.");
+
+        loadLoginBootstrap()
+          .then(() => renderLoginManagers())
+          .catch(() => {});
       } else {
         setLoginStatus(result.message || "Invalid manager/PIN combo.");
       }
@@ -124,8 +135,16 @@ async function login(isAutoLogin = false) {
     loginScreen.classList.remove("auto-loading");
     appScreen.classList.remove("hidden");
 
-    renderApp();
+    if (state.appData) {
+      renderApp();
+    } else {
+      renderAuthenticatedShell();
+    }
+
     startAutoRefresh();
+
+    // Full app data loads after authentication so it cannot block the login path.
+    refreshData(true);
   } catch (error) {
     loginScreen.classList.remove("auto-loading");
     setLoginStatus("Login failed: " + error.message);
@@ -153,9 +172,52 @@ function logout() {
   setLoginStatus("Logged out. Select team and enter PIN.");
 }
 
+async function loadLoginBootstrap() {
+  const response = await api("getLoginBootstrap");
+  const bootstrap = response.data || {};
+
+  if (!Array.isArray(bootstrap.managers)) {
+    throw new Error("Invalid login bootstrap");
+  }
+
+  state.loginBootstrap = bootstrap;
+  return bootstrap;
+}
+
 async function loadData() {
   const response = await api("getAppData");
-  state.appData = response.data || {};
+  const data = response.data;
+
+  if (!data || typeof data !== "object") {
+    throw new Error("Invalid app data");
+  }
+
+  state.appData = data;
+  cacheAppData(data);
+  return data;
+}
+
+function readCachedAppData() {
+  try {
+    const raw = localStorage.getItem(APP_DATA_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    try {
+      localStorage.removeItem(APP_DATA_CACHE_KEY);
+    } catch (_) {}
+    return null;
+  }
+}
+
+function cacheAppData(data) {
+  try {
+    localStorage.setItem(APP_DATA_CACHE_KEY, JSON.stringify(data));
+  } catch (_) {
+    // Cache failure must never block the live app.
+  }
 }
 
 async function refreshData(silent = false) {
@@ -179,7 +241,9 @@ async function refreshData(silent = false) {
 }
 
 function renderLoginManagers() {
-  const managers = state.appData?.managers || [];
+  const managers = Array.isArray(state.loginBootstrap?.managers)
+    ? state.loginBootstrap.managers
+    : (state.appData?.managers || []);
   loginManagerSelect.innerHTML = `<option value="">Select team</option>`;
 
   const teamCounts = managers.reduce((acc, m) => {
@@ -202,6 +266,18 @@ function renderLoginManagers() {
   });
 
   if (state.manager) loginManagerSelect.value = state.manager;
+}
+
+function renderAuthenticatedShell() {
+  const brandTitle = document.getElementById("brandTitle");
+  if (brandTitle) brandTitle.textContent = state.teamName || "2B1C FFL";
+
+  const managerLine = document.getElementById("managerLine");
+  if (managerLine) {
+    managerLine.textContent = state.manager
+      ? `Manager: ${state.manager}`
+      : "League data connected";
+  }
 }
 
 function renderApp() {
