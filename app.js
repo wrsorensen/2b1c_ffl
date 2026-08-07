@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.3.9 — trash placement and alignment
+  v0.3.9 — branding asset plumbing
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 
