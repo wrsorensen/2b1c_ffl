@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.8 - login visual hierarchy polish
+  v0.5.11 - ESPN dashboard wiring
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -19,6 +19,8 @@ const state = {
   lastUpdatedAt: readCachedAppDataTime(),
   loginBootstrap: null,
   trashTimer: null,
+  espnDashboardLoading: false,
+  espnDashboardLoadedAt: null,
   expandedThreads: new Set(),
   expandedRuleAreas: new Set(),
   activeReplyThreadId: "",
@@ -340,6 +342,7 @@ function renderApp() {
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
+  loadEspnDashboard();
 }
 
 function renderHome(settings) {
@@ -364,6 +367,138 @@ function renderHome(settings) {
   if (settings.espnUrl) {
     espnBtn.onclick = () => window.open(settings.espnUrl, "_blank", "noopener");
   }
+}
+
+async function loadEspnDashboard() {
+  if (!state.loggedIn || state.espnDashboardLoading) return;
+
+  state.espnDashboardLoading = true;
+  setScoreboardStatus("Syncing", false);
+
+  try {
+    const [settingsResponse, standingsResponse] = await Promise.all([
+      api("espnSettings"),
+      api("espnStandings")
+    ]);
+
+    const espnSettings = settingsResponse || {};
+    const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
+    renderEspnDraftSettings(espnSettings);
+    renderEspnStandings(standingsResponse.standings || [], week);
+
+    const scoreboardResponse = await api("espnScoreboard", { week });
+    const games = (scoreboardResponse.scoreboard || [])
+      .filter((game) => Number(game.matchupPeriodId) === week)
+      .slice(0, 6);
+
+    renderEspnScoreboard(games, week);
+    state.espnDashboardLoadedAt = new Date();
+  } catch (error) {
+    renderEspnDashboardError(error);
+  } finally {
+    state.espnDashboardLoading = false;
+  }
+}
+
+function renderEspnDraftSettings(settings) {
+  const note = document.getElementById("draftSettingsNote");
+  if (!note) return;
+
+  const draft = settings.draftSettings || {};
+  const draftType = String(draft.type || "Snake").replace(/_/g, " ").toLowerCase();
+  const seconds = Number(draft.timePerSelection || 0);
+  const timerText = seconds ? `${seconds} seconds per pick` : "draft timer not loaded";
+  note.textContent = `${capitalize_(draftType)} draft · ${timerText} · ESPN settings`;
+}
+
+function renderEspnStandings(standings, week) {
+  const rows = document.getElementById("standingsRows");
+  if (!rows) return;
+
+  const top = standings.slice(0, 6);
+  if (!top.length) {
+    rows.innerHTML = `<div><b>?</b><span>No ESPN standings loaded</span><small>Week ${week}</small></div>`;
+    return;
+  }
+
+  rows.innerHTML = top.map((team, index) => `
+    <div>
+      <b>${index + 1}</b>
+      <span>${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}</span>
+      <small>${formatRecord_(team)} · ${formatPoints_(team.pointsFor)} PF</small>
+    </div>
+  `).join("");
+}
+
+function renderEspnScoreboard(games, week) {
+  const body = document.getElementById("scoreboardBody");
+  if (!body) return;
+
+  if (!games.length) {
+    setScoreboardStatus(`Week ${week}`, true);
+    body.innerHTML = `
+      <p class="big-placeholder">No Week ${week} scoreboard yet.</p>
+      <p class="muted">ESPN is connected. Matchups will fill once the schedule has games.</p>
+    `;
+    return;
+  }
+
+  setScoreboardStatus(`Week ${week}`, true);
+  body.innerHTML = `
+    <div class="scoreboard-list">
+      ${games.map(renderScoreboardGame).join("")}
+    </div>
+  `;
+}
+
+function renderScoreboardGame(game) {
+  return `
+    <div class="score-row">
+      <span>${escapeHtml(game.awayTeamName || "Away")}</span>
+      <strong>${formatScore_(game.awayScore)}</strong>
+      <small>at</small>
+      <span>${escapeHtml(game.homeTeamName || "Home")}</span>
+      <strong>${formatScore_(game.homeScore)}</strong>
+    </div>
+  `;
+}
+
+function renderEspnDashboardError(error) {
+  setScoreboardStatus("ESPN error", false);
+
+  const body = document.getElementById("scoreboardBody");
+  if (body) {
+    body.innerHTML = `
+      <p class="big-placeholder">ESPN data did not load.</p>
+      <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
+    `;
+  }
+}
+
+function setScoreboardStatus(text, isLive) {
+  const status = document.getElementById("scoreboardStatus");
+  if (!status) return;
+  status.textContent = text;
+  status.classList.toggle("neutral", !isLive);
+}
+
+function formatRecord_(team) {
+  return `${Number(team.wins || 0)}-${Number(team.losses || 0)}${Number(team.ties || 0) ? `-${Number(team.ties || 0)}` : ""}`;
+}
+
+function formatPoints_(points) {
+  const value = Number(points || 0);
+  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function formatScore_(score) {
+  const value = Number(score || 0);
+  return value ? value.toFixed(1).replace(/\.0$/, "") : "0";
+}
+
+function capitalize_(value) {
+  const text = String(value || "").trim();
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "";
 }
 
 function syncLiveTeamNameFromAppData(data) {

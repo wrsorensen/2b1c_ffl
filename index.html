@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.8 login visual hierarchy polish</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.11 ESPN dashboard wiring</p>
     </section>
   </main>
 
@@ -90,10 +90,12 @@
               <span class="mini-label">Game Center</span>
               <h3>Scoreboard</h3>
             </div>
-            <span class="status-chip">Coming Soon</span>
+            <span id="scoreboardStatus" class="status-chip">Syncing</span>
           </div>
-          <p class="big-placeholder">Weekly matchups will land here after the draft.</p>
-          <p class="muted">ESPN stays the football source. 2B1C adds the personality.</p>
+          <div id="scoreboardBody">
+            <p class="big-placeholder">Loading ESPN scoreboard...</p>
+            <p class="muted">ESPN stays the football source. 2B1C adds the personality.</p>
+          </div>
         </article>
 
         <article class="card standings-card">
@@ -104,7 +106,7 @@
             </div>
             <span class="status-dot" aria-hidden="true"></span>
           </div>
-          <div class="placeholder-rows" aria-label="Standings placeholder">
+          <div id="standingsRows" class="placeholder-rows" aria-label="League standings">
             <div><b>1</b><span>Season standings</span><small>After Week 1</small></div>
             <div><b>2</b><span>Division race</span><small>After Week 1</small></div>
             <div><b>3</b><span>Points leaders</span><small>After Week 1</small></div>
@@ -123,7 +125,7 @@
             <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
             <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
           </div>
-          <p class="muted compact-note">Snake draft · 60 seconds per pick · order randomized 1 hour before draft.</p>
+          <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
         </article>
 
         <article class="card dues-card">
@@ -153,7 +155,7 @@
       <section class="home-meta" aria-label="App status">
         <button id="refreshHomeBtn" class="text-btn" type="button">Refresh data</button>
         <span id="lastUpdatedText">Syncing league data…</span>
-        <span class="home-version">v0.5.8</span>
+        <span class="home-version">v0.5.11</span>
       </section>
     </section>
 

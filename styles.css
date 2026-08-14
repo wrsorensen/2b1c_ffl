@@ -640,6 +640,49 @@ select:focus {
   font-weight: 850;
 }
 
+.scoreboard-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.score-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  border-top: 1px solid rgba(255,255,255,.065);
+  padding-top: 7px;
+}
+
+.score-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.score-row span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: .78rem;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.score-row strong {
+  color: var(--gold-soft);
+  font-size: .86rem;
+  font-weight: 950;
+}
+
+.score-row small {
+  color: var(--muted);
+  font-size: .62rem;
+  text-align: center;
+}
+
 .placeholder-rows {
   display: grid;
   gap: 7px;
