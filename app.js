@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.11 - ESPN dashboard wiring
+  v0.5.12 - ESPN dashboard polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -374,6 +374,7 @@ async function loadEspnDashboard() {
 
   state.espnDashboardLoading = true;
   setScoreboardStatus("Syncing", false);
+  setEspnSyncText("ESPN syncing...");
 
   try {
     const [settingsResponse, standingsResponse] = await Promise.all([
@@ -387,12 +388,11 @@ async function loadEspnDashboard() {
     renderEspnStandings(standingsResponse.standings || [], week);
 
     const scoreboardResponse = await api("espnScoreboard", { week });
-    const games = (scoreboardResponse.scoreboard || [])
-      .filter((game) => Number(game.matchupPeriodId) === week)
-      .slice(0, 6);
+    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
 
     renderEspnScoreboard(games, week);
     state.espnDashboardLoadedAt = new Date();
+    setEspnSyncText(`ESPN synced - backend ${scoreboardResponse.appVersion || espnSettings.appVersion || "online"}`);
   } catch (error) {
     renderEspnDashboardError(error);
   } finally {
@@ -408,7 +408,7 @@ function renderEspnDraftSettings(settings) {
   const draftType = String(draft.type || "Snake").replace(/_/g, " ").toLowerCase();
   const seconds = Number(draft.timePerSelection || 0);
   const timerText = seconds ? `${seconds} seconds per pick` : "draft timer not loaded";
-  note.textContent = `${capitalize_(draftType)} draft · ${timerText} · ESPN settings`;
+  note.textContent = `${capitalize_(draftType)} draft - ${timerText} - ESPN settings`;
 }
 
 function renderEspnStandings(standings, week) {
@@ -418,14 +418,16 @@ function renderEspnStandings(standings, week) {
   const top = standings.slice(0, 6);
   if (!top.length) {
     rows.innerHTML = `<div><b>?</b><span>No ESPN standings loaded</span><small>Week ${week}</small></div>`;
+    setStandingsStatus("No data", false);
     return;
   }
 
+  setStandingsStatus("ESPN live", true);
   rows.innerHTML = top.map((team, index) => `
     <div>
       <b>${index + 1}</b>
       <span>${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}</span>
-      <small>${formatRecord_(team)} · ${formatPoints_(team.pointsFor)} PF</small>
+      <small>${formatRecord_(team)} - ${formatPoints_(team.pointsFor)} PF</small>
     </div>
   `).join("");
 }
@@ -465,6 +467,8 @@ function renderScoreboardGame(game) {
 
 function renderEspnDashboardError(error) {
   setScoreboardStatus("ESPN error", false);
+  setStandingsStatus("ESPN error", false);
+  setEspnSyncText("ESPN sync failed");
 
   const body = document.getElementById("scoreboardBody");
   if (body) {
@@ -480,6 +484,24 @@ function setScoreboardStatus(text, isLive) {
   if (!status) return;
   status.textContent = text;
   status.classList.toggle("neutral", !isLive);
+}
+
+function setStandingsStatus(text, isLive) {
+  const status = document.getElementById("standingsStatus");
+  if (!status) return;
+  status.textContent = text;
+  status.classList.toggle("neutral", !isLive);
+}
+
+function setEspnSyncText(text) {
+  const el = document.getElementById("espnSyncText");
+  if (el) el.textContent = text;
+}
+
+function getVisibleScoreboardGames_(scoreboard, week) {
+  const games = Array.isArray(scoreboard) ? scoreboard : [];
+  const currentWeekGames = games.filter((game) => Number(game.matchupPeriodId) === week);
+  return (currentWeekGames.length ? currentWeekGames : games).slice(0, 6);
 }
 
 function formatRecord_(team) {

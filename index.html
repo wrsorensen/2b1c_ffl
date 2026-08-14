@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.11 ESPN dashboard wiring</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.12 ESPN dashboard polish</p>
     </section>
   </main>
 
@@ -64,6 +64,7 @@
           <div class="hero-actions">
             <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
             <button class="secondary-btn" id="espnBtn" type="button">Open ESPN</button>
+            <button class="secondary-btn refresh-home-btn" id="refreshHomeBtn" type="button">Refresh data</button>
           </div>
         </div>
 
@@ -101,10 +102,10 @@
         <article class="card standings-card">
           <div class="card-head">
             <div>
-              <span class="mini-label">League Race</span>
+              <span class="mini-label">ESPN Live Standings</span>
               <h3>Standings</h3>
             </div>
-            <span class="status-dot" aria-hidden="true"></span>
+            <span id="standingsStatus" class="status-chip neutral">Syncing</span>
           </div>
           <div id="standingsRows" class="placeholder-rows" aria-label="League standings">
             <div><b>1</b><span>Season standings</span><small>After Week 1</small></div>
@@ -153,9 +154,9 @@
       </section>
 
       <section class="home-meta" aria-label="App status">
-        <button id="refreshHomeBtn" class="text-btn" type="button">Refresh data</button>
         <span id="lastUpdatedText">Syncing league data…</span>
-        <span class="home-version">v0.5.11</span>
+        <span id="espnSyncText">ESPN syncing...</span>
+        <span class="home-version">v0.5.12</span>
       </section>
     </section>
 

@@ -584,6 +584,12 @@ select:focus {
   margin-top: 14px;
 }
 
+.refresh-home-btn {
+  border-color: rgba(216, 180, 93, .36);
+  color: var(--gold-soft);
+  background: rgba(216,180,93,.10);
+}
+
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1341,7 +1347,7 @@ select:focus {
   }
 
   .hero-actions {
-    grid-template-columns: auto auto;
+    grid-template-columns: auto auto auto;
     justify-content: start;
   }
 
