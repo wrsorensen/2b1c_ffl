@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.12 - ESPN dashboard polish
+  v0.5.13 - ESPN refresh hotfix
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -374,6 +374,7 @@ async function loadEspnDashboard() {
 
   state.espnDashboardLoading = true;
   setScoreboardStatus("Syncing", false);
+  setStandingsStatus("Syncing", false);
   setEspnSyncText("ESPN syncing...");
 
   try {
@@ -387,12 +388,18 @@ async function loadEspnDashboard() {
     renderEspnDraftSettings(espnSettings);
     renderEspnStandings(standingsResponse.standings || [], week);
 
-    const scoreboardResponse = await api("espnScoreboard", { week });
-    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
+    try {
+      const scoreboardResponse = await api("espnScoreboard", { week });
+      const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
 
-    renderEspnScoreboard(games, week);
-    state.espnDashboardLoadedAt = new Date();
-    setEspnSyncText(`ESPN synced - backend ${scoreboardResponse.appVersion || espnSettings.appVersion || "online"}`);
+      renderEspnScoreboard(games, week);
+      state.espnDashboardLoadedAt = new Date();
+      setEspnSyncText(`ESPN synced - backend ${scoreboardResponse.appVersion || espnSettings.appVersion || "online"}`);
+    } catch (scoreboardError) {
+      renderEspnScoreboardError(scoreboardError);
+      state.espnDashboardLoadedAt = new Date();
+      setEspnSyncText(`ESPN standings synced - scoreboard failed`);
+    }
   } catch (error) {
     renderEspnDashboardError(error);
   } finally {
@@ -474,6 +481,18 @@ function renderEspnDashboardError(error) {
   if (body) {
     body.innerHTML = `
       <p class="big-placeholder">ESPN data did not load.</p>
+      <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
+    `;
+  }
+}
+
+function renderEspnScoreboardError(error) {
+  setScoreboardStatus("Scoreboard error", false);
+
+  const body = document.getElementById("scoreboardBody");
+  if (body) {
+    body.innerHTML = `
+      <p class="big-placeholder">Scoreboard did not load.</p>
       <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
     `;
   }
