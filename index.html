@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.16 ESPN icon cleanup</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.17 home action layout</p>
     </section>
   </main>
 
@@ -61,33 +61,18 @@
         <div class="hero-copy">
           <span class="eyebrow">2026 League Headquarters</span>
           <h2>Talk shit.<br><span>Win trophies.</span></h2>
-          <div class="hero-actions home-toolbar">
-            <button class="espn-icon-btn" id="espnBtn" type="button" aria-label="Open ESPN Fantasy">
-              <img src="assets/espn-fantasy-icon.png" alt="" aria-hidden="true">
-              <span>ESPN</span>
-            </button>
-            <div class="refresh-cluster">
-              <button class="refresh-icon-btn refresh-home-btn" id="refreshHomeBtn" type="button" aria-label="Refresh data" title="Refresh data">
-                <span class="refresh-symbol" aria-hidden="true">↻</span>
-              </button>
-              <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
-            </div>
-          </div>
         </div>
 
-        <div class="hero-stats">
-          <article class="stat-card">
-            <span class="stat-label">Draft</span>
-            <strong id="draftDateStat">Sept. 3</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-label">Buy-In</span>
-            <strong id="buyInStat">$100</strong>
-          </article>
-          <article class="stat-card">
-            <span class="stat-label">Season</span>
-            <strong>Preseason</strong>
-          </article>
+        <div class="hero-quick-actions" aria-label="Quick actions">
+          <button class="espn-link-btn" id="espnBtn" type="button" aria-label="Open ESPN Fantasy">
+            <img src="assets/espn-fantasy-icon.png" alt="" aria-hidden="true">
+          </button>
+          <div class="refresh-cluster">
+            <button class="refresh-icon-btn refresh-home-btn" id="refreshHomeBtn" type="button" aria-label="Refresh data" title="Refresh data">
+              <span class="refresh-symbol" aria-hidden="true">↻</span>
+            </button>
+            <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
+          </div>
         </div>
       </section>
 
@@ -134,18 +119,14 @@
             <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
           </div>
           <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
-        </article>
-
-        <article class="card dues-card">
-          <div class="card-head">
+          <div class="league-money-row">
             <div>
-              <span class="mini-label">Money</span>
-              <h3>Dues</h3>
+              <span>Buy-In</span>
+              <strong id="homeDuesAmount">$100</strong>
             </div>
             <span class="status-chip neutral">Tracking Soon</span>
           </div>
-          <div class="dues-amount" id="homeDuesAmount">$100</div>
-          <p class="muted">Payment status will plug into this card without changing the dashboard layout.</p>
+          <p class="muted compact-note">Payment status will plug into League Business when dues tracking is ready.</p>
         </article>
       </section>
 
@@ -162,7 +143,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.16</span>
+        <span class="home-version">v0.5.17</span>
       </section>
     </section>
 

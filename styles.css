@@ -563,7 +563,7 @@ select:focus {
 }
 
 .hero-copy,
-.hero-stats {
+.hero-quick-actions {
   position: relative;
   z-index: 1;
 }
@@ -578,19 +578,13 @@ select:focus {
 }
 
 
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.hero-quick-actions {
+  display: grid;
+  gap: 10px;
   margin-top: 14px;
 }
 
-.home-toolbar {
-  gap: 10px;
-}
-
-.espn-icon-btn,
+.espn-link-btn,
 .refresh-icon-btn {
   min-height: 42px;
   border: 1px solid rgba(255,255,255,.12);
@@ -600,20 +594,19 @@ select:focus {
   cursor: pointer;
 }
 
-.espn-icon-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 11px 7px 8px;
-  font-size: .78rem;
-  font-weight: 900;
+.espn-link-btn {
+  width: 100%;
+  min-height: 76px;
+  display: grid;
+  place-items: center;
+  padding: 9px 12px;
+  background: rgba(255,255,255,.06);
 }
 
-.espn-icon-btn img {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  object-fit: cover;
+.espn-link-btn img {
+  width: min(172px, 84%);
+  max-height: 62px;
+  object-fit: contain;
 }
 
 .refresh-cluster {
@@ -654,44 +647,34 @@ select:focus {
   }
 }
 
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-  margin-top: 14px;
-}
-
-.stat-card {
-  min-width: 0;
-  min-height: 74px;
-  border: 1px solid rgba(255,255,255,.09);
-  border-radius: 14px;
-  padding: 10px;
-  background: rgba(255,255,255,.045);
-}
-
-.stat-card strong {
-  display: block;
-  margin-top: 3px;
-  overflow: hidden;
-  color: var(--gold-soft);
-  font-size: clamp(1rem, 5vw, 1.35rem);
-  line-height: 1.05;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.stat-label {
-  color: var(--muted);
-  font-size: .65rem;
-  font-weight: 850;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-}
-
 .dashboard-grid {
   display: grid;
   gap: 11px;
+}
+
+.league-money-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid rgba(255,255,255,.07);
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.league-money-row span:first-child {
+  display: block;
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 850;
+}
+
+.league-money-row strong {
+  display: block;
+  margin-top: 1px;
+  color: var(--gold-soft);
+  font-size: 1.45rem;
+  line-height: 1;
 }
 
 .feature-card {
@@ -1435,17 +1418,12 @@ select:focus {
     display: grid;
     grid-template-columns: minmax(0, 1.4fr) minmax(250px, .8fr);
     gap: 20px;
-    align-items: end;
+    align-items: center;
     padding: 24px;
   }
 
-  .hero-actions {
-    justify-content: flex-start;
-  }
-
-  .hero-stats {
+  .hero-quick-actions {
     margin-top: 0;
-    grid-template-columns: 1fr;
   }
 
   .dashboard-grid {
@@ -1540,12 +1518,8 @@ select:focus {
     max-width: 150px;
   }
 
-  .hero-stats {
-    gap: 5px;
-  }
-
-  .stat-card {
-    padding: 9px 8px;
+  .hero-quick-actions {
+    gap: 8px;
   }
 
   .placeholder-rows > div {

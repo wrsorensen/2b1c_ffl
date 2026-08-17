@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.16 - ESPN icon cleanup
+  v0.5.17 - home action layout
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -416,8 +416,6 @@ function renderHome(settings) {
   const buyIn = settings.buyIn || "$100";
   const payouts = settings.payouts || "1st $800 / 2nd $300 / 3rd $100";
 
-  document.getElementById("draftDateStat").textContent = draftDate.replace("September", "Sept.").replace(", 2026", "");
-  document.getElementById("buyInStat").textContent = buyIn;
   document.getElementById("homeDuesAmount").textContent = buyIn;
   document.getElementById("draftDateText").textContent = draftDate;
   document.getElementById("draftTimeText").textContent = draftTime;
