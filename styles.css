@@ -562,8 +562,7 @@ select:focus {
   pointer-events: none;
 }
 
-.hero-copy,
-.hero-quick-actions {
+.hero-copy {
   position: relative;
   z-index: 1;
 }
@@ -577,13 +576,6 @@ select:focus {
   text-transform: uppercase;
 }
 
-
-.hero-quick-actions {
-  display: grid;
-  justify-items: start;
-  gap: 9px;
-  margin-top: 14px;
-}
 
 .refresh-icon-btn {
   min-height: 42px;
@@ -607,10 +599,24 @@ select:focus {
 }
 
 .espn-link-btn img {
-  width: clamp(96px, 18vw, 138px);
+  width: 98px;
   max-height: none;
   object-fit: contain;
   filter: drop-shadow(0 10px 16px rgba(0,0,0,.34));
+}
+
+.home-utility-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 14px;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 7px 9px;
+  background: rgba(255,255,255,.035);
 }
 
 .refresh-cluster {
@@ -1423,16 +1429,13 @@ select:focus {
   }
 
   .dashboard-hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1.4fr) minmax(250px, .8fr);
-    gap: 20px;
-    align-items: center;
     padding: 24px;
   }
 
-  .hero-quick-actions {
-    justify-items: end;
-    margin-top: 0;
+  .home-utility-row {
+    justify-content: flex-start;
+    gap: 18px;
+    padding: 8px 12px;
   }
 
   .dashboard-grid {
@@ -1527,15 +1530,8 @@ select:focus {
     max-width: 150px;
   }
 
-  .hero-quick-actions {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
   .espn-link-btn img {
-    width: 94px;
+    width: 88px;
   }
 
   .refresh-cluster {
