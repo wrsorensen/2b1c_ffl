@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.13 - ESPN refresh hotfix
+  v0.5.14 - refresh UX polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -19,6 +19,8 @@ const state = {
   lastUpdatedAt: readCachedAppDataTime(),
   loginBootstrap: null,
   trashTimer: null,
+  refreshDataLoading: false,
+  refreshStatusTimer: null,
   espnDashboardLoading: false,
   espnDashboardLoadedAt: null,
   expandedThreads: new Set(),
@@ -251,15 +253,20 @@ function cacheAppData(data) {
 }
 
 async function refreshData(silent = false) {
-  if (!state.loggedIn) return;
+  if (!state.loggedIn || state.refreshDataLoading) return;
 
+  state.refreshDataLoading = true;
   const trashStatus = document.getElementById("trashStatus");
   const lastUpdatedText = document.getElementById("lastUpdatedText");
+  const shouldShowRefreshState = !silent;
 
-  if (!silent && trashStatus && state.currentTab === "trash") {
+  if (shouldShowRefreshState) {
+    setRefreshButtonsState("Refreshing...", true);
+  }
+  if (shouldShowRefreshState && trashStatus && state.currentTab === "trash") {
     trashStatus.textContent = "Refreshing...";
   }
-  if (!silent && lastUpdatedText) {
+  if (shouldShowRefreshState && lastUpdatedText) {
     lastUpdatedText.textContent = "Refreshing league data…";
   }
 
@@ -267,7 +274,10 @@ async function refreshData(silent = false) {
     await loadData();
     renderApp();
 
-    if (!silent && trashStatus && state.currentTab === "trash") {
+    if (shouldShowRefreshState) {
+      flashRefreshButtonsState("Updated");
+    }
+    if (shouldShowRefreshState && trashStatus && state.currentTab === "trash") {
       trashStatus.textContent = "Updated.";
       setTimeout(() => {
         if (trashStatus.textContent === "Updated.") trashStatus.textContent = "";
@@ -280,7 +290,41 @@ async function refreshData(silent = false) {
     if (lastUpdatedText) {
       lastUpdatedText.textContent = "Refresh failed";
     }
+    if (shouldShowRefreshState) {
+      flashRefreshButtonsState("Try again");
+    }
+  } finally {
+    state.refreshDataLoading = false;
   }
+}
+
+function getRefreshButtons_() {
+  return [
+    document.getElementById("refreshHomeBtn"),
+    document.getElementById("refreshTrashBtn")
+  ].filter(Boolean);
+}
+
+function setRefreshButtonsState(label, isDisabled) {
+  clearTimeout(state.refreshStatusTimer);
+
+  getRefreshButtons_().forEach((button) => {
+    if (!button.dataset.defaultLabel) {
+      button.dataset.defaultLabel = button.textContent;
+    }
+    button.textContent = label;
+    button.disabled = isDisabled;
+  });
+}
+
+function flashRefreshButtonsState(label) {
+  setRefreshButtonsState(label, false);
+  state.refreshStatusTimer = setTimeout(() => {
+    getRefreshButtons_().forEach((button) => {
+      button.textContent = button.dataset.defaultLabel || "Refresh data";
+      button.disabled = false;
+    });
+  }, 1200);
 }
 
 function renderLoginManagers() {
