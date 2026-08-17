@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.14 refresh UX polish</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.15 home UX polish</p>
     </section>
   </main>
 
@@ -61,10 +61,17 @@
         <div class="hero-copy">
           <span class="eyebrow">2026 League Headquarters</span>
           <h2>Talk shit.<br><span>Win trophies.</span></h2>
-          <div class="hero-actions">
-            <button class="primary-btn" data-tab="trash" type="button">Open Trash Board</button>
-            <button class="secondary-btn" id="espnBtn" type="button">Open ESPN</button>
-            <button class="secondary-btn refresh-home-btn" id="refreshHomeBtn" type="button">Refresh data</button>
+          <div class="hero-actions home-toolbar">
+            <button class="espn-icon-btn" id="espnBtn" type="button" aria-label="Open ESPN Fantasy">
+              <img src="assets/espn-fantasy-icon.png" alt="" aria-hidden="true">
+              <span>ESPN</span>
+            </button>
+            <div class="refresh-cluster">
+              <button class="refresh-icon-btn refresh-home-btn" id="refreshHomeBtn" type="button" aria-label="Refresh data" title="Refresh data">
+                <span class="refresh-symbol" aria-hidden="true">↻</span>
+              </button>
+              <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
+            </div>
           </div>
         </div>
 
@@ -154,9 +161,8 @@
       </section>
 
       <section class="home-meta" aria-label="App status">
-        <span id="lastUpdatedText">Syncing league data…</span>
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.14</span>
+        <span class="home-version">v0.5.15</span>
       </section>
     </section>
 
@@ -228,7 +234,13 @@
       <button data-tab="rules" type="button"><span>§</span>Rules</button>
       <button data-tab="champs" type="button"><span>★</span>Champs</button>
       <button data-tab="pay" type="button"><span>$</span>Pay</button>
-      <button data-tab="trash" type="button"><span>☄</span>Trash</button>
+      <button data-tab="trash" type="button">
+        <span class="nav-icon-wrap">
+          <span class="nav-icon" aria-hidden="true">☄</span>
+          <span id="trashUnreadBadge" class="nav-badge hidden" aria-label="Unread trash posts">0</span>
+        </span>
+        Trash
+      </button>
     </nav>
   </main>
 

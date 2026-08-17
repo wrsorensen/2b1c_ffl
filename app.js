@@ -1,11 +1,12 @@
 /*
   2B1C FFL
-  v0.5.14 - refresh UX polish
+  v0.5.15 - home UX polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
 const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
+const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -21,6 +22,7 @@ const state = {
   trashTimer: null,
   refreshDataLoading: false,
   refreshStatusTimer: null,
+  trashSeenKey: localStorage.getItem(TRASH_SEEN_KEY) || "",
   espnDashboardLoading: false,
   espnDashboardLoadedAt: null,
   expandedThreads: new Set(),
@@ -310,8 +312,19 @@ function setRefreshButtonsState(label, isDisabled) {
 
   getRefreshButtons_().forEach((button) => {
     if (!button.dataset.defaultLabel) {
-      button.dataset.defaultLabel = button.textContent;
+      button.dataset.defaultLabel = button.id === "refreshHomeBtn"
+        ? (button.getAttribute("aria-label") || "Refresh data")
+        : button.textContent;
     }
+
+    if (button.id === "refreshHomeBtn") {
+      button.setAttribute("aria-label", label);
+      button.title = label;
+      button.disabled = isDisabled;
+      button.classList.toggle("is-refreshing", isDisabled);
+      return;
+    }
+
     button.textContent = label;
     button.disabled = isDisabled;
   });
@@ -321,7 +334,14 @@ function flashRefreshButtonsState(label) {
   setRefreshButtonsState(label, false);
   state.refreshStatusTimer = setTimeout(() => {
     getRefreshButtons_().forEach((button) => {
-      button.textContent = button.dataset.defaultLabel || "Refresh data";
+      if (button.id === "refreshHomeBtn") {
+        const label = button.dataset.defaultLabel || "Refresh data";
+        button.setAttribute("aria-label", label);
+        button.title = label;
+        button.classList.remove("is-refreshing");
+      } else {
+        button.textContent = button.dataset.defaultLabel || "Refresh";
+      }
       button.disabled = false;
     });
   }, 1200);
@@ -794,6 +814,7 @@ function renderStandingRow(row) {
 
 function renderThreads(posts) {
   trashList.innerHTML = "";
+  updateTrashUnreadBadge(posts);
 
   if (!posts.length) {
     trashList.innerHTML = `<p class="muted">No trash yet. Start a thread below.</p>`;
@@ -849,6 +870,69 @@ function renderThreads(posts) {
     card.appendChild(body);
     trashList.appendChild(card);
   });
+}
+
+function updateTrashUnreadBadge(posts) {
+  const badge = document.getElementById("trashUnreadBadge");
+  if (!badge) return;
+
+  const ordered = getTrashPostsNewestFirst_(posts);
+  if (!ordered.length) {
+    badge.classList.add("hidden");
+    badge.textContent = "0";
+    return;
+  }
+
+  if (state.currentTab === "trash" || !state.trashSeenKey) {
+    markTrashSeen(posts);
+    badge.classList.add("hidden");
+    badge.textContent = "0";
+    return;
+  }
+
+  const unread = countUnreadTrashPosts_(ordered);
+  badge.textContent = unread > 9 ? "9+" : String(unread);
+  badge.classList.toggle("hidden", unread < 1);
+}
+
+function markTrashSeen(posts) {
+  const latest = getTrashPostsNewestFirst_(posts)[0];
+  if (!latest) return;
+
+  state.trashSeenKey = latest._trashKey;
+  try {
+    localStorage.setItem(TRASH_SEEN_KEY, state.trashSeenKey);
+  } catch (_) {
+    // Local unread state is nice-to-have only.
+  }
+}
+
+function countUnreadTrashPosts_(orderedPosts) {
+  let count = 0;
+
+  for (const post of orderedPosts) {
+    if (post._trashKey === state.trashSeenKey) break;
+    count += 1;
+  }
+
+  return count;
+}
+
+function getTrashPostsNewestFirst_(posts) {
+  return (Array.isArray(posts) ? posts : [])
+    .map((post, index) => {
+      const decorated = {
+        ...post,
+        _sourceIndex: index,
+        _timeValue: getPostTimeValue({ ...post, _sourceIndex: index })
+      };
+      decorated._trashKey = `${decorated._timeValue}|${decorated.id || index}|${decorated.timestamp || ""}`;
+      return decorated;
+    })
+    .sort((a, b) => {
+      if (a._timeValue !== b._timeValue) return b._timeValue - a._timeValue;
+      return String(b.id || "").localeCompare(String(a.id || ""));
+    });
 }
 
 function buildInlineReplyBox(thread) {
@@ -1123,7 +1207,11 @@ function showTab(id) {
     button.classList.toggle("active", button.dataset.tab === id);
   });
 
-  if (id === "trash") refreshData(true);
+  if (id === "trash") {
+    markTrashSeen(state.appData?.trash || []);
+    updateTrashUnreadBadge(state.appData?.trash || []);
+    refreshData(true);
+  }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
