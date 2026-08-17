@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.15 - home UX polish
+  v0.5.16 - ESPN icon cleanup
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
