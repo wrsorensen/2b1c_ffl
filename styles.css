@@ -552,11 +552,11 @@ select:focus {
 .dashboard-hero::after {
   content: "";
   position: absolute;
-  right: -22px;
+  right: 2px;
   top: 6px;
   width: clamp(150px, 34vw, 255px);
   height: calc(100% - 12px);
-  opacity: .10;
+  opacity: .045;
   background: url("assets/2b1c-ffl-logo-primary.png") center / contain no-repeat;
   filter: saturate(.82) contrast(1.04);
   pointer-events: none;
@@ -580,11 +580,11 @@ select:focus {
 
 .hero-quick-actions {
   display: grid;
-  gap: 10px;
+  justify-items: start;
+  gap: 9px;
   margin-top: 14px;
 }
 
-.espn-link-btn,
 .refresh-icon-btn {
   min-height: 42px;
   border: 1px solid rgba(255,255,255,.12);
@@ -595,18 +595,22 @@ select:focus {
 }
 
 .espn-link-btn {
-  width: 100%;
-  min-height: 76px;
+  width: auto;
+  min-height: auto;
+  border: 0;
+  border-radius: 0;
   display: grid;
   place-items: center;
-  padding: 9px 12px;
-  background: rgba(255,255,255,.06);
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .espn-link-btn img {
-  width: min(172px, 84%);
-  max-height: 62px;
+  width: clamp(96px, 18vw, 138px);
+  max-height: none;
   object-fit: contain;
+  filter: drop-shadow(0 10px 16px rgba(0,0,0,.34));
 }
 
 .refresh-cluster {
@@ -614,6 +618,10 @@ select:focus {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 999px;
+  padding: 5px 9px 5px 5px;
+  background: rgba(4,8,13,.30);
 }
 
 .refresh-icon-btn {
@@ -1423,6 +1431,7 @@ select:focus {
   }
 
   .hero-quick-actions {
+    justify-items: end;
     margin-top: 0;
   }
 
@@ -1519,7 +1528,18 @@ select:focus {
   }
 
   .hero-quick-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     gap: 8px;
+  }
+
+  .espn-link-btn img {
+    width: 94px;
+  }
+
+  .refresh-cluster {
+    margin-left: auto;
   }
 
   .placeholder-rows > div {
