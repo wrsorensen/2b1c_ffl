@@ -980,6 +980,7 @@ select:focus {
 }
 
 .rule-accordion.open .rule-accordion-head::after,
+.rule-accordion.search-open .rule-accordion-head::after,
 .thread-card.open .thread-head::after {
   transform: rotate(90deg);
 }
@@ -990,8 +991,36 @@ select:focus {
   padding: 0 11px 11px;
 }
 
-.rule-accordion.open .rule-accordion-body {
+.rule-accordion.open .rule-accordion-body,
+.rule-accordion.search-open .rule-accordion-body {
   display: grid;
+}
+
+.rule-search-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rule-search-row {
+  display: flex;
+  gap: 8px;
+}
+
+.rule-search-row input {
+  flex: 1 1 auto;
+  min-width: 0;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: .9rem;
+}
+
+.rule-row.hidden,
+.rule-accordion.hidden {
+  display: none !important;
 }
 
 .rule-row {
