@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.21 - ESPN card isolation + rules search fix
+  v0.5.22 - scoreboard latency fix + always open to home
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -188,6 +188,7 @@ function logout() {
   clearSaved(false);
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
+  showTab("home");
   renderLoginManagers();
   updateClearSavedVisibility();
   setLoginStatus("Logged out. Select team and enter PIN.");
@@ -439,29 +440,30 @@ async function loadEspnDashboard() {
   setStandingsStatus("Syncing", false);
   setEspnSyncText("ESPN syncing...");
 
-  let espnSettings = {};
-  let settingsOk = false;
-  let standingsOk = false;
-  let scoreboardOk = false;
+  const [settingsResult, standingsResult] = await Promise.allSettled([
+    api("espnSettings"),
+    api("espnStandings")
+  ]);
 
-  try {
-    espnSettings = (await api("espnSettings")) || {};
-    settingsOk = true;
+  let espnSettings = {};
+  const settingsOk = settingsResult.status === "fulfilled";
+  if (settingsOk) {
+    espnSettings = settingsResult.value || {};
     renderEspnDraftSettings(espnSettings);
-  } catch (settingsError) {
-    renderEspnDraftSettingsError(settingsError);
+  } else {
+    renderEspnDraftSettingsError(settingsResult.reason || new Error("Settings failed"));
   }
 
   const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
 
-  try {
-    const standingsResponse = await api("espnStandings");
-    renderEspnStandings(standingsResponse.standings || [], week);
-    standingsOk = true;
-  } catch (standingsError) {
-    renderEspnStandingsError(standingsError);
+  const standingsOk = standingsResult.status === "fulfilled";
+  if (standingsOk) {
+    renderEspnStandings(standingsResult.value.standings || [], week);
+  } else {
+    renderEspnStandingsError(standingsResult.reason || new Error("Standings failed"));
   }
 
+  let scoreboardOk = false;
   try {
     const scoreboardResponse = await api("espnScoreboard", { week });
     const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
