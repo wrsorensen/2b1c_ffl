@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.20 - clean home header
+  v0.5.21 - ESPN card isolation + rules search fix
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -439,34 +439,49 @@ async function loadEspnDashboard() {
   setStandingsStatus("Syncing", false);
   setEspnSyncText("ESPN syncing...");
 
+  let espnSettings = {};
+  let settingsOk = false;
+  let standingsOk = false;
+  let scoreboardOk = false;
+
   try {
-    const [settingsResponse, standingsResponse] = await Promise.all([
-      api("espnSettings"),
-      api("espnStandings")
-    ]);
-
-    const espnSettings = settingsResponse || {};
-    const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
+    espnSettings = (await api("espnSettings")) || {};
+    settingsOk = true;
     renderEspnDraftSettings(espnSettings);
-    renderEspnStandings(standingsResponse.standings || [], week);
-
-    try {
-      const scoreboardResponse = await api("espnScoreboard", { week });
-      const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
-
-      renderEspnScoreboard(games, week);
-      state.espnDashboardLoadedAt = new Date();
-      setEspnSyncText(`ESPN synced - backend ${scoreboardResponse.appVersion || espnSettings.appVersion || "online"}`);
-    } catch (scoreboardError) {
-      renderEspnScoreboardError(scoreboardError);
-      state.espnDashboardLoadedAt = new Date();
-      setEspnSyncText(`ESPN standings synced - scoreboard failed`);
-    }
-  } catch (error) {
-    renderEspnDashboardError(error);
-  } finally {
-    state.espnDashboardLoading = false;
+  } catch (settingsError) {
+    renderEspnDraftSettingsError(settingsError);
   }
+
+  const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
+
+  try {
+    const standingsResponse = await api("espnStandings");
+    renderEspnStandings(standingsResponse.standings || [], week);
+    standingsOk = true;
+  } catch (standingsError) {
+    renderEspnStandingsError(standingsError);
+  }
+
+  try {
+    const scoreboardResponse = await api("espnScoreboard", { week });
+    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
+    renderEspnScoreboard(games, week);
+    scoreboardOk = true;
+  } catch (scoreboardError) {
+    renderEspnScoreboardError(scoreboardError);
+  }
+
+  state.espnDashboardLoadedAt = new Date();
+
+  if (settingsOk && standingsOk && scoreboardOk) {
+    setEspnSyncText("ESPN synced");
+  } else if (!settingsOk && !standingsOk && !scoreboardOk) {
+    setEspnSyncText("ESPN sync failed");
+  } else {
+    setEspnSyncText("ESPN partially synced - see cards below");
+  }
+
+  state.espnDashboardLoading = false;
 }
 
 function renderEspnDraftSettings(settings) {
@@ -534,17 +549,19 @@ function renderScoreboardGame(game) {
   `;
 }
 
-function renderEspnDashboardError(error) {
-  setScoreboardStatus("ESPN error", false);
-  setStandingsStatus("ESPN error", false);
-  setEspnSyncText("ESPN sync failed");
+function renderEspnDraftSettingsError(error) {
+  const note = document.getElementById("draftSettingsNote");
+  if (note) {
+    note.textContent = "Draft settings unavailable - " + (error.message || "try Refresh data.");
+  }
+}
 
-  const body = document.getElementById("scoreboardBody");
-  if (body) {
-    body.innerHTML = `
-      <p class="big-placeholder">ESPN data did not load.</p>
-      <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
-    `;
+function renderEspnStandingsError(error) {
+  setStandingsStatus("Standings error", false);
+
+  const rows = document.getElementById("standingsRows");
+  if (rows) {
+    rows.innerHTML = `<div><b>?</b><span>Standings did not load</span><small>${escapeHtml(error.message || "Try Refresh data.")}</small></div>`;
   }
 }
 
@@ -664,6 +681,7 @@ function renderRules(rules) {
     const isOpen = state.expandedRuleAreas.has(area);
     const card = document.createElement("section");
     card.className = "card rule-accordion" + (isOpen ? " open" : "");
+    card.dataset.ruleArea = area;
 
     const btn = document.createElement("button");
     btn.type = "button";
@@ -715,7 +733,15 @@ function toggleRuleArea(area) {
     state.expandedRuleAreas.add(area);
   }
 
-  renderRules(state.appData?.rules || state.appData?.ruleSettings || []);
+  const card = document.querySelector(`.rule-accordion[data-rule-area="${cssEscape_(area)}"]`);
+  if (card) {
+    card.classList.toggle("open", state.expandedRuleAreas.has(area));
+  }
+}
+
+function cssEscape_(value) {
+  if (window.CSS && CSS.escape) return CSS.escape(value);
+  return String(value).replace(/["\\]/g, "\\$&");
 }
 
 
