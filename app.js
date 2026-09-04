@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.24 - broader rule search matching
+  v0.5.25 - position synonym search
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -757,6 +757,25 @@ function stemWord_(word) {
   return word.replace(/(ing|ers|er|es|s)$/i, "");
 }
 
+const RULE_SEARCH_SYNONYMS = {
+  rb: ["running", "back", "rush"],
+  wr: ["receiver", "wide"],
+  te: ["tight", "end"],
+  qb: ["quarterback"],
+  k: ["kick"],
+  dst: ["defense", "special", "team"],
+  "d/st": ["defense", "special", "team"],
+  ir: ["injured", "reserve"],
+  faab: ["waiver", "budget"],
+  fg: ["field", "goal"]
+};
+
+function tokenMatches_(rowBlob, token) {
+  if (rowBlob.includes(token)) return true;
+  const alternates = RULE_SEARCH_SYNONYMS[token];
+  return Boolean(alternates && alternates.some((alt) => rowBlob.includes(alt)));
+}
+
 function buildSearchBlob_(parts) {
   return parts
     .join(" ")
@@ -790,7 +809,7 @@ function filterRules(query) {
 
     rows.forEach((row) => {
       const rowBlob = row.dataset.search || "";
-      const matches = queryTokens.length === 0 || queryTokens.every((token) => rowBlob.includes(token));
+      const matches = queryTokens.length === 0 || queryTokens.every((token) => tokenMatches_(rowBlob, token));
       row.classList.toggle("hidden", !matches);
       if (matches) {
         cardHasMatch = true;
