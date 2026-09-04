@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.22 - scoreboard latency fix + always open to home
+  v0.5.23 - rule search
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -27,6 +27,7 @@ const state = {
   espnDashboardLoadedAt: null,
   expandedThreads: new Set(),
   expandedRuleAreas: new Set(),
+  ruleQuery: "",
   activeReplyThreadId: "",
   isPostingTrash: false,
   replyingToId: "",
@@ -665,6 +666,14 @@ function renderRules(rules) {
       <h3>Rule Review</h3>
       <p class="muted">Baseline/current ESPN settings only. Proposed changes are not final until commissioner review.</p>
     </section>
+    <section class="card rule-search-card">
+      <label class="mini-label" for="ruleSearchInput">Search rules</label>
+      <div class="rule-search-row">
+        <input id="ruleSearchInput" type="text" placeholder="kicker, waivers, playoffs, IR...">
+        <button class="secondary-btn compact-btn" id="ruleSearchClearBtn" type="button">Clear</button>
+      </div>
+      <p id="ruleSearchStatus" class="muted compact-note hidden"></p>
+    </section>
   `;
 
   if (!rules.length) {
@@ -709,6 +718,9 @@ function renderRules(rules) {
 
       const row = document.createElement("div");
       row.className = "rule-row";
+      row.dataset.search = [area, setting, baseline, proposed, finalValue, notes, status]
+        .join(" ")
+        .toLowerCase();
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
@@ -726,6 +738,64 @@ function renderRules(rules) {
     card.appendChild(body);
     section.appendChild(card);
   });
+
+  const searchInput = document.getElementById("ruleSearchInput");
+  const clearBtn = document.getElementById("ruleSearchClearBtn");
+  if (searchInput) {
+    searchInput.value = state.ruleQuery;
+    searchInput.addEventListener("input", () => filterRules(searchInput.value));
+  }
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      state.ruleQuery = "";
+      if (searchInput) searchInput.value = "";
+      filterRules("");
+    });
+  }
+  filterRules(state.ruleQuery);
+}
+
+function filterRules(query) {
+  state.ruleQuery = query;
+  const q = query.trim().toLowerCase();
+  const section = document.getElementById("rules");
+  const status = document.getElementById("ruleSearchStatus");
+  if (!section) return;
+
+  const cards = section.querySelectorAll(".rule-accordion");
+  let visibleRuleCount = 0;
+  let visibleAreaCount = 0;
+
+  cards.forEach((card) => {
+    const rows = card.querySelectorAll(".rule-row");
+    let cardHasMatch = false;
+
+    rows.forEach((row) => {
+      const matches = !q || (row.dataset.search || "").includes(q);
+      row.classList.toggle("hidden", !matches);
+      if (matches) {
+        cardHasMatch = true;
+        visibleRuleCount += 1;
+      }
+    });
+
+    card.classList.toggle("hidden", !cardHasMatch);
+    card.classList.toggle("search-open", Boolean(q) && cardHasMatch);
+    if (cardHasMatch) visibleAreaCount += 1;
+  });
+
+  if (!status) return;
+
+  if (!q) {
+    status.classList.add("hidden");
+    status.textContent = "";
+  } else if (visibleRuleCount === 0) {
+    status.classList.remove("hidden");
+    status.textContent = `No rules match "${query.trim()}".`;
+  } else {
+    status.classList.remove("hidden");
+    status.textContent = `${visibleRuleCount} rule${visibleRuleCount === 1 ? "" : "s"} in ${visibleAreaCount} area${visibleAreaCount === 1 ? "" : "s"} match "${query.trim()}".`;
+  }
 }
 
 function toggleRuleArea(area) {
