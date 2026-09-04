@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.23 - rule search
+  v0.5.24 - broader rule search matching
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -718,9 +718,7 @@ function renderRules(rules) {
 
       const row = document.createElement("div");
       row.className = "rule-row";
-      row.dataset.search = [area, setting, baseline, proposed, finalValue, notes, status]
-        .join(" ")
-        .toLowerCase();
+      row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, status]);
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
@@ -755,9 +753,29 @@ function renderRules(rules) {
   filterRules(state.ruleQuery);
 }
 
+function stemWord_(word) {
+  return word.replace(/(ing|ers|er|es|s)$/i, "");
+}
+
+function buildSearchBlob_(parts) {
+  return parts
+    .join(" ")
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(stemWord_)
+    .join(" ");
+}
+
 function filterRules(query) {
   state.ruleQuery = query;
-  const q = query.trim().toLowerCase();
+  const queryTokens = query
+    .trim()
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(stemWord_);
+  const q = queryTokens.join(" ");
   const section = document.getElementById("rules");
   const status = document.getElementById("ruleSearchStatus");
   if (!section) return;
@@ -771,7 +789,8 @@ function filterRules(query) {
     let cardHasMatch = false;
 
     rows.forEach((row) => {
-      const matches = !q || (row.dataset.search || "").includes(q);
+      const rowBlob = row.dataset.search || "";
+      const matches = queryTokens.length === 0 || queryTokens.every((token) => rowBlob.includes(token));
       row.classList.toggle("hidden", !matches);
       if (matches) {
         cardHasMatch = true;
