@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.32 - search normalize + slim search bar
+  v0.5.33 - card polish
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -464,9 +464,6 @@ function applyCardCollapseState_(cardId, options) {
   const collapsed = isCardCollapsed_(cardId, defaultCollapsed);
   card.classList.toggle("collapsed", collapsed);
   head.setAttribute("aria-expanded", collapsed ? "false" : "true");
-
-  const chevron = head.querySelector(".card-collapse-chevron");
-  if (chevron) chevron.textContent = collapsed ? "⌃" : "⌄";
 }
 
 function toggleCardCollapse_(cardId) {
@@ -686,7 +683,6 @@ function computeWeeklyHighlights_(games) {
   const bottom = teamScores.reduce((worst, t) => (t.score < worst.score ? t : worst), teamScores[0]);
 
   let blowout = null;
-  let closest = null;
 
   games.forEach((game) => {
     const away = Number(game.awayScore || 0);
@@ -698,10 +694,9 @@ function computeWeeklyHighlights_(games) {
       loser: away > home ? (game.homeTeamName || "Home") : (game.awayTeamName || "Away")
     };
     if (!blowout || margin > blowout.margin) blowout = entry;
-    if (!closest || margin < closest.margin) closest = entry;
   });
 
-  return { top, bottom, blowout, closest };
+  return { top, bottom, blowout };
 }
 
 function renderCookinFried_(games, week) {
@@ -714,7 +709,7 @@ function renderCookinFried_(games, week) {
     return;
   }
 
-  const { top, bottom, blowout, closest } = highlights;
+  const { top, bottom, blowout } = highlights;
 
   body.innerHTML = `
     <div class="heat-row">
@@ -728,13 +723,7 @@ function renderCookinFried_(games, week) {
       <strong>${formatScore_(bottom.score)}</strong>
     </div>
     ${blowout ? `<p class="muted compact-note">Biggest blowout: ${escapeHtml(blowout.winner)} over ${escapeHtml(blowout.loser)} by ${formatScore_(blowout.margin)}</p>` : ""}
-    ${closest && !isSameGame_(closest, blowout) ? `<p class="muted compact-note">Closest game: ${escapeHtml(closest.winner)} over ${escapeHtml(closest.loser)} by ${formatScore_(closest.margin)}</p>` : ""}
   `;
-}
-
-function isSameGame_(a, b) {
-  if (!a || !b) return false;
-  return a.winner === b.winner && a.loser === b.loser && a.margin === b.margin;
 }
 
 function renderCookinFriedError_(error) {
