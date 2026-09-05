@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.27 - lighter home utility row
+  v0.5.28 - roster drawer
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -28,6 +28,10 @@ const state = {
   expandedThreads: new Set(),
   expandedRuleAreas: new Set(),
   ruleQuery: "",
+  currentWeek: 1,
+  rosterWeek: null,
+  rosterByTeamId: null,
+  rosterLoading: false,
   activeReplyThreadId: "",
   isPostingTrash: false,
   replyingToId: "",
@@ -56,6 +60,10 @@ document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNe
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
 document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
 document.getElementById("refreshHomeBtn")?.addEventListener("click", () => refreshData(false));
+document.getElementById("standingsRows")?.addEventListener("click", handleTeamRowClick_);
+document.getElementById("standingsRows")?.addEventListener("keydown", handleTeamRowKeydown_);
+document.getElementById("scoreboardBody")?.addEventListener("click", handleTeamRowClick_);
+document.getElementById("scoreboardBody")?.addEventListener("keydown", handleTeamRowKeydown_);
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
@@ -456,6 +464,7 @@ async function loadEspnDashboard() {
   }
 
   const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
+  state.currentWeek = week;
 
   const standingsOk = standingsResult.status === "fulfilled";
   if (standingsOk) {
@@ -511,7 +520,7 @@ function renderEspnStandings(standings, week) {
 
   setStandingsStatus("ESPN live", true);
   rows.innerHTML = top.map((team, index) => `
-    <div>
+    <div class="standing-row-clickable" data-team-id="${escapeHtml(String(team.teamId || ""))}" data-team-name="${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}" role="button" tabindex="0">
       <b>${index + 1}</b>
       <span>${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}</span>
       <small>${formatRecord_(team)} - ${formatPoints_(team.pointsFor)} PF</small>
@@ -543,10 +552,10 @@ function renderEspnScoreboard(games, week) {
 function renderScoreboardGame(game) {
   return `
     <div class="score-row">
-      <span>${escapeHtml(game.awayTeamName || "Away")}</span>
+      <span class="team-name-clickable" data-team-id="${escapeHtml(String(game.awayTeamId || ""))}" data-team-name="${escapeHtml(game.awayTeamName || "Away")}" role="button" tabindex="0">${escapeHtml(game.awayTeamName || "Away")}</span>
       <strong>${formatScore_(game.awayScore)}</strong>
       <small>at</small>
-      <span>${escapeHtml(game.homeTeamName || "Home")}</span>
+      <span class="team-name-clickable" data-team-id="${escapeHtml(String(game.homeTeamId || ""))}" data-team-name="${escapeHtml(game.homeTeamName || "Home")}" role="button" tabindex="0">${escapeHtml(game.homeTeamName || "Home")}</span>
       <strong>${formatScore_(game.homeScore)}</strong>
     </div>
   `;
@@ -929,6 +938,166 @@ function openSeasonStandings(season) {
 function closeSeasonStandings() {
   const modal = document.getElementById("standingsModal");
   if (modal) modal.remove();
+}
+
+const NFL_TEAM_ABBREV = {
+  0: "FA", 1: "ATL", 2: "BUF", 3: "CHI", 4: "CIN", 5: "CLE", 6: "DAL", 7: "DEN",
+  8: "DET", 9: "GB", 10: "TEN", 11: "IND", 12: "KC", 13: "LV", 14: "LAR", 15: "MIA",
+  16: "MIN", 17: "NE", 18: "NO", 19: "NYG", 20: "NYJ", 21: "PHI", 22: "ARI", 23: "PIT",
+  24: "LAC", 25: "SF", 26: "SEA", 27: "TB", 28: "WSH", 29: "CAR", 30: "JAX", 33: "BAL", 34: "HOU"
+};
+
+const ROSTER_STARTER_SLOT_ORDER = ["QB", "RB", "WR", "TE", "FLEX", "D/ST", "K"];
+
+function handleTeamRowClick_(event) {
+  const el = event.target.closest("[data-team-id]");
+  if (!el || !el.dataset.teamId) return;
+  openRosterDrawer(el.dataset.teamId, el.dataset.teamName || "");
+}
+
+function handleTeamRowKeydown_(event) {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  const el = event.target.closest("[data-team-id]");
+  if (!el || !el.dataset.teamId) return;
+  event.preventDefault();
+  openRosterDrawer(el.dataset.teamId, el.dataset.teamName || "");
+}
+
+async function openRosterDrawer(teamId, teamName) {
+  if (!state.loggedIn || !teamId) return;
+
+  const existing = document.getElementById("rosterDrawer");
+  if (existing) existing.remove();
+
+  const drawer = document.createElement("div");
+  drawer.id = "rosterDrawer";
+  drawer.className = "drawer-backdrop";
+  drawer.innerHTML = `
+    <section class="drawer-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(teamName)} roster">
+      <div class="drawer-head">
+        <button class="ghost-btn drawer-back" type="button" aria-label="Back">&larr;</button>
+        <div class="drawer-head-title">
+          <span class="mini-label">Roster</span>
+          <h3>${escapeHtml(teamName || "Team")}</h3>
+        </div>
+        <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="drawer-body" id="rosterDrawerBody">
+        <p class="muted">Loading roster...</p>
+      </div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) closeRosterDrawer();
+  });
+
+  document.body.appendChild(drawer);
+  drawer.querySelector(".drawer-back").addEventListener("click", closeRosterDrawer);
+  drawer.querySelector(".drawer-close").addEventListener("click", closeRosterDrawer);
+
+  try {
+    const rosterMap = await ensureRosterData_(state.currentWeek || 1);
+    const entry = rosterMap[String(teamId)];
+    renderRosterDrawerBody_(entry, teamName);
+  } catch (error) {
+    const body = document.getElementById("rosterDrawerBody");
+    if (body) {
+      body.innerHTML = `<p class="muted">Roster did not load - ${escapeHtml(error.message || "try again.")}</p>`;
+    }
+  }
+}
+
+function closeRosterDrawer() {
+  const drawer = document.getElementById("rosterDrawer");
+  if (drawer) drawer.remove();
+}
+
+async function ensureRosterData_(week) {
+  if (state.rosterByTeamId && state.rosterWeek === week && !state.rosterLoading) {
+    return state.rosterByTeamId;
+  }
+
+  if (state.rosterLoading) {
+    // Simple wait loop for a load already in flight.
+    while (state.rosterLoading) {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    if (state.rosterByTeamId && state.rosterWeek === week) return state.rosterByTeamId;
+  }
+
+  state.rosterLoading = true;
+  try {
+    const response = await api("espnRosters", { week });
+    const map = {};
+    (response.rosters || []).forEach((team) => {
+      map[String(team.teamId)] = team;
+    });
+    state.rosterByTeamId = map;
+    state.rosterWeek = week;
+    return map;
+  } finally {
+    state.rosterLoading = false;
+  }
+}
+
+function renderRosterDrawerBody_(entry, fallbackTeamName) {
+  const body = document.getElementById("rosterDrawerBody");
+  if (!body) return;
+
+  if (!entry || !Array.isArray(entry.roster) || !entry.roster.length) {
+    body.innerHTML = `<p class="muted">No roster data loaded for ${escapeHtml(fallbackTeamName || "this team")}.</p>`;
+    return;
+  }
+
+  const starters = [];
+  const bench = [];
+  const ir = [];
+
+  entry.roster.forEach((player) => {
+    if (player.lineupSlot === "Bench") bench.push(player);
+    else if (player.lineupSlot === "IR") ir.push(player);
+    else starters.push(player);
+  });
+
+  starters.sort((a, b) => {
+    const aIndex = ROSTER_STARTER_SLOT_ORDER.indexOf(a.lineupSlot);
+    const bIndex = ROSTER_STARTER_SLOT_ORDER.indexOf(b.lineupSlot);
+    return (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex);
+  });
+
+  body.innerHTML = `
+    ${renderRosterGroup_("Starters", starters)}
+    ${renderRosterGroup_("Bench", bench)}
+    ${renderRosterGroup_("IR", ir)}
+  `;
+}
+
+function renderRosterGroup_(label, players) {
+  if (!players.length) return "";
+
+  return `
+    <div class="roster-group">
+      <h4>${escapeHtml(label)}</h4>
+      ${players.map(renderRosterPlayerRow_).join("")}
+    </div>
+  `;
+}
+
+function renderRosterPlayerRow_(player) {
+  const nflTeam = NFL_TEAM_ABBREV[player.proTeamId] || "";
+  const injury = player.injuryStatus && player.injuryStatus !== "ACTIVE" ? player.injuryStatus : "";
+
+  return `
+    <div class="roster-player-row">
+      <span class="roster-slot-tag">${escapeHtml(player.lineupSlot || "")}</span>
+      <div class="roster-player-info">
+        <strong>${escapeHtml(player.name || "Unknown")}</strong>
+        <small>${escapeHtml([nflTeam, player.defaultPosition].filter(Boolean).join(" - "))}</small>
+      </div>
+      ${injury ? `<span class="roster-injury-tag">${escapeHtml(injury)}</span>` : ""}
+    </div>
+  `;
 }
 
 function renderStandingRow(row) {
