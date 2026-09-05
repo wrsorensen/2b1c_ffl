@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.31 - UX + search fixes
+  v0.5.32 - search normalize + slim search bar
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -846,11 +846,11 @@ function renderRules(rules) {
       <h3>Rule Review</h3>
       <p class="muted">Baseline/current ESPN settings only. Proposed changes are not final until commissioner review.</p>
     </section>
-    <section class="card rule-search-card">
-      <label class="mini-label" for="ruleSearchInput">Search rules</label>
-      <div class="rule-search-row">
-        <input id="ruleSearchInput" type="text" placeholder="kicker, waivers, playoffs, IR...">
-        <button class="secondary-btn compact-btn" id="ruleSearchClearBtn" type="button">Clear</button>
+    <section class="rule-search-card">
+      <div class="rule-search-bar">
+        <span class="rule-search-icon" aria-hidden="true">⌕</span>
+        <input id="ruleSearchInput" type="text" placeholder="Search rules - kicker, waivers, playoffs, IR..." aria-label="Search rules">
+        <button class="rule-search-clear-btn hidden" id="ruleSearchClearBtn" type="button" aria-label="Clear search">✕</button>
       </div>
       <p id="ruleSearchStatus" class="muted compact-note hidden"></p>
     </section>
@@ -921,12 +921,17 @@ function renderRules(rules) {
   const clearBtn = document.getElementById("ruleSearchClearBtn");
   if (searchInput) {
     searchInput.value = state.ruleQuery;
-    searchInput.addEventListener("input", () => filterRules(searchInput.value));
+    searchInput.addEventListener("input", () => {
+      filterRules(searchInput.value);
+      if (clearBtn) clearBtn.classList.toggle("hidden", !searchInput.value);
+    });
   }
   if (clearBtn) {
+    clearBtn.classList.toggle("hidden", !state.ruleQuery);
     clearBtn.addEventListener("click", () => {
       state.ruleQuery = "";
       if (searchInput) searchInput.value = "";
+      clearBtn.classList.add("hidden");
       filterRules("");
     });
   }
@@ -937,6 +942,10 @@ function stemWord_(word) {
   return word.replace(/(ing|ers|er|es|s)$/i, "");
 }
 
+function normalizeSearchToken_(word) {
+  return word.replace(/['’]/g, "").replace(/[\/\-]/g, "");
+}
+
 const RULE_SEARCH_SYNONYMS = {
   rb: ["running", "back", "rush"],
   wr: ["receiver", "wide"],
@@ -944,7 +953,6 @@ const RULE_SEARCH_SYNONYMS = {
   qb: ["quarterback"],
   k: ["kick"],
   dst: ["defense", "special", "team"],
-  "d/st": ["defense", "special", "team"],
   ir: ["injured", "reserve"],
   faab: ["waiver", "budget"],
   fg: ["field", "goal"]
@@ -966,6 +974,7 @@ function buildSearchBlob_(parts) {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
+    .map(normalizeSearchToken_)
     .map(stemWord_);
   return ` ${words.join(" ")} `;
 }
@@ -977,6 +986,7 @@ function filterRules(query) {
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
+    .map(normalizeSearchToken_)
     .map(stemWord_);
   const q = queryTokens.join(" ");
   const section = document.getElementById("rules");
