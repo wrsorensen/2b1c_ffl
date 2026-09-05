@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.32 slim search bar</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.33 card polish</p>
     </section>
   </main>
 
@@ -85,7 +85,6 @@
             </div>
             <div class="card-head-actions">
               <span id="scoreboardStatus" class="status-chip">Syncing</span>
-              <span class="card-collapse-chevron" aria-hidden="true">⌄</span>
             </div>
           </div>
           <div id="scoreboardBody" class="card-body">
@@ -102,7 +101,6 @@
             </div>
             <div class="card-head-actions">
               <span id="standingsStatus" class="status-chip neutral">Syncing</span>
-              <span class="card-collapse-chevron" aria-hidden="true">⌄</span>
             </div>
           </div>
           <div id="standingsRows" class="placeholder-rows card-body" aria-label="League standings">
@@ -113,12 +111,8 @@
         </article>
 
         <article class="card highlight-card" id="cookinFriedCard">
-          <div class="card-head card-head-toggle" data-card-id="cookinFriedCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Cookin' and Fried">
-            <div>
-              <span class="mini-label">Weekly Heat Check</span>
-              <h3>Cookin' &amp; Fried</h3>
-            </div>
-            <span class="card-collapse-chevron" aria-hidden="true">⌄</span>
+          <div class="card-head card-head-toggle" data-card-id="cookinFriedCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Weekly Heat Check">
+            <h3>Weekly Heat Check</h3>
           </div>
           <div id="cookinFriedBody" class="card-body">
             <p class="muted">Loading this week's damage...</p>
@@ -131,7 +125,6 @@
               <span class="mini-label">League Board</span>
               <h3>The Shit Show</h3>
             </div>
-            <span class="card-collapse-chevron" aria-hidden="true">⌄</span>
           </div>
           <div class="card-body">
             <div id="shitShowPreviewBody">
@@ -170,7 +163,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.32</span>
+        <span class="home-version">v0.5.33</span>
       </section>
     </section>
 
