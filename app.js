@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.25 - position synonym search
+  v0.5.26 - more trash talk loading lines
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1431,7 +1431,21 @@ function randomLoadingLine() {
     "Scanning draft trauma…",
     "Ranking bad takes…",
     "Finding playoff lies…",
-    "Checking toilet bowl odds…"
+    "Checking toilet bowl odds…",
+    "Loading your weak ass roster…",
+    "Lowest score doesn\u2019t win…",
+    "You suck, one sec…",
+    "Should\u2019ve autodrafted…",
+    "Your team sucks, hang tight…",
+    "Confirming you\u2019re still trash…",
+    "Your GM license got revoked…",
+    "Roster so bad it\u2019s illegal…",
+    "Buffering your excuses…",
+    "Your bye week never ends…",
+    "Coaching staff quit again…",
+    "Waiver wire is laughing at you…",
+    "Still not a playoff team…",
+    "Somehow worse than last week…"
   ];
 
   let lastLine = "";
