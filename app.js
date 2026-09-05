@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.26 - more trash talk loading lines
+  v0.5.27 - lighter home utility row
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
