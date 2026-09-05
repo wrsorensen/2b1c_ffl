@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.28 roster drawer</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.29 home redesign</p>
     </section>
   </main>
 
@@ -113,20 +113,41 @@
               <h3>Draft Central</h3>
             </div>
           </div>
-          <div class="detail-grid">
+          <button class="draft-summary-toggle hidden" id="draftSummaryToggle" type="button">
+            <span class="status-chip">Draft complete ✓</span>
+            <span class="draft-summary-toggle-text">Tap to view details</span>
+          </button>
+          <div class="detail-grid" id="draftDetailGrid">
             <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
             <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
             <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
           </div>
           <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
-          <div class="league-money-row">
+        </article>
+
+        <article class="card highlight-card" id="cookinFriedCard">
+          <div class="card-head">
             <div>
-              <span>Buy-In</span>
-              <strong id="homeDuesAmount">$100</strong>
+              <span class="mini-label">Weekly Heat Check</span>
+              <h3>Cookin' &amp; Fried</h3>
             </div>
-            <span class="status-chip neutral">Tracking Soon</span>
           </div>
-          <p class="muted compact-note">Payment status will plug into League Business when dues tracking is ready.</p>
+          <div id="cookinFriedBody">
+            <p class="muted">Loading this week's damage...</p>
+          </div>
+        </article>
+
+        <article class="card shitshow-preview-card" id="shitShowPreviewCard">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">League Board</span>
+              <h3>The Shit Show</h3>
+            </div>
+          </div>
+          <div id="shitShowPreviewBody">
+            <p class="muted">Loading latest trash talk...</p>
+          </div>
+          <button class="secondary-btn compact-btn shitshow-preview-btn" data-tab="trash" type="button">View The Shit Show →</button>
         </article>
       </section>
 
@@ -143,7 +164,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.28</span>
+        <span class="home-version">v0.5.29</span>
       </section>
     </section>
 
@@ -180,7 +201,7 @@
         <div class="section-head">
           <div>
             <span class="mini-label">League Board</span>
-            <h3>Trash Talk</h3>
+            <h3>The Shit Show</h3>
             <p class="muted">Click a thread to open or close it.</p>
           </div>
           <button class="secondary-btn compact-btn" id="refreshTrashBtn" type="button">Refresh</button>
@@ -190,10 +211,10 @@
       </section>
 
       <section class="add-trash-pill-wrap">
-        <button class="primary-btn add-trash-pill" id="openNewThreadBtn" type="button">Add Trash</button>
+        <button class="primary-btn add-trash-pill" id="openNewThreadBtn" type="button">Talk Some Shit</button>
 
         <div id="newThreadForm" class="card add-trash-card hidden">
-          <h3>New Trash Thread</h3>
+          <h3>New Shit Talk Thread</h3>
 
           <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
           <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
@@ -220,7 +241,7 @@
           <span class="nav-icon" aria-hidden="true">☄</span>
           <span id="trashUnreadBadge" class="nav-badge hidden" aria-label="Unread trash posts">0</span>
         </span>
-        Trash
+        Shit Show
       </button>
     </nav>
   </main>
