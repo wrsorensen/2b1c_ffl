@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.30 - collapsible dashboard cards
+  v0.5.31 - UX + search fixes
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -8,7 +8,7 @@ const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
-const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "cookinFriedCard", "shitShowPreviewCard", "draftCentralCard"];
+const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "cookinFriedCard", "shitShowPreviewCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -34,7 +34,6 @@ const state = {
   rosterWeek: null,
   rosterByTeamId: null,
   rosterLoading: false,
-  draftCentralExpanded: false,
   activeReplyThreadId: "",
   isPostingTrash: false,
   replyingToId: "",
@@ -67,9 +66,13 @@ document.getElementById("standingsRows")?.addEventListener("click", handleTeamRo
 document.getElementById("standingsRows")?.addEventListener("keydown", handleTeamRowKeydown_);
 document.getElementById("scoreboardBody")?.addEventListener("click", handleTeamRowClick_);
 document.getElementById("scoreboardBody")?.addEventListener("keydown", handleTeamRowKeydown_);
-document.getElementById("draftSummaryToggle")?.addEventListener("click", toggleDraftCentralDetail_);
-document.querySelectorAll(".card-collapse-btn").forEach((btn) => {
-  btn.addEventListener("click", () => toggleCardCollapse_(btn.dataset.cardId));
+document.querySelectorAll(".card-head-toggle[data-card-id]").forEach((head) => {
+  head.addEventListener("click", () => toggleCardCollapse_(head.dataset.cardId));
+  head.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    toggleCardCollapse_(head.dataset.cardId);
+  });
 });
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
@@ -433,12 +436,15 @@ function cardCollapseKey_(cardId) {
   return `${CARD_COLLAPSE_KEY_PREFIX}:${managerKey}:${cardId}`;
 }
 
-function isCardCollapsed_(cardId) {
+function isCardCollapsed_(cardId, defaultCollapsed) {
   try {
-    return localStorage.getItem(cardCollapseKey_(cardId)) === "1";
+    const stored = localStorage.getItem(cardCollapseKey_(cardId));
+    if (stored === "1") return true;
+    if (stored === "0") return false;
   } catch (_) {
-    return false;
+    // fall through to default
   }
+  return Boolean(defaultCollapsed);
 }
 
 function setCardCollapsed_(cardId, collapsed) {
@@ -449,20 +455,25 @@ function setCardCollapsed_(cardId, collapsed) {
   }
 }
 
-function applyCardCollapseState_(cardId) {
+function applyCardCollapseState_(cardId, options) {
+  const defaultCollapsed = (options && typeof options === "object") ? options.defaultCollapsed : false;
   const card = document.getElementById(cardId);
-  const btn = document.querySelector(`.card-collapse-btn[data-card-id="${cssEscape_(cardId)}"]`);
-  if (!card || !btn) return;
+  const head = document.querySelector(`.card-head-toggle[data-card-id="${cssEscape_(cardId)}"]`);
+  if (!card || !head) return;
 
-  const collapsed = isCardCollapsed_(cardId);
+  const collapsed = isCardCollapsed_(cardId, defaultCollapsed);
   card.classList.toggle("collapsed", collapsed);
-  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
-  btn.textContent = collapsed ? "⌃" : "⌄";
+  head.setAttribute("aria-expanded", collapsed ? "false" : "true");
+
+  const chevron = head.querySelector(".card-collapse-chevron");
+  if (chevron) chevron.textContent = collapsed ? "⌃" : "⌄";
 }
 
 function toggleCardCollapse_(cardId) {
   if (!cardId) return;
-  setCardCollapsed_(cardId, !isCardCollapsed_(cardId));
+  const card = document.getElementById(cardId);
+  const currentlyCollapsed = card ? card.classList.contains("collapsed") : isCardCollapsed_(cardId);
+  setCardCollapsed_(cardId, !currentlyCollapsed);
   applyCardCollapseState_(cardId);
 }
 
@@ -486,7 +497,7 @@ function renderHome(settings) {
     espnBtn.onclick = () => window.open(settings.espnUrl, "_blank", "noopener");
   }
 
-  updateDraftCentralCollapse_(draftDate, draftTime);
+  updateDraftCentralStatus_(draftDate, draftTime);
 }
 
 function parseDraftDateTime_(dateStr, timeStr) {
@@ -500,39 +511,14 @@ function parseDraftDateTime_(dateStr, timeStr) {
   return isNaN(dateOnlyParsed.getTime()) ? null : dateOnlyParsed;
 }
 
-function updateDraftCentralCollapse_(draftDate, draftTime) {
-  const toggle = document.getElementById("draftSummaryToggle");
-  const detailGrid = document.getElementById("draftDetailGrid");
-  const note = document.getElementById("draftSettingsNote");
-  if (!toggle || !detailGrid) return;
-
+function updateDraftCentralStatus_(draftDate, draftTime) {
+  const chip = document.getElementById("draftStatusChip");
   const draftMoment = parseDraftDateTime_(draftDate, draftTime);
   const isPast = Boolean(draftMoment && draftMoment.getTime() < Date.now());
 
-  if (!isPast) {
-    toggle.classList.add("hidden");
-    detailGrid.classList.remove("hidden");
-    if (note) note.classList.remove("hidden");
-    return;
-  }
+  if (chip) chip.classList.toggle("hidden", !isPast);
 
-  toggle.classList.remove("hidden");
-  detailGrid.classList.toggle("hidden", !state.draftCentralExpanded);
-  if (note) note.classList.toggle("hidden", !state.draftCentralExpanded);
-
-  const toggleText = toggle.querySelector(".draft-summary-toggle-text");
-  if (toggleText) {
-    toggleText.textContent = state.draftCentralExpanded ? "Tap to collapse" : "Tap to view details";
-  }
-}
-
-function toggleDraftCentralDetail_() {
-  state.draftCentralExpanded = !state.draftCentralExpanded;
-
-  const settings = (state.appData || {}).settings || {};
-  const draftDate = settings.draftDate || "September 3, 2026";
-  const draftTime = settings.draftTime || "7:00 PM";
-  updateDraftCentralCollapse_(draftDate, draftTime);
+  applyCardCollapseState_("draftCentralCard", { defaultCollapsed: isPast });
 }
 
 async function loadEspnDashboard() {
@@ -964,20 +950,24 @@ const RULE_SEARCH_SYNONYMS = {
   fg: ["field", "goal"]
 };
 
+function blobHasWordStartingWith_(blob, term) {
+  return Boolean(term) && blob.includes(` ${term}`);
+}
+
 function tokenMatches_(rowBlob, token) {
-  if (rowBlob.includes(token)) return true;
+  if (blobHasWordStartingWith_(rowBlob, token)) return true;
   const alternates = RULE_SEARCH_SYNONYMS[token];
-  return Boolean(alternates && alternates.some((alt) => rowBlob.includes(alt)));
+  return Boolean(alternates && alternates.some((alt) => blobHasWordStartingWith_(rowBlob, stemWord_(alt))));
 }
 
 function buildSearchBlob_(parts) {
-  return parts
+  const words = parts
     .join(" ")
     .toLowerCase()
     .split(/\s+/)
     .filter(Boolean)
-    .map(stemWord_)
-    .join(" ");
+    .map(stemWord_);
+  return ` ${words.join(" ")} `;
 }
 
 function filterRules(query) {
