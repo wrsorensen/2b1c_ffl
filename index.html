@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.29 home redesign</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.30 collapsible dashboard cards</p>
     </section>
   </main>
 
@@ -77,52 +77,39 @@
       </section>
 
       <section class="dashboard-grid">
-        <article class="card feature-card scoreboard-card">
+        <article class="card feature-card scoreboard-card" id="scoreboardCard">
           <div class="card-head">
             <div>
               <span class="mini-label">Game Center</span>
               <h3>Scoreboard</h3>
             </div>
-            <span id="scoreboardStatus" class="status-chip">Syncing</span>
+            <div class="card-head-actions">
+              <span id="scoreboardStatus" class="status-chip">Syncing</span>
+              <button class="card-collapse-btn" data-card-id="scoreboardCard" type="button" aria-label="Collapse Scoreboard" aria-expanded="true">⌄</button>
+            </div>
           </div>
-          <div id="scoreboardBody">
+          <div id="scoreboardBody" class="card-body">
             <p class="big-placeholder">Loading ESPN scoreboard...</p>
             <p class="muted">ESPN stays the football source. 2B1C adds the personality.</p>
           </div>
         </article>
 
-        <article class="card standings-card">
+        <article class="card standings-card" id="standingsCard">
           <div class="card-head">
             <div>
               <span class="mini-label">ESPN Live Standings</span>
               <h3>Standings</h3>
             </div>
-            <span id="standingsStatus" class="status-chip neutral">Syncing</span>
+            <div class="card-head-actions">
+              <span id="standingsStatus" class="status-chip neutral">Syncing</span>
+              <button class="card-collapse-btn" data-card-id="standingsCard" type="button" aria-label="Collapse Standings" aria-expanded="true">⌄</button>
+            </div>
           </div>
-          <div id="standingsRows" class="placeholder-rows" aria-label="League standings">
+          <div id="standingsRows" class="placeholder-rows card-body" aria-label="League standings">
             <div><b>1</b><span>Season standings</span><small>After Week 1</small></div>
             <div><b>2</b><span>Division race</span><small>After Week 1</small></div>
             <div><b>3</b><span>Points leaders</span><small>After Week 1</small></div>
           </div>
-        </article>
-
-        <article class="card league-business-card">
-          <div class="card-head">
-            <div>
-              <span class="mini-label">League Business</span>
-              <h3>Draft Central</h3>
-            </div>
-          </div>
-          <button class="draft-summary-toggle hidden" id="draftSummaryToggle" type="button">
-            <span class="status-chip">Draft complete ✓</span>
-            <span class="draft-summary-toggle-text">Tap to view details</span>
-          </button>
-          <div class="detail-grid" id="draftDetailGrid">
-            <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
-            <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
-            <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
-          </div>
-          <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
         </article>
 
         <article class="card highlight-card" id="cookinFriedCard">
@@ -131,8 +118,9 @@
               <span class="mini-label">Weekly Heat Check</span>
               <h3>Cookin' &amp; Fried</h3>
             </div>
+            <button class="card-collapse-btn" data-card-id="cookinFriedCard" type="button" aria-label="Collapse Cookin' & Fried" aria-expanded="true">⌄</button>
           </div>
-          <div id="cookinFriedBody">
+          <div id="cookinFriedBody" class="card-body">
             <p class="muted">Loading this week's damage...</p>
           </div>
         </article>
@@ -143,11 +131,36 @@
               <span class="mini-label">League Board</span>
               <h3>The Shit Show</h3>
             </div>
+            <button class="card-collapse-btn" data-card-id="shitShowPreviewCard" type="button" aria-label="Collapse The Shit Show" aria-expanded="true">⌄</button>
           </div>
-          <div id="shitShowPreviewBody">
-            <p class="muted">Loading latest trash talk...</p>
+          <div class="card-body">
+            <div id="shitShowPreviewBody">
+              <p class="muted">Loading latest trash talk...</p>
+            </div>
+            <button class="secondary-btn compact-btn shitshow-preview-btn" data-tab="trash" type="button">View The Shit Show →</button>
           </div>
-          <button class="secondary-btn compact-btn shitshow-preview-btn" data-tab="trash" type="button">View The Shit Show →</button>
+        </article>
+
+        <article class="card league-business-card" id="draftCentralCard">
+          <div class="card-head">
+            <div>
+              <span class="mini-label">League Business</span>
+              <h3>Draft Central</h3>
+            </div>
+            <button class="card-collapse-btn" data-card-id="draftCentralCard" type="button" aria-label="Collapse Draft Central" aria-expanded="true">⌄</button>
+          </div>
+          <div class="card-body">
+            <button class="draft-summary-toggle hidden" id="draftSummaryToggle" type="button">
+              <span class="status-chip">Draft complete ✓</span>
+              <span class="draft-summary-toggle-text">Tap to view details</span>
+            </button>
+            <div class="detail-grid" id="draftDetailGrid">
+              <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
+              <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
+              <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
+            </div>
+            <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
+          </div>
         </article>
       </section>
 
@@ -164,7 +177,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.29</span>
+        <span class="home-version">v0.5.30</span>
       </section>
     </section>
 
