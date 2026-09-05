@@ -599,10 +599,10 @@ select:focus {
 }
 
 .espn-link-btn img {
-  width: 98px;
+  width: 56px;
   max-height: none;
   object-fit: contain;
-  filter: drop-shadow(0 10px 16px rgba(0,0,0,.34));
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,.28));
 }
 
 .home-utility-row {
@@ -610,36 +610,38 @@ select:focus {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 54px;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 14px;
-  margin-top: 10px;
-  margin-bottom: 10px;
-  padding: 7px 9px;
-  background: rgba(255,255,255,.035);
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  padding: 0 2px;
+  background: transparent;
 }
 
 .refresh-cluster {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
   min-width: 0;
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 999px;
-  padding: 5px 9px 5px 5px;
-  background: rgba(4,8,13,.30);
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
 }
 
 .refresh-icon-btn {
-  width: 42px;
-  flex: 0 0 42px;
+  width: 34px;
+  flex: 0 0 34px;
+  min-height: 34px;
   display: inline-grid;
   place-items: center;
   padding: 0;
-  border-color: rgba(216, 180, 93, .36);
+  border: 1px solid rgba(216, 180, 93, .30);
+  border-radius: 10px;
   color: var(--gold-soft);
-  background: rgba(216,180,93,.10);
-  font-size: 1.1rem;
+  background: rgba(216,180,93,.08);
+  font-size: .95rem;
   font-weight: 900;
 }
 
@@ -650,8 +652,8 @@ select:focus {
 .hero-updated-text {
   min-width: 0;
   color: var(--muted);
-  font-size: .76rem;
-  font-weight: 800;
+  font-size: .7rem;
+  font-weight: 700;
   line-height: 1.1;
 }
 
@@ -1560,7 +1562,7 @@ select:focus {
   }
 
   .espn-link-btn img {
-    width: 88px;
+    width: 52px;
   }
 
   .refresh-cluster {
