@@ -534,6 +534,33 @@ select:focus {
   margin: 2px 0 0;
 }
 
+.card-head-actions {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
+.card-collapse-btn {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px;
+  color: var(--muted);
+  background: rgba(255,255,255,.05);
+  font-size: .95rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.card.collapsed .card-body {
+  display: none;
+}
+
 .section-head p {
   margin: 4px 0 0;
 }
