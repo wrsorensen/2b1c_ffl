@@ -541,24 +541,37 @@ select:focus {
   gap: 8px;
 }
 
-.card-collapse-btn {
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 9px;
+.card-head-toggle {
+  cursor: pointer;
+  border-radius: 12px;
+  margin: -4px;
+  padding: 4px;
+}
+
+.card-head-toggle:hover,
+.card-head-toggle:focus-visible {
+  background: rgba(255,255,255,.04);
+}
+
+.card-head-toggle:focus-visible {
+  outline: 2px solid rgba(216, 180, 93, .45);
+  outline-offset: 2px;
+}
+
+.card-collapse-chevron {
+  flex: 0 0 auto;
   color: var(--muted);
-  background: rgba(255,255,255,.05);
   font-size: .95rem;
   font-weight: 900;
   line-height: 1;
-  cursor: pointer;
 }
 
 .card.collapsed .card-body {
   display: none;
+}
+
+.league-business-card .card-head {
+  align-items: center;
 }
 
 .section-head p {
@@ -718,26 +731,6 @@ select:focus {
   color: var(--gold-soft);
   font-size: 1.45rem;
   line-height: 1;
-}
-
-.draft-summary-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin-top: 11px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.draft-summary-toggle-text {
-  color: var(--muted);
-  font-size: .78rem;
-  font-weight: 800;
 }
 
 .heat-row {
