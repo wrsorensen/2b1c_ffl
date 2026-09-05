@@ -558,14 +558,6 @@ select:focus {
   outline-offset: 2px;
 }
 
-.card-collapse-chevron {
-  flex: 0 0 auto;
-  color: var(--muted);
-  font-size: .95rem;
-  font-weight: 900;
-  line-height: 1;
-}
-
 .card.collapsed .card-body {
   display: none;
 }
