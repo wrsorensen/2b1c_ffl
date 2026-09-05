@@ -1,12 +1,14 @@
 /*
   2B1C FFL
-  v0.5.29 - home redesign
+  v0.5.30 - collapsible dashboard cards
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
 const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
+const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
+const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "cookinFriedCard", "shitShowPreviewCard", "draftCentralCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -66,6 +68,9 @@ document.getElementById("standingsRows")?.addEventListener("keydown", handleTeam
 document.getElementById("scoreboardBody")?.addEventListener("click", handleTeamRowClick_);
 document.getElementById("scoreboardBody")?.addEventListener("keydown", handleTeamRowKeydown_);
 document.getElementById("draftSummaryToggle")?.addEventListener("click", toggleDraftCentralDetail_);
+document.querySelectorAll(".card-collapse-btn").forEach((btn) => {
+  btn.addEventListener("click", () => toggleCardCollapse_(btn.dataset.cardId));
+});
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
@@ -419,7 +424,46 @@ function renderApp() {
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
   renderShitShowPreview_(data.trash || []);
+  HOME_CARD_IDS.forEach(applyCardCollapseState_);
   loadEspnDashboard();
+}
+
+function cardCollapseKey_(cardId) {
+  const managerKey = state.manager || "shared";
+  return `${CARD_COLLAPSE_KEY_PREFIX}:${managerKey}:${cardId}`;
+}
+
+function isCardCollapsed_(cardId) {
+  try {
+    return localStorage.getItem(cardCollapseKey_(cardId)) === "1";
+  } catch (_) {
+    return false;
+  }
+}
+
+function setCardCollapsed_(cardId, collapsed) {
+  try {
+    localStorage.setItem(cardCollapseKey_(cardId), collapsed ? "1" : "0");
+  } catch (_) {
+    // Best-effort only - card just won't remember state.
+  }
+}
+
+function applyCardCollapseState_(cardId) {
+  const card = document.getElementById(cardId);
+  const btn = document.querySelector(`.card-collapse-btn[data-card-id="${cssEscape_(cardId)}"]`);
+  if (!card || !btn) return;
+
+  const collapsed = isCardCollapsed_(cardId);
+  card.classList.toggle("collapsed", collapsed);
+  btn.setAttribute("aria-expanded", collapsed ? "false" : "true");
+  btn.textContent = collapsed ? "⌃" : "⌄";
+}
+
+function toggleCardCollapse_(cardId) {
+  if (!cardId) return;
+  setCardCollapsed_(cardId, !isCardCollapsed_(cardId));
+  applyCardCollapseState_(cardId);
 }
 
 function renderHome(settings) {
