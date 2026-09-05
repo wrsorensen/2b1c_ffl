@@ -693,6 +693,84 @@ select:focus {
   line-height: 1;
 }
 
+.draft-summary-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-top: 11px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.draft-summary-toggle-text {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.heat-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+  border-top: 1px solid rgba(255,255,255,.065);
+  padding-top: 7px;
+  margin-top: 7px;
+}
+
+.heat-row:first-child {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.heat-badge {
+  font-size: .68rem;
+  font-weight: 950;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.cookin-badge {
+  color: var(--gold-soft);
+}
+
+.fried-badge {
+  color: var(--red);
+}
+
+.heat-team {
+  min-width: 0;
+  color: var(--text-strong);
+  font-weight: 800;
+  font-size: .86rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shitshow-preview-card {
+  display: grid;
+  gap: 4px;
+}
+
+.shitshow-preview-line {
+  font-size: .86rem;
+  line-height: 1.35;
+}
+
+.shitshow-preview-btn {
+  justify-self: start;
+  margin-top: 8px;
+}
+
 .feature-card {
   border-color: rgba(43,130,189,.20);
   background:
