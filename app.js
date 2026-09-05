@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.28 - roster drawer
+  v0.5.29 - home redesign
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -32,6 +32,7 @@ const state = {
   rosterWeek: null,
   rosterByTeamId: null,
   rosterLoading: false,
+  draftCentralExpanded: false,
   activeReplyThreadId: "",
   isPostingTrash: false,
   replyingToId: "",
@@ -64,6 +65,7 @@ document.getElementById("standingsRows")?.addEventListener("click", handleTeamRo
 document.getElementById("standingsRows")?.addEventListener("keydown", handleTeamRowKeydown_);
 document.getElementById("scoreboardBody")?.addEventListener("click", handleTeamRowClick_);
 document.getElementById("scoreboardBody")?.addEventListener("keydown", handleTeamRowKeydown_);
+document.getElementById("draftSummaryToggle")?.addEventListener("click", toggleDraftCentralDetail_);
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
@@ -416,6 +418,7 @@ function renderApp() {
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
+  renderShitShowPreview_(data.trash || []);
   loadEspnDashboard();
 }
 
@@ -426,7 +429,6 @@ function renderHome(settings) {
   const buyIn = settings.buyIn || "$100";
   const payouts = settings.payouts || "1st $800 / 2nd $300 / 3rd $100";
 
-  document.getElementById("homeDuesAmount").textContent = buyIn;
   document.getElementById("draftDateText").textContent = draftDate;
   document.getElementById("draftTimeText").textContent = draftTime;
   document.getElementById("draftLocationText").textContent = draftLocation;
@@ -439,6 +441,54 @@ function renderHome(settings) {
   if (settings.espnUrl) {
     espnBtn.onclick = () => window.open(settings.espnUrl, "_blank", "noopener");
   }
+
+  updateDraftCentralCollapse_(draftDate, draftTime);
+}
+
+function parseDraftDateTime_(dateStr, timeStr) {
+  if (!dateStr) return null;
+
+  const combined = timeStr ? `${dateStr} ${timeStr}` : dateStr;
+  const combinedParsed = new Date(combined);
+  if (!isNaN(combinedParsed.getTime())) return combinedParsed;
+
+  const dateOnlyParsed = new Date(dateStr);
+  return isNaN(dateOnlyParsed.getTime()) ? null : dateOnlyParsed;
+}
+
+function updateDraftCentralCollapse_(draftDate, draftTime) {
+  const toggle = document.getElementById("draftSummaryToggle");
+  const detailGrid = document.getElementById("draftDetailGrid");
+  const note = document.getElementById("draftSettingsNote");
+  if (!toggle || !detailGrid) return;
+
+  const draftMoment = parseDraftDateTime_(draftDate, draftTime);
+  const isPast = Boolean(draftMoment && draftMoment.getTime() < Date.now());
+
+  if (!isPast) {
+    toggle.classList.add("hidden");
+    detailGrid.classList.remove("hidden");
+    if (note) note.classList.remove("hidden");
+    return;
+  }
+
+  toggle.classList.remove("hidden");
+  detailGrid.classList.toggle("hidden", !state.draftCentralExpanded);
+  if (note) note.classList.toggle("hidden", !state.draftCentralExpanded);
+
+  const toggleText = toggle.querySelector(".draft-summary-toggle-text");
+  if (toggleText) {
+    toggleText.textContent = state.draftCentralExpanded ? "Tap to collapse" : "Tap to view details";
+  }
+}
+
+function toggleDraftCentralDetail_() {
+  state.draftCentralExpanded = !state.draftCentralExpanded;
+
+  const settings = (state.appData || {}).settings || {};
+  const draftDate = settings.draftDate || "September 3, 2026";
+  const draftTime = settings.draftTime || "7:00 PM";
+  updateDraftCentralCollapse_(draftDate, draftTime);
 }
 
 async function loadEspnDashboard() {
@@ -478,9 +528,11 @@ async function loadEspnDashboard() {
     const scoreboardResponse = await api("espnScoreboard", { week });
     const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
     renderEspnScoreboard(games, week);
+    renderCookinFried_(games, week);
     scoreboardOk = true;
   } catch (scoreboardError) {
     renderEspnScoreboardError(scoreboardError);
+    renderCookinFriedError_(scoreboardError);
   }
 
   state.espnDashboardLoadedAt = new Date();
@@ -587,6 +639,95 @@ function renderEspnScoreboardError(error) {
       <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
     `;
   }
+}
+
+function computeWeeklyHighlights_(games) {
+  if (!Array.isArray(games) || !games.length) return null;
+
+  const teamScores = [];
+  games.forEach((game) => {
+    teamScores.push({ teamName: game.awayTeamName || "Away", score: Number(game.awayScore || 0) });
+    teamScores.push({ teamName: game.homeTeamName || "Home", score: Number(game.homeScore || 0) });
+  });
+
+  if (!teamScores.length) return null;
+
+  const top = teamScores.reduce((best, t) => (t.score > best.score ? t : best), teamScores[0]);
+  const bottom = teamScores.reduce((worst, t) => (t.score < worst.score ? t : worst), teamScores[0]);
+
+  let blowout = null;
+  let closest = null;
+
+  games.forEach((game) => {
+    const away = Number(game.awayScore || 0);
+    const home = Number(game.homeScore || 0);
+    const margin = Math.abs(away - home);
+    const entry = {
+      margin,
+      winner: away > home ? (game.awayTeamName || "Away") : (game.homeTeamName || "Home"),
+      loser: away > home ? (game.homeTeamName || "Home") : (game.awayTeamName || "Away")
+    };
+    if (!blowout || margin > blowout.margin) blowout = entry;
+    if (!closest || margin < closest.margin) closest = entry;
+  });
+
+  return { top, bottom, blowout, closest };
+}
+
+function renderCookinFried_(games, week) {
+  const body = document.getElementById("cookinFriedBody");
+  if (!body) return;
+
+  const highlights = computeWeeklyHighlights_(games);
+  if (!highlights) {
+    body.innerHTML = `<p class="muted">No Week ${week} scores yet.</p>`;
+    return;
+  }
+
+  const { top, bottom, blowout, closest } = highlights;
+
+  body.innerHTML = `
+    <div class="heat-row">
+      <span class="heat-badge cookin-badge">Cookin'</span>
+      <span class="heat-team">${escapeHtml(top.teamName)}</span>
+      <strong>${formatScore_(top.score)}</strong>
+    </div>
+    <div class="heat-row">
+      <span class="heat-badge fried-badge">Fried</span>
+      <span class="heat-team">${escapeHtml(bottom.teamName)}</span>
+      <strong>${formatScore_(bottom.score)}</strong>
+    </div>
+    ${blowout ? `<p class="muted compact-note">Biggest blowout: ${escapeHtml(blowout.winner)} over ${escapeHtml(blowout.loser)} by ${formatScore_(blowout.margin)}</p>` : ""}
+    ${closest && !isSameGame_(closest, blowout) ? `<p class="muted compact-note">Closest game: ${escapeHtml(closest.winner)} over ${escapeHtml(closest.loser)} by ${formatScore_(closest.margin)}</p>` : ""}
+  `;
+}
+
+function isSameGame_(a, b) {
+  if (!a || !b) return false;
+  return a.winner === b.winner && a.loser === b.loser && a.margin === b.margin;
+}
+
+function renderCookinFriedError_(error) {
+  const body = document.getElementById("cookinFriedBody");
+  if (body) {
+    body.innerHTML = `<p class="muted">Couldn't load this week's damage - ${escapeHtml(error.message || "try Refresh data.")}</p>`;
+  }
+}
+
+function renderShitShowPreview_(posts) {
+  const body = document.getElementById("shitShowPreviewBody");
+  if (!body) return;
+
+  const latest = getTrashPostsNewestFirst_(posts || [])[0];
+  if (!latest) {
+    body.innerHTML = `<p class="muted">No trash yet. Be the first to talk shit.</p>`;
+    return;
+  }
+
+  body.innerHTML = `
+    <p class="shitshow-preview-line"><b>${escapeHtml(displayPoster(latest))}:</b> ${escapeHtml(latest.message || "")}</p>
+    <p class="muted compact-note">${escapeHtml(latest.timestamp || "")}</p>
+  `;
 }
 
 function setScoreboardStatus(text, isLive) {
