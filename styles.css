@@ -1533,22 +1533,49 @@ select:focus {
   cursor: pointer;
 }
 
-.feed-reply-tag {
-  justify-self: start;
-  margin-left: 36px;
+/* Quoted message a reply is answering - sits inside the reply's own bubble. */
+.feed-quote {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  margin: 0 0 5px;
   border: none;
-  background: none;
-  padding: 0;
-  color: var(--muted);
-  font-size: .68rem;
-  font-weight: 800;
+  border-left: 3px solid rgba(216,180,93,.55);
+  border-radius: 0 6px 6px 0;
+  padding: 4px 8px;
+  background: rgba(255,255,255,.045);
   text-align: left;
   cursor: pointer;
 }
 
-.feed-reply-tag:hover,
-.feed-reply-tag:focus-visible {
+.feed-quote:hover,
+.feed-quote:focus-visible {
+  background: rgba(216,180,93,.10);
+}
+
+.feed-quote-author {
   color: var(--gold-soft);
+  font-size: .68rem;
+  font-weight: 900;
+}
+
+.feed-quote-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.25;
+}
+
+.feed-row.mine .feed-quote {
+  border-left-color: rgba(43,130,189,.60);
+}
+
+/* A message still being sent sits at reduced opacity until confirmed. */
+.feed-row.pending .feed-bubble {
+  opacity: .58;
 }
 
 .feed-admin-actions {
