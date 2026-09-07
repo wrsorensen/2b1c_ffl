@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.40 - heat check moved into Scoreboard, trimmed card labels
+  v0.5.41 - heat check moved into Scoreboard, trimmed card labels
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
