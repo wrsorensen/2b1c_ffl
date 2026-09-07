@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.34 - polls + commissioner post hide
+  v0.5.35 - post hide fixes + faster feel
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -591,12 +591,28 @@ function moveCommissionerDeskCard_(toTop) {
 async function castPollVote_(pollId, choice) {
   if (!pollId || !choice) return;
 
+  // Optimistic UI: adjust the tally shown right now (move my prior vote's
+  // count off, add it to the new choice) so the tap feels instant, then
+  // reconcile with the server's real tally.
+  const poll = state.appData?.activePoll;
+  const priorChoice = getMyPollVote_(pollId);
+  if (poll && poll.id === pollId && Array.isArray(poll.options)) {
+    poll.options.forEach((opt) => {
+      if (opt.value === priorChoice && priorChoice !== choice) opt.count = Math.max(0, (Number(opt.count) || 0) - 1);
+      if (opt.value === choice && priorChoice !== choice) opt.count = (Number(opt.count) || 0) + 1;
+    });
+    setMyPollVote_(pollId, choice);
+    renderCommissionerDesk_(poll);
+  } else {
+    setMyPollVote_(pollId, choice);
+  }
+
   try {
     await api("castPollVote", { manager: state.manager, pin: state.pin, pollId, choice });
-    setMyPollVote_(pollId, choice);
     await refreshData(true);
   } catch (err) {
     window.alert("Could not cast vote: " + (err.message || err));
+    await refreshData(true);
   }
 }
 
@@ -1470,11 +1486,23 @@ function confirmHideTrashPost_(postId) {
 }
 
 async function hideTrashPost_(postId) {
+  // Optimistic UI: hide this post (and, if it's a thread root, its replies)
+  // immediately so the click feels instant, then reconcile with the server.
+  const before = state.appData?.trash || [];
+  const target = before.find((p) => p.id === postId);
+  const isRoot = target && !target.parentId;
+  const optimistic = before.filter((p) => p.id !== postId && !(isRoot && p.parentId === postId));
+
+  if (state.appData) state.appData.trash = optimistic;
+  renderThreads(optimistic);
+  renderShitShowPreview_(optimistic);
+
   try {
     await api("hideTrashPost", { manager: state.manager, pin: state.pin, id: postId });
     await refreshData(true);
   } catch (err) {
     window.alert("Could not hide post: " + (err.message || err));
+    await refreshData(true);
   }
 }
 
