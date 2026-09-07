@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.43 - Shit Show rebuilt as a single chronological feed; roster phone numbers + one-line rows
+  v0.5.44 - quoted replies, unread ignores your own posts, instant send, chat-style timestamps
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1734,6 +1734,40 @@ function renderStandingRow(row) {
 
 
 const FEED_TRUNCATE_AT = 180;
+const FEED_QUOTE_TRUNCATE_AT = 90;
+
+function truncateForQuote_(text) {
+  const clean = String(text || "").replace(/\s+/g, " ").trim();
+  if (clean.length <= FEED_QUOTE_TRUNCATE_AT) return clean;
+  return clean.slice(0, FEED_QUOTE_TRUNCATE_AT).trimEnd() + "…";
+}
+
+/**
+ * Chat-style timestamps: just the time for today, add the date for older
+ * messages, add the year once it is a different one. Falls back to whatever
+ * the backend sent if it cannot be parsed.
+ */
+function formatFeedTime_(raw) {
+  const text = String(raw || "").trim();
+  if (!text) return "";
+
+  const parsed = new Date(text);
+  if (isNaN(parsed.getTime())) return text;
+
+  const now = new Date();
+  const sameDay =
+    parsed.getFullYear() === now.getFullYear() &&
+    parsed.getMonth() === now.getMonth() &&
+    parsed.getDate() === now.getDate();
+
+  const time = parsed.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) return time;
+
+  const dateOpts = { month: "short", day: "numeric" };
+  if (parsed.getFullYear() !== now.getFullYear()) dateOpts.year = "numeric";
+
+  return `${parsed.toLocaleDateString([], dateOpts)}, ${time}`;
+}
 
 function renderFeed(posts) {
   if (!feedList) return;
@@ -1761,7 +1795,7 @@ function renderFeed(posts) {
 
   ordered.forEach((post, index) => {
     if (index === cutIndex) {
-      const unreadCount = ordered.length - cutIndex;
+      const unreadCount = ordered.slice(cutIndex).filter((p) => !isMyPost_(p)).length;
       const divider = document.createElement("div");
       divider.className = "feed-new-divider";
       divider.innerHTML = `<span>${unreadCount} new since last visit</span>`;
@@ -1777,7 +1811,11 @@ function renderFeed(posts) {
 function buildFeedRow_(post, byId) {
   const row = document.createElement("div");
   const isMine = String(post.manager || "").trim() === String(state.manager || "").trim();
-  row.className = "feed-row" + (isMine ? " mine" : "") + (post.pinned ? " pinned" : "");
+  row.className =
+    "feed-row" +
+    (isMine ? " mine" : "") +
+    (post.pinned ? " pinned" : "") +
+    (post._pending ? " pending" : "");
   if (post.id) row.dataset.messageId = post.id;
 
   const message = String(post.message || "");
@@ -1785,28 +1823,33 @@ function buildFeedRow_(post, byId) {
   const needsTruncation = message.length > FEED_TRUNCATE_AT;
   const shown = needsTruncation && !isExpanded ? message.slice(0, FEED_TRUNCATE_AT).trimEnd() + "…" : message;
 
+  // A reply carries a short quote of what it is answering, so a two-word
+  // comeback still makes sense on its own.
   const parent = post.parentId ? byId.get(post.parentId) : null;
-  const replyTag = parent
-    ? `<button class="feed-reply-tag" type="button" data-jump-to="${escapeHtml(parent.id)}">↩ replying to ${escapeHtml(displayPoster(parent))}</button>`
+  const quoteBlock = parent
+    ? `<button class="feed-quote" type="button" data-jump-to="${escapeHtml(parent.id)}">
+         <span class="feed-quote-author">${escapeHtml(displayPoster(parent))}</span>
+         <span class="feed-quote-text">${escapeHtml(truncateForQuote_(parent.message))}</span>
+       </button>`
     : "";
 
   row.innerHTML = `
-    ${replyTag}
     <div class="feed-row-main">
       <span class="feed-avatar" aria-hidden="true">${escapeHtml(getInitials_(post))}</span>
       <div class="feed-bubble">
         <div class="feed-meta">
           <b>${escapeHtml(displayPoster(post))}</b>
-          <span class="feed-time">${escapeHtml(post.timestamp || "")}</span>
+          <span class="feed-time">${escapeHtml(formatFeedTime_(post.timestamp))}</span>
           ${post.pinned ? `<span class="feed-pin-tag">Pinned</span>` : ""}
         </div>
+        ${quoteBlock}
         <p class="feed-message">${escapeHtml(shown)}</p>
         ${needsTruncation ? `<button class="feed-more-btn" type="button">${isExpanded ? "Show less" : "More"}</button>` : ""}
       </div>
     </div>
   `;
 
-  const jumpBtn = row.querySelector(".feed-reply-tag");
+  const jumpBtn = row.querySelector(".feed-quote");
   if (jumpBtn) {
     jumpBtn.addEventListener("click", (event) => {
       event.stopPropagation();
@@ -1827,7 +1870,9 @@ function buildFeedRow_(post, byId) {
   // Tapping the message itself starts a reply to it.
   row.querySelector(".feed-bubble")?.addEventListener("click", () => startFeedReply_(post));
 
-  if (isCommissioner_() && post.id) {
+  // A message still in flight has no real id yet, so it cannot be pinned,
+  // hidden, or replied to until the server confirms it.
+  if (isCommissioner_() && post.id && !post._pending) {
     const actions = document.createElement("div");
     actions.className = "feed-admin-actions";
 
@@ -1891,10 +1936,17 @@ function getFeedMessagesOldestFirst_(posts) {
 
 function getFeedUnreadCutIndex_(ordered) {
   if (!state.feedUnreadCutKey) return -1;
+
   const index = ordered.findIndex((post) => post._trashKey === state.feedUnreadCutKey);
   // The cut sits directly after the last message that had already been seen.
   if (index < 0 || index === ordered.length - 1) return -1;
-  return index + 1;
+
+  const cut = index + 1;
+
+  // Only somebody else's message counts as "new". If everything after the cut
+  // is your own, there is nothing to mark.
+  const hasOtherPeoplesMessages = ordered.slice(cut).some((post) => !isMyPost_(post));
+  return hasOtherPeoplesMessages ? cut : -1;
 }
 
 function jumpToFeedMessage_(messageId) {
@@ -1927,7 +1979,7 @@ function getInitials_(post) {
 }
 
 function startFeedReply_(post) {
-  if (!post || !post.id) return;
+  if (!post || !post.id || post._pending) return;
 
   state.feedReplyToId = post.id;
 
@@ -2032,7 +2084,9 @@ function updateTrashUnreadBadge(posts) {
 }
 
 function markTrashSeen(posts) {
-  const latest = getTrashPostsNewestFirst_(posts)[0];
+  // Never anchor "seen" to a message still in flight - its temporary id
+  // disappears once the server confirms it, which would strand the marker.
+  const latest = getTrashPostsNewestFirst_(posts).find((post) => !post._pending);
   if (!latest) return;
 
   state.trashSeenKey = latest._trashKey;
@@ -2043,12 +2097,19 @@ function markTrashSeen(posts) {
   }
 }
 
+function isMyPost_(post) {
+  const mine = String(state.manager || "").trim();
+  if (!mine) return false;
+  return String(post?.manager || "").trim() === mine;
+}
+
 function countUnreadTrashPosts_(orderedPosts) {
   let count = 0;
 
   for (const post of orderedPosts) {
     if (post._trashKey === state.trashSeenKey) break;
-    count += 1;
+    // Your own messages are never "unread" - you just wrote them.
+    if (!isMyPost_(post)) count += 1;
   }
 
   return count;
@@ -2097,7 +2158,6 @@ function setButtonBusy(buttons, isBusy, label) {
 
 async function sendFeedMessage() {
   const input = document.getElementById("feedInput");
-  const button = document.getElementById("feedSendBtn");
   const status = document.getElementById("feedStatus");
   if (!input || !status) return;
 
@@ -2106,34 +2166,43 @@ async function sendFeedMessage() {
     status.textContent = "Type something first.";
     return;
   }
+  if (state.isPostingTrash) return;
 
   const parentId = state.feedReplyToId || "";
-  const sent = await submitTrashMessage({
+
+  // Clear the composer and drop the message into the feed right away. Waiting
+  // on the round trip made shit talking feel sluggish.
+  input.value = "";
+  input.style.height = "auto";
+  clearFeedReply();
+
+  const pending = {
+    id: "pending_" + Date.now(),
+    timestamp: new Date().toString(),
+    manager: state.manager,
+    teamName: state.teamName,
     message,
     parentId,
-    status,
-    buttons: [button],
-    postingLabel: "Sending..."
-  });
+    threadTitle: "",
+    pinned: false,
+    _pending: true
+  };
 
-  if (sent) {
-    input.value = "";
-    input.style.height = "auto";
-    clearFeedReply();
-    // A message you just sent should never sit behind an unread divider.
-    markTrashSeen(state.appData?.trash || []);
-    state.feedUnreadCutKey = state.trashSeenKey;
-    renderFeed(state.appData?.trash || []);
-    scrollFeedToBottom_(true);
-  }
+  // The backend hands back newest-first, so a new message goes on the front.
+  const withPending = [pending].concat(state.appData?.trash || []);
+  if (state.appData) state.appData.trash = withPending;
+
+  markTrashSeen(withPending);
+  state.feedUnreadCutKey = state.trashSeenKey;
+  renderFeed(withPending);
+  renderShitShowPreview_(withPending);
+  scrollFeedToBottom_(true);
+
+  await submitTrashMessage({ message, parentId, status, pendingId: pending.id });
 }
 
-async function submitTrashMessage({ message, parentId = "", status, buttons = [], postingLabel = "Posting..." }) {
-  if (state.isPostingTrash) return false;
-
+async function submitTrashMessage({ message, parentId = "", status, pendingId = "" }) {
   state.isPostingTrash = true;
-  status.textContent = postingLabel;
-  setButtonBusy(buttons, true, postingLabel);
 
   try {
     await api("submitTrashTalk", {
@@ -2144,17 +2213,21 @@ async function submitTrashMessage({ message, parentId = "", status, buttons = []
       threadTitle: ""
     });
 
-    status.textContent = "Sent. Refreshing...";
+    // Reconcile quietly - the real row replaces the pending one.
     await refreshData(true);
-    status.textContent = "";
-
+    if (status) status.textContent = "";
     return true;
   } catch (error) {
-    status.textContent = "Send failed: " + error.message;
+    // Pull the failed message back out of the feed and say so.
+    if (state.appData && pendingId) {
+      state.appData.trash = (state.appData.trash || []).filter((p) => p.id !== pendingId);
+      renderFeed(state.appData.trash);
+      renderShitShowPreview_(state.appData.trash);
+    }
+    if (status) status.textContent = "Send failed: " + error.message;
     return false;
   } finally {
     state.isPostingTrash = false;
-    setButtonBusy(buttons, false);
   }
 }
 
