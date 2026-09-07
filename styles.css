@@ -961,6 +961,13 @@ select:focus {
   font-size: .72rem;
 }
 
+.manager-admin-stats {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: .66rem;
+  font-weight: 700;
+}
+
 .manager-admin-pin {
   width: 100%;
   min-height: 36px;
