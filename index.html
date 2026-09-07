@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.41 layout trim</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.42 Commish tab reorg</p>
     </section>
   </main>
 
@@ -125,41 +125,11 @@
             <button class="secondary-btn compact-btn shitshow-preview-btn" data-tab="trash" type="button">View The Shit Show →</button>
           </div>
         </article>
-
-        <article class="card league-business-card" id="draftCentralCard">
-          <div class="card-head card-head-toggle" data-card-id="draftCentralCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Draft Central">
-            <h3>Draft Central</h3>
-            <span id="draftStatusChip" class="status-chip neutral hidden">Draft Complete</span>
-          </div>
-          <div class="card-body">
-            <div class="detail-grid" id="draftDetailGrid">
-              <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
-              <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
-              <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
-            </div>
-            <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
-          </div>
-        </article>
-      </section>
-
-      <section class="card preseason-card" id="commissionerDeskCard">
-        <div class="card-head">
-          <div>
-            <span class="mini-label">Commissioner Desk</span>
-            <h3 id="commissionerDeskTitle">2026 Preseason Focus</h3>
-          </div>
-        </div>
-        <div id="commissionerDeskDefault">
-          <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
-          <p class="muted">No ESPN setting changes should be saved until final commissioner review.</p>
-        </div>
-        <div id="pollBody" class="hidden"></div>
-        <p id="pollStatus" class="muted compact-note hidden"></p>
       </section>
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.41</span>
+        <span class="home-version">v0.5.42</span>
       </section>
     </section>
 
@@ -227,6 +197,36 @@
     </section>
 
     <section id="commish" class="page">
+      <section class="card preseason-card" id="commissionerDeskCard">
+        <div class="card-head">
+          <div>
+            <span class="mini-label">Commissioner Desk</span>
+            <h3 id="commissionerDeskTitle">2026 Preseason Focus</h3>
+          </div>
+        </div>
+        <div id="commissionerDeskDefault">
+          <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
+          <p class="muted">No ESPN setting changes should be saved until final commissioner review.</p>
+        </div>
+        <div id="pollBody" class="hidden"></div>
+        <p id="pollStatus" class="muted compact-note hidden"></p>
+      </section>
+
+      <article class="card league-business-card" id="draftCentralCard">
+        <div class="card-head card-head-toggle" data-card-id="draftCentralCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Draft Central">
+          <h3>Draft Central</h3>
+          <span id="draftStatusChip" class="status-chip neutral hidden">Draft Complete</span>
+        </div>
+        <div class="card-body">
+          <div class="detail-grid" id="draftDetailGrid">
+            <div><span>Date</span><strong id="draftDateText">September 3, 2026</strong></div>
+            <div><span>Time</span><strong id="draftTimeText">7:00 PM</strong></div>
+            <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
+          </div>
+          <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
+        </div>
+      </article>
+
       <article class="card" id="commishPollsCard">
         <div class="card-head card-head-toggle" data-card-id="commishPollsCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Manager Poll">
           <div>
