@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.38 - usage tracking (logins/posts/votes)
+  v0.5.39 - weekly heat check icons
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1070,6 +1070,27 @@ function computeWeeklyHighlights_(games) {
   return { top, bottom, blowout };
 }
 
+const HEAT_ICONS = {
+  flame: `<svg class="heat-icon" viewBox="0 0 24 26" width="22" height="24" aria-hidden="true">
+    <path d="M13.4 1.2c.9 3.3-.6 5-2.3 6.6-2 1.9-4.6 3.5-4.6 7.4a7.6 7.6 0 0 0 15.2 0c0-2.6-1.1-4.6-2.4-6.2-.3 1.4-1.1 2.3-2.3 2.7 1-3.4-1.1-8.1-3.6-10.5Z" fill="var(--heat-hot)"/>
+    <path d="M4.9 9.4c-.6 1.9-1.6 2.7-1.6 4.6a3.4 3.4 0 0 0 3.6 3.4c-1.3-2.3-1.5-5.3-2-8Z" fill="var(--heat-hot)" fill-opacity=".6"/>
+    <path d="M12.6 12.9c1.3 1.7 2.1 2.7 2.1 4.3a2.9 2.9 0 1 1-5.8 0c0-1.8 2.1-2.7 3.7-4.3Z" fill="var(--heat-hot-2)"/>
+  </svg>`,
+  toilet: `<svg class="heat-icon" viewBox="0 0 24 26" width="22" height="24" aria-hidden="true">
+    <rect x="2.4" y="2.2" width="7.6" height="9.4" rx="1.4" fill="var(--heat-cold)" fill-opacity=".55"/>
+    <path d="M9.2 10.4h11.4c.6 0 1 .5.9 1.1l-.5 2.6c-.5 2.6-2.6 4.5-5.2 4.5h-2.3c-2.6 0-4.7-1.9-5.2-4.5l-.5-2.6c-.1-.6.3-1.1.9-1.1Z" fill="var(--heat-cold)"/>
+    <ellipse cx="14.9" cy="12.3" rx="3.8" ry="1.4" fill="var(--panel)"/>
+    <path d="M12.6 18.6h4.6l1.5 4.8H11l1.6-4.8Z" fill="var(--heat-cold)" fill-opacity=".55"/>
+  </svg>`,
+  helmet: `<svg class="heat-icon" viewBox="0 0 26 26" width="23" height="23" aria-hidden="true">
+    <path d="M4.4 6.1 8 3.4l4.2 2.4 3.8-2.1 1.2 3.4" fill="none"
+          stroke="var(--heat-pop)" stroke-width="1.8" stroke-linecap="round" stroke-opacity=".65"/>
+    <path d="M3.6 19.2c-.6-6.4 3-10.4 8.6-10.4s9.1 3.9 8.6 10.4H3.6Z" fill="var(--heat-pop)"/>
+    <path d="M6.2 19.2h13.6v2.1c0 .6-.5 1-1 1H7.2c-.6 0-1-.4-1-1v-2.1Z"
+          fill="var(--heat-pop)" fill-opacity=".55"/>
+  </svg>`
+};
+
 function renderCookinFried_(games, week) {
   const body = document.getElementById("cookinFriedBody");
   if (!body) return;
@@ -1084,16 +1105,21 @@ function renderCookinFried_(games, week) {
 
   body.innerHTML = `
     <div class="heat-row">
-      <span class="heat-badge cookin-badge">Cookin'</span>
+      ${HEAT_ICONS.flame}
       <span class="heat-team">${escapeHtml(top.teamName)}</span>
-      <strong>${formatScore_(top.score)}</strong>
+      <strong class="heat-value">${formatScore_(top.score)}</strong>
     </div>
     <div class="heat-row">
-      <span class="heat-badge fried-badge">Fried</span>
+      ${HEAT_ICONS.toilet}
       <span class="heat-team">${escapeHtml(bottom.teamName)}</span>
-      <strong>${formatScore_(bottom.score)}</strong>
+      <strong class="heat-value">${formatScore_(bottom.score)}</strong>
     </div>
-    ${blowout ? `<p class="muted compact-note">Biggest blowout: ${escapeHtml(blowout.winner)} over ${escapeHtml(blowout.loser)} by ${formatScore_(blowout.margin)}</p>` : ""}
+    ${blowout ? `
+    <div class="heat-row">
+      ${HEAT_ICONS.helmet}
+      <span class="heat-team">${escapeHtml(blowout.winner)} over ${escapeHtml(blowout.loser)}</span>
+      <strong class="heat-value">+${formatScore_(blowout.margin)}</strong>
+    </div>` : ""}
   `;
 }
 
