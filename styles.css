@@ -1427,7 +1427,7 @@ select:focus {
 
 .feed-list {
   display: grid;
-  gap: 8px;
+  gap: 0;
   align-content: start;
 }
 
@@ -1437,9 +1437,22 @@ select:focus {
   text-align: center;
 }
 
+/* Messages read as one continuous stream - no cards, just a hairline between
+   each one and a gold bar marking anything pinned. */
 .feed-row {
   display: grid;
   gap: 3px;
+  border-top: 1px solid rgba(255,255,255,.055);
+  padding: 9px 2px 9px 0;
+}
+
+.feed-row:first-child {
+  border-top: 0;
+}
+
+.feed-row.pinned {
+  border-left: 3px solid var(--gold);
+  padding-left: 8px;
 }
 
 .feed-row-main {
@@ -1469,21 +1482,10 @@ select:focus {
 
 .feed-bubble {
   min-width: 0;
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 12px;
-  padding: 7px 9px;
-  background: rgba(255,255,255,.035);
+  border: 0;
+  padding: 0;
+  background: none;
   cursor: pointer;
-}
-
-.feed-row.mine .feed-bubble {
-  border-color: rgba(43,130,189,.22);
-  background: rgba(43,130,189,.075);
-}
-
-.feed-row.pinned .feed-bubble {
-  border-color: var(--border-gold);
-  background: rgba(216,180,93,.07);
 }
 
 .feed-meta {
@@ -1627,13 +1629,13 @@ select:focus {
   background: rgba(216,180,93,.30);
 }
 
-.feed-row-flash .feed-bubble {
+.feed-row-flash {
   animation: feedFlash 1.2s ease;
 }
 
 @keyframes feedFlash {
   0% { background: rgba(216,180,93,.28); }
-  100% { background: rgba(255,255,255,.035); }
+  100% { background: transparent; }
 }
 
 .feed-composer {
