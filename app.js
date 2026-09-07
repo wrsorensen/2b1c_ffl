@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.44 - quoted replies, unread ignores your own posts, instant send, chat-style timestamps
+  v0.5.45 - flattened feed styling; Enter sends on desktop
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -2009,6 +2009,18 @@ function setupFeedComposer_() {
   };
 
   input.addEventListener("input", grow);
+
+  // Enter sends on a real keyboard; Shift+Enter still breaks the line. Phones
+  // and tablets keep the Send button - their Return key must stay a newline.
+  const hasRealKeyboard = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  if (hasRealKeyboard) {
+    input.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" || event.shiftKey) return;
+      event.preventDefault();
+      sendFeedMessage();
+    });
+  }
+
   input.addEventListener("focus", () => {
     // On mobile the keyboard opening shrinks the viewport; give it a beat and
     // then make sure the newest message is still in view.
