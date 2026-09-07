@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.36 commish tab</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.37 manager admin</p>
     </section>
   </main>
 
@@ -167,7 +167,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.36</span>
+        <span class="home-version">v0.5.37</span>
       </section>
     </section>
 
@@ -235,38 +235,77 @@
     </section>
 
     <section id="commish" class="page">
-      <section class="card">
-        <span class="mini-label">Commissioner Only</span>
-        <h3>Manager Poll</h3>
-
-        <div id="commishActivePollBlock" class="hidden">
-          <p class="muted compact-note">An active poll is live on Home:</p>
-          <p id="commishActivePollQuestion" class="commish-active-question"></p>
-          <button class="secondary-btn compact-btn" id="closePollBtn" type="button">Close This Poll</button>
+      <article class="card" id="commishPollsCard">
+        <div class="card-head card-head-toggle" data-card-id="commishPollsCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Manager Poll">
+          <div>
+            <span class="mini-label">Commissioner Only</span>
+            <h3>Manager Poll</h3>
+          </div>
         </div>
+        <div class="card-body">
+          <div id="commishActivePollBlock" class="hidden">
+            <p class="muted compact-note">An active poll is live on Home:</p>
+            <p id="commishActivePollQuestion" class="commish-active-question"></p>
+            <button class="secondary-btn compact-btn" id="closePollBtn" type="button">Close This Poll</button>
+          </div>
 
-        <div id="commishCreatePollBlock">
-          <label class="mini-label" for="pollQuestionInput">Question</label>
-          <input id="pollQuestionInput" type="text" maxlength="140" placeholder="Example: Move to 0.5 PPR for 2027?">
+          <div id="commishCreatePollBlock">
+            <label class="mini-label" for="pollQuestionInput">Question</label>
+            <input id="pollQuestionInput" type="text" maxlength="140" placeholder="Example: Move to 0.5 PPR for 2027?">
 
-          <label class="mini-label" for="pollOption1Input">Option 1</label>
-          <input id="pollOption1Input" type="text" maxlength="60" placeholder="Yes">
+            <label class="mini-label" for="pollOption1Input">Option 1</label>
+            <input id="pollOption1Input" type="text" maxlength="60" placeholder="Yes">
 
-          <label class="mini-label" for="pollOption2Input">Option 2</label>
-          <input id="pollOption2Input" type="text" maxlength="60" placeholder="No">
+            <label class="mini-label" for="pollOption2Input">Option 2</label>
+            <input id="pollOption2Input" type="text" maxlength="60" placeholder="No">
 
-          <label class="mini-label" for="pollOption3Input">Option 3 (optional)</label>
-          <input id="pollOption3Input" type="text" maxlength="60" placeholder="">
+            <label class="mini-label" for="pollOption3Input">Option 3 (optional)</label>
+            <input id="pollOption3Input" type="text" maxlength="60" placeholder="">
 
-          <label class="mini-label" for="pollOption4Input">Option 4 (optional)</label>
-          <input id="pollOption4Input" type="text" maxlength="60" placeholder="">
+            <label class="mini-label" for="pollOption4Input">Option 4 (optional)</label>
+            <input id="pollOption4Input" type="text" maxlength="60" placeholder="">
+
+            <div class="new-thread-actions">
+              <button class="primary-btn compact-btn" id="createPollBtn" type="button">Create Poll</button>
+            </div>
+            <p id="pollFormStatus" class="status-line"></p>
+          </div>
+
+          <div id="commishPastPollsBlock" class="hidden">
+            <p class="mini-label commish-subhead">Past Polls</p>
+            <div id="commishPastPollsList"></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card" id="commishManagersCard">
+        <div class="card-head card-head-toggle" data-card-id="commishManagersCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Manager Info">
+          <div>
+            <span class="mini-label">Commissioner Only</span>
+            <h3>Manager Info</h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="commishManagersList"></div>
+
+          <p class="mini-label commish-subhead">Add Manager / Co-Manager</p>
+          <label class="mini-label" for="newManagerTeamSelect">Team</label>
+          <select id="newManagerTeamSelect">
+            <option value="">Select team...</option>
+          </select>
+
+          <label class="mini-label" for="newManagerNameInput">Manager Name</label>
+          <input id="newManagerNameInput" type="text" maxlength="60" placeholder="Name">
+
+          <label class="mini-label" for="newManagerPinInput">PIN</label>
+          <input id="newManagerPinInput" type="text" inputmode="numeric" maxlength="12" placeholder="PIN">
 
           <div class="new-thread-actions">
-            <button class="primary-btn compact-btn" id="createPollBtn" type="button">Create Poll</button>
+            <button class="primary-btn compact-btn" id="addManagerBtn" type="button">Add Manager</button>
           </div>
-          <p id="pollFormStatus" class="status-line"></p>
+          <p id="managerFormStatus" class="status-line"></p>
         </div>
-      </section>
+      </article>
     </section>
 
     <nav class="bottom-nav" aria-label="Primary">
