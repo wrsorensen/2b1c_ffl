@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.41 - heat check moved into Scoreboard, trimmed card labels
+  v0.5.42 - Draft Central + Commissioner Desk moved into Commish tab (commissioner-only)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -760,14 +760,17 @@ function renderCommissionerDesk_(poll) {
 function moveCommissionerDeskCard_(toTop) {
   const card = document.getElementById("commissionerDeskCard");
   const grid = document.querySelector(".dashboard-grid");
-  if (!card || !grid || !grid.parentNode) return;
+  const commishSection = document.getElementById("commish");
+  if (!card || !grid || !grid.parentNode || !commishSection) return;
 
   if (toTop) {
-    if (card.nextElementSibling === grid) return; // already at top
+    // Active poll: surface the card at the top of Home.
+    if (card.parentNode === grid.parentNode && card.nextElementSibling === grid) return; // already at top
     grid.parentNode.insertBefore(card, grid);
   } else {
-    if (card.previousElementSibling === grid) return; // already in default spot
-    grid.parentNode.insertBefore(card, grid.nextSibling);
+    // No active poll: card lives in the Commish tab by default.
+    if (card.parentNode === commishSection && commishSection.firstElementChild === card) return; // already in place
+    commishSection.insertBefore(card, commishSection.firstElementChild);
   }
 }
 
