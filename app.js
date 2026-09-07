@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.39 - weekly heat check icons
+  v0.5.40 - heat check moved into Scoreboard, trimmed card labels
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -8,7 +8,7 @@ const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
-const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "cookinFriedCard", "shitShowPreviewCard"];
+const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "shitShowPreviewCard"];
 const COMMISH_CARD_IDS = ["commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
