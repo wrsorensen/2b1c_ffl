@@ -742,9 +742,6 @@ select:focus {
   align-items: center;
   gap: 10px;
   min-height: 34px;
-  border-top: 1px solid rgba(255,255,255,.065);
-  padding-top: 7px;
-  margin-top: 7px;
 }
 
 .heat-row:first-child {
@@ -835,8 +832,6 @@ select:focus {
   align-items: center;
   gap: 7px;
   min-height: 38px;
-  border-top: 1px solid rgba(255,255,255,.065);
-  padding-top: 7px;
 }
 
 .score-row:first-child {
@@ -870,6 +865,8 @@ select:focus {
   display: grid;
   gap: 7px;
   margin-top: 11px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .placeholder-rows > div {
@@ -878,8 +875,6 @@ select:focus {
   align-items: center;
   gap: 9px;
   min-height: 42px;
-  border-top: 1px solid rgba(255,255,255,.065);
-  padding-top: 7px;
 }
 
 .placeholder-rows > div:first-child {
