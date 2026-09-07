@@ -961,7 +961,7 @@ function renderEspnStandings(standings, week) {
   const rows = document.getElementById("standingsRows");
   if (!rows) return;
 
-  const top = standings.slice(0, 6);
+  const top = standings.slice(0, 12);
   if (!top.length) {
     rows.innerHTML = `<div><b>?</b><span>No ESPN standings loaded</span><small>Week ${week}</small></div>`;
     setStandingsStatus("No data", false);
