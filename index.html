@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.33 card polish</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.34 polls + post hide</p>
     </section>
   </main>
 
@@ -150,20 +150,24 @@
         </article>
       </section>
 
-      <section class="card preseason-card">
+      <section class="card preseason-card" id="commissionerDeskCard">
         <div class="card-head">
           <div>
             <span class="mini-label">Commissioner Desk</span>
-            <h3>2026 Preseason Focus</h3>
+            <h3 id="commissionerDeskTitle">2026 Preseason Focus</h3>
           </div>
         </div>
-        <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
-        <p class="muted">No ESPN setting changes should be saved until final commissioner review.</p>
+        <div id="commissionerDeskDefault">
+          <p>Waivers, playoff/division structure, kicker scoring, and D/ST balance.</p>
+          <p class="muted">No ESPN setting changes should be saved until final commissioner review.</p>
+        </div>
+        <div id="pollBody" class="hidden"></div>
+        <p id="pollStatus" class="muted compact-note hidden"></p>
       </section>
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.33</span>
+        <span class="home-version">v0.5.34</span>
       </section>
     </section>
 
