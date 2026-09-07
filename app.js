@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.37 - commish card polish + manager admin
+  v0.5.38 - usage tracking (logins/posts/votes)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -544,10 +544,12 @@ function renderCommishManagers_(managers) {
   managers.forEach((m) => {
     const row = document.createElement("div");
     row.className = "manager-admin-row";
+    const lastLoginText = m.lastLogin ? `Last login: ${escapeHtml(m.lastLogin)}` : "Never logged in";
     row.innerHTML = `
       <div class="manager-admin-info">
         <b>${escapeHtml(m.manager)}</b>
         <span class="muted">${escapeHtml(m.teamName || "")}</span>
+        <span class="manager-admin-stats">${lastLoginText} · ${m.loginCount || 0} logins · ${m.postCount || 0} posts · ${m.voteCount || 0} votes</span>
       </div>
       <input type="text" inputmode="numeric" maxlength="12" class="manager-admin-pin" value="${escapeHtml(m.pin || "")}">
       <button type="button" class="secondary-btn compact-btn manager-admin-save">Save</button>
