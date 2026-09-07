@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.36 - commish tab (create/close polls)
+  v0.5.37 - commish card polish + manager admin
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -9,6 +9,7 @@ const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
 const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "cookinFriedCard", "shitShowPreviewCard"];
+const COMMISH_CARD_IDS = ["commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -60,6 +61,7 @@ clearBtn.addEventListener("click", clearSaved);
 document.getElementById("logoutBtn").addEventListener("click", logout);
 document.getElementById("createPollBtn")?.addEventListener("click", createPoll_);
 document.getElementById("closePollBtn")?.addEventListener("click", closeActivePoll_);
+document.getElementById("addManagerBtn")?.addEventListener("click", addManager_);
 document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewThreadForm);
 document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
@@ -434,7 +436,10 @@ function renderApp() {
   renderThreads(data.trash || []);
   renderShitShowPreview_(data.trash || []);
   renderCommishNav_(data.activePoll || null);
+  renderClosedPolls_(data.closedPolls || []);
+  populateTeamSelect_();
   HOME_CARD_IDS.forEach(applyCardCollapseState_);
+  COMMISH_CARD_IDS.forEach((id) => applyCardCollapseState_(id, { defaultCollapsed: true }));
   loadEspnDashboard();
 }
 
@@ -455,6 +460,159 @@ function renderCommishNav_(activePoll) {
     activeBlock.classList.add("hidden");
     createBlock.classList.remove("hidden");
     questionEl.textContent = "";
+  }
+}
+
+function renderClosedPolls_(closedPolls) {
+  const block = document.getElementById("commishPastPollsBlock");
+  const list = document.getElementById("commishPastPollsList");
+  if (!block || !list) return;
+
+  if (!Array.isArray(closedPolls) || !closedPolls.length) {
+    block.classList.add("hidden");
+    list.innerHTML = "";
+    return;
+  }
+
+  block.classList.remove("hidden");
+  list.innerHTML = "";
+
+  closedPolls.forEach((poll) => {
+    const options = Array.isArray(poll.options) ? poll.options : [];
+    const total = options.reduce((sum, opt) => sum + (Number(opt.count) || 0), 0);
+
+    const details = document.createElement("details");
+    details.className = "past-poll-row";
+
+    const summary = document.createElement("summary");
+    summary.textContent = poll.question || "Poll";
+    details.appendChild(summary);
+
+    const resultsWrap = document.createElement("div");
+    resultsWrap.className = "past-poll-results";
+    options.forEach((opt) => {
+      const count = Number(opt.count) || 0;
+      const pct = total ? Math.round((count / total) * 100) : 0;
+      const row = document.createElement("div");
+      row.className = "past-poll-option";
+      row.innerHTML = `<span>${escapeHtml(opt.label || opt.value || "")}</span><span class="muted">${pct}% · ${count} vote${count === 1 ? "" : "s"}</span>`;
+      resultsWrap.appendChild(row);
+    });
+    details.appendChild(resultsWrap);
+
+    list.appendChild(details);
+  });
+}
+
+function populateTeamSelect_() {
+  const select = document.getElementById("newManagerTeamSelect");
+  if (!select) return;
+
+  const teams = Array.from(
+    new Set((state.appData?.managers || []).map((m) => m.teamName).filter(Boolean))
+  ).sort();
+
+  const current = select.value;
+  select.innerHTML = `<option value="">Select team...</option>` +
+    teams.map((t) => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join("");
+  if (teams.includes(current)) select.value = current;
+}
+
+async function loadManagersAdmin_() {
+  if (!isCommissioner_()) return;
+  const list = document.getElementById("commishManagersList");
+
+  try {
+    const res = await api("getManagersAdmin", { manager: state.manager, pin: state.pin });
+    state.managersAdmin = res.data || [];
+    renderCommishManagers_(state.managersAdmin);
+  } catch (err) {
+    if (list) list.innerHTML = `<p class="muted">Could not load manager info: ${escapeHtml(err.message || String(err))}</p>`;
+  }
+}
+
+function renderCommishManagers_(managers) {
+  const list = document.getElementById("commishManagersList");
+  if (!list) return;
+
+  if (!Array.isArray(managers) || !managers.length) {
+    list.innerHTML = `<p class="muted">No managers found.</p>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  managers.forEach((m) => {
+    const row = document.createElement("div");
+    row.className = "manager-admin-row";
+    row.innerHTML = `
+      <div class="manager-admin-info">
+        <b>${escapeHtml(m.manager)}</b>
+        <span class="muted">${escapeHtml(m.teamName || "")}</span>
+      </div>
+      <input type="text" inputmode="numeric" maxlength="12" class="manager-admin-pin" value="${escapeHtml(m.pin || "")}">
+      <button type="button" class="secondary-btn compact-btn manager-admin-save">Save</button>
+    `;
+
+    const input = row.querySelector(".manager-admin-pin");
+    const saveBtn = row.querySelector(".manager-admin-save");
+    saveBtn.addEventListener("click", () => saveManagerPin_(m.manager, input, saveBtn));
+    list.appendChild(row);
+  });
+}
+
+async function saveManagerPin_(targetManager, input, saveBtn) {
+  const newPin = input.value.trim();
+  if (!newPin) return;
+
+  const originalLabel = saveBtn.textContent;
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Saving...";
+
+  try {
+    await api("updateManagerPin", { manager: state.manager, pin: state.pin, targetManager, newPin });
+    saveBtn.textContent = "Saved";
+    setTimeout(() => {
+      saveBtn.textContent = originalLabel;
+    }, 1500);
+  } catch (err) {
+    window.alert("Could not update PIN: " + (err.message || err));
+    saveBtn.textContent = originalLabel;
+  } finally {
+    saveBtn.disabled = false;
+  }
+}
+
+async function addManager_() {
+  const teamSelect = document.getElementById("newManagerTeamSelect");
+  const nameInput = document.getElementById("newManagerNameInput");
+  const pinInput = document.getElementById("newManagerPinInput");
+  const status = document.getElementById("managerFormStatus");
+  const addBtn = document.getElementById("addManagerBtn");
+  if (!teamSelect || !nameInput || !pinInput) return;
+
+  const teamName = teamSelect.value;
+  const newManagerName = nameInput.value.trim();
+  const newPin = pinInput.value.trim();
+
+  if (!teamName || !newManagerName || !newPin) {
+    if (status) status.textContent = "Team, name, and PIN are all required.";
+    return;
+  }
+
+  if (addBtn) addBtn.disabled = true;
+  if (status) status.textContent = "Adding manager...";
+
+  try {
+    await api("addManager", { manager: state.manager, pin: state.pin, teamName, newManagerName, newPin });
+    nameInput.value = "";
+    pinInput.value = "";
+    if (status) status.textContent = "Manager added.";
+    await loadManagersAdmin_();
+    await refreshData(true);
+  } catch (err) {
+    if (status) status.textContent = "Could not add manager: " + (err.message || err);
+  } finally {
+    if (addBtn) addBtn.disabled = false;
   }
 }
 
@@ -1937,6 +2095,10 @@ function showTab(id) {
     markTrashSeen(state.appData?.trash || []);
     updateTrashUnreadBadge(state.appData?.trash || []);
     refreshData(true);
+  }
+
+  if (id === "commish") {
+    loadManagersAdmin_();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
