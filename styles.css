@@ -562,8 +562,15 @@ select:focus {
   outline-offset: 2px;
 }
 
-.card.collapsed .card-body {
+.card.collapsed .card-body,
+.card.collapsed .heat-check-block {
   display: none;
+}
+
+.heat-check-block {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,.08);
 }
 
 .league-business-card .card-head {
