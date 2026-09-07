@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.45 - flattened feed styling; Enter sends on desktop
+  v0.5.46 - heat check rework: new labels, two-line rows, new flat icons
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1073,24 +1073,31 @@ function computeWeeklyHighlights_(games) {
   return { top, bottom, blowout };
 }
 
+/**
+ * Weekly heat check icons. Flat, no outlines, two tones each, drawn inline so
+ * they inherit the palette through CSS variables instead of baked-in hex.
+ */
 const HEAT_ICONS = {
-  flame: `<svg class="heat-icon" viewBox="0 0 24 26" width="22" height="24" aria-hidden="true">
-    <path d="M13.4 1.2c.9 3.3-.6 5-2.3 6.6-2 1.9-4.6 3.5-4.6 7.4a7.6 7.6 0 0 0 15.2 0c0-2.6-1.1-4.6-2.4-6.2-.3 1.4-1.1 2.3-2.3 2.7 1-3.4-1.1-8.1-3.6-10.5Z" fill="var(--heat-hot)"/>
-    <path d="M4.9 9.4c-.6 1.9-1.6 2.7-1.6 4.6a3.4 3.4 0 0 0 3.6 3.4c-1.3-2.3-1.5-5.3-2-8Z" fill="var(--heat-hot)" fill-opacity=".6"/>
-    <path d="M12.6 12.9c1.3 1.7 2.1 2.7 2.1 4.3a2.9 2.9 0 1 1-5.8 0c0-1.8 2.1-2.7 3.7-4.3Z" fill="var(--heat-hot-2)"/>
+  // Highest score - flame, darker body with a brighter inner core.
+  flame: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+    <path d="M17.6 2.4c1.6 4.6.1 7.2-2.3 9.6-2.9 2.9-6.5 5.2-6.5 10.3a10.2 10.2 0 0 0 20.4 0c0-3.6-1.6-6.5-3.5-8.8-.3 1.9-1.4 3.2-3.1 3.8 1.5-4.8-1.6-11.4-5-14.9Z" fill="var(--heat-hot)"/>
+    <path d="M6.4 12.6c-1 2.7-2.4 4-2.4 6.7a5 5 0 0 0 5.3 5c-1.9-3.3-2.2-7.8-2.9-11.7Z" fill="var(--heat-hot)" fill-opacity=".45"/>
+    <path d="M17.2 17.9c1.9 2.5 3.1 4 3.1 6.3a4.3 4.3 0 0 1-8.6 0c0-2.6 3.1-4 5.5-6.3Z" fill="var(--heat-hot-2)"/>
   </svg>`,
-  toilet: `<svg class="heat-icon" viewBox="0 0 24 26" width="22" height="24" aria-hidden="true">
-    <rect x="2.4" y="2.2" width="7.6" height="9.4" rx="1.4" fill="var(--heat-cold)" fill-opacity=".55"/>
-    <path d="M9.2 10.4h11.4c.6 0 1 .5.9 1.1l-.5 2.6c-.5 2.6-2.6 4.5-5.2 4.5h-2.3c-2.6 0-4.7-1.9-5.2-4.5l-.5-2.6c-.1-.6.3-1.1.9-1.1Z" fill="var(--heat-cold)"/>
-    <ellipse cx="14.9" cy="12.3" rx="3.8" ry="1.4" fill="var(--panel)"/>
-    <path d="M12.6 18.6h4.6l1.5 4.8H11l1.6-4.8Z" fill="var(--heat-cold)" fill-opacity=".55"/>
+
+  // Lowest score - toilet in side profile: tank, bowl, water line, base.
+  toilet: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+    <rect x="3.2" y="3.6" width="9.4" height="12.2" rx="1.8" fill="var(--heat-cold)" fill-opacity=".45"/>
+    <rect x="4.8" y="6.2" width="6.2" height="1.6" rx=".8" fill="var(--heat-cold)" fill-opacity=".75"/>
+    <path d="M12.2 13.8h15.1c.8 0 1.4.7 1.2 1.5l-.7 3.5c-.7 3.5-3.5 6-7 6h-3c-3.5 0-6.3-2.5-7-6l-.7-3.5c-.2-.8.4-1.5 1.2-1.5Z" fill="var(--heat-cold)"/>
+    <ellipse cx="19.9" cy="16.3" rx="5.1" ry="1.9" fill="var(--panel)"/>
+    <path d="M16.6 24.8h6.2l2 4.8H14.6l2-4.8Z" fill="var(--heat-cold)" fill-opacity=".45"/>
   </svg>`,
-  helmet: `<svg class="heat-icon" viewBox="0 0 26 26" width="23" height="23" aria-hidden="true">
-    <path d="M4.4 6.1 8 3.4l4.2 2.4 3.8-2.1 1.2 3.4" fill="none"
-          stroke="var(--heat-pop)" stroke-width="1.8" stroke-linecap="round" stroke-opacity=".65"/>
-    <path d="M3.6 19.2c-.6-6.4 3-10.4 8.6-10.4s9.1 3.9 8.6 10.4H3.6Z" fill="var(--heat-pop)"/>
-    <path d="M6.2 19.2h13.6v2.1c0 .6-.5 1-1 1H7.2c-.6 0-1-.4-1-1v-2.1Z"
-          fill="var(--heat-pop)" fill-opacity=".55"/>
+
+  // Blowout - medical cross on a soft rounded field.
+  cross: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
+    <rect x="3" y="3" width="26" height="26" rx="7" fill="var(--heat-pop)" fill-opacity=".28"/>
+    <path d="M13.4 8.2h5.2a1 1 0 0 1 1 1v4.2h4.2a1 1 0 0 1 1 1v5.2a1 1 0 0 1-1 1h-4.2v4.2a1 1 0 0 1-1 1h-5.2a1 1 0 0 1-1-1v-4.2H8.2a1 1 0 0 1-1-1v-5.2a1 1 0 0 1 1-1h4.2V9.2a1 1 0 0 1 1-1Z" fill="var(--heat-pop)"/>
   </svg>`
 };
 
@@ -1107,22 +1114,29 @@ function renderCookinFried_(games, week) {
   const { top, bottom, blowout } = highlights;
 
   body.innerHTML = `
+    ${heatRow_(HEAT_ICONS.flame, "Big Dick Energy", top.teamName, formatScore_(top.score))}
+    ${heatRow_(HEAT_ICONS.toilet, "JV Performance", bottom.teamName, formatScore_(bottom.score))}
+    ${blowout
+      ? heatRow_(
+          HEAT_ICONS.cross,
+          "Someone Call HR",
+          `${blowout.winner} over ${blowout.loser}`,
+          `+${formatScore_(blowout.margin)}`
+        )
+      : ""}
+  `;
+}
+
+function heatRow_(icon, label, subject, value) {
+  return `
     <div class="heat-row">
-      ${HEAT_ICONS.flame}
-      <span class="heat-team">${escapeHtml(top.teamName)}</span>
-      <strong class="heat-value">${formatScore_(top.score)}</strong>
+      ${icon}
+      <div class="heat-text">
+        <span class="heat-label">${escapeHtml(label)}</span>
+        <span class="heat-team">${escapeHtml(subject)}</span>
+      </div>
+      <strong class="heat-value">${escapeHtml(value)}</strong>
     </div>
-    <div class="heat-row">
-      ${HEAT_ICONS.toilet}
-      <span class="heat-team">${escapeHtml(bottom.teamName)}</span>
-      <strong class="heat-value">${formatScore_(bottom.score)}</strong>
-    </div>
-    ${blowout ? `
-    <div class="heat-row">
-      ${HEAT_ICONS.helmet}
-      <span class="heat-team">${escapeHtml(blowout.winner)} over ${escapeHtml(blowout.loser)}</span>
-      <strong class="heat-value">+${formatScore_(blowout.margin)}</strong>
-    </div>` : ""}
   `;
 }
 
