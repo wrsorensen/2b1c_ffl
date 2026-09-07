@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.33 - card polish
+  v0.5.34 - polls + commissioner post hide
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -17,6 +17,7 @@ const state = {
   manager: localStorage.getItem("managerName") || "",
   pin: localStorage.getItem("managerPin") || "",
   teamName: localStorage.getItem("teamName") || "",
+  role: "",
   currentTab: "home",
   appData: readCachedAppData(),
   lastUpdatedAt: readCachedAppDataTime(),
@@ -163,6 +164,7 @@ async function login(isAutoLogin = false) {
       : null;
 
     state.teamName = cleanTeamName(bootstrapManager) || result.teamName || "";
+    state.role = result.role || "";
     state.pin = pin;
 
     localStorage.setItem("managerName", state.manager);
@@ -196,6 +198,7 @@ function clearSaved(showStatus = true) {
   state.manager = "";
   state.pin = "";
   state.teamName = "";
+  state.role = "";
   state.loggedIn = false;
   loginPinInput.value = "";
   setLoginBusy(false);
@@ -423,12 +426,17 @@ function renderApp() {
 
   updateLastUpdatedText();
   renderHome(settings);
+  renderCommissionerDesk_(data.activePoll || null);
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
   renderShitShowPreview_(data.trash || []);
   HOME_CARD_IDS.forEach(applyCardCollapseState_);
   loadEspnDashboard();
+}
+
+function isCommissioner_() {
+  return String(state.role || "").trim().toLowerCase() === "commissioner";
 }
 
 function cardCollapseKey_(cardId) {
@@ -495,6 +503,101 @@ function renderHome(settings) {
   }
 
   updateDraftCentralStatus_(draftDate, draftTime);
+}
+
+function pollVoteKey_(pollId) {
+  const managerKey = state.manager || "shared";
+  return `2b1cPollVote:${managerKey}:${pollId}`;
+}
+
+function getMyPollVote_(pollId) {
+  try {
+    return localStorage.getItem(pollVoteKey_(pollId)) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function setMyPollVote_(pollId, choice) {
+  try {
+    localStorage.setItem(pollVoteKey_(pollId), choice);
+  } catch (_) {
+    // Local vote memory is nice-to-have only.
+  }
+}
+
+function renderCommissionerDesk_(poll) {
+  const defaultBlock = document.getElementById("commissionerDeskDefault");
+  const pollBody = document.getElementById("pollBody");
+  const pollStatus = document.getElementById("pollStatus");
+  const titleEl = document.getElementById("commissionerDeskTitle");
+  const card = document.getElementById("commissionerDeskCard");
+  if (!defaultBlock || !pollBody || !pollStatus || !titleEl || !card) return;
+
+  if (!poll || !poll.id) {
+    defaultBlock.classList.remove("hidden");
+    pollBody.classList.add("hidden");
+    pollStatus.classList.add("hidden");
+    pollBody.innerHTML = "";
+    titleEl.textContent = "2026 Preseason Focus";
+    moveCommissionerDeskCard_(false);
+    return;
+  }
+
+  defaultBlock.classList.add("hidden");
+  pollBody.classList.remove("hidden");
+  pollStatus.classList.add("hidden");
+  titleEl.textContent = poll.question || "Manager Poll";
+
+  const myVote = getMyPollVote_(poll.id);
+  const options = Array.isArray(poll.options) ? poll.options : [];
+  const totalVotes = options.reduce((sum, opt) => sum + (Number(opt.count) || 0), 0);
+
+  pollBody.innerHTML = "";
+  options.forEach((opt) => {
+    const count = Number(opt.count) || 0;
+    const pct = totalVotes ? Math.round((count / totalVotes) * 100) : 0;
+    const picked = myVote && myVote === opt.value;
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "poll-option-btn" + (picked ? " picked" : "");
+    btn.innerHTML = `
+      <span class="poll-option-fill" style="width:${pct}%"></span>
+      <span class="poll-option-label">${escapeHtml(opt.label || opt.value || "")}</span>
+      <span class="poll-option-count">${pct}% · ${count} vote${count === 1 ? "" : "s"}</span>
+    `;
+    btn.addEventListener("click", () => castPollVote_(poll.id, opt.value));
+    pollBody.appendChild(btn);
+  });
+
+  moveCommissionerDeskCard_(true);
+}
+
+function moveCommissionerDeskCard_(toTop) {
+  const card = document.getElementById("commissionerDeskCard");
+  const grid = document.querySelector(".dashboard-grid");
+  if (!card || !grid || !grid.parentNode) return;
+
+  if (toTop) {
+    if (card.nextElementSibling === grid) return; // already at top
+    grid.parentNode.insertBefore(card, grid);
+  } else {
+    if (card.previousElementSibling === grid) return; // already in default spot
+    grid.parentNode.insertBefore(card, grid.nextSibling);
+  }
+}
+
+async function castPollVote_(pollId, choice) {
+  if (!pollId || !choice) return;
+
+  try {
+    await api("castPollVote", { manager: state.manager, pin: state.pin, pollId, choice });
+    setMyPollVote_(pollId, choice);
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not cast vote: " + (err.message || err));
+  }
 }
 
 function parseDraftDateTime_(dateStr, timeStr) {
@@ -1329,6 +1432,16 @@ function renderThreads(posts) {
         <span class="post-dash">—</span>
         <span class="post-message">${escapeHtml(post.message)}</span>
       `;
+
+      if (isCommissioner_() && post.id) {
+        const hideBtn = document.createElement("button");
+        hideBtn.type = "button";
+        hideBtn.className = "post-hide-btn";
+        hideBtn.textContent = "Hide";
+        hideBtn.addEventListener("click", () => confirmHideTrashPost_(post.id));
+        div.appendChild(hideBtn);
+      }
+
       body.appendChild(div);
     });
 
@@ -1347,6 +1460,22 @@ function renderThreads(posts) {
     card.appendChild(body);
     trashList.appendChild(card);
   });
+}
+
+function confirmHideTrashPost_(postId) {
+  if (!postId) return;
+  const confirmed = window.confirm("Hide this post? This can't be undone from the app.");
+  if (!confirmed) return;
+  hideTrashPost_(postId);
+}
+
+async function hideTrashPost_(postId) {
+  try {
+    await api("hideTrashPost", { manager: state.manager, pin: state.pin, id: postId });
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not hide post: " + (err.message || err));
+  }
 }
 
 function updateTrashUnreadBadge(posts) {
