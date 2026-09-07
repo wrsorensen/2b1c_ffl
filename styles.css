@@ -923,6 +923,13 @@ select:focus {
   font-size: .78rem;
 }
 
+.commish-active-question {
+  margin: 6px 0 12px;
+  color: var(--text-strong);
+  font-weight: 800;
+  font-size: .9rem;
+}
+
 .dues-amount {
   margin: 10px 0 5px;
   color: var(--gold-soft);
@@ -1693,8 +1700,7 @@ select:focus {
   right: 0;
   bottom: 0;
   z-index: 60;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  display: flex;
   gap: 4px;
   border-top: 1px solid rgba(255,255,255,.08);
   padding: 6px 7px max(6px, env(safe-area-inset-bottom));
@@ -1704,6 +1710,8 @@ select:focus {
 
 .bottom-nav button {
   position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   min-height: 52px;
   border: 0;
   border-radius: 13px;
