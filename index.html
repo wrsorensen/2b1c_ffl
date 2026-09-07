@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.35 hide fixes</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.36 commish tab</p>
     </section>
   </main>
 
@@ -167,7 +167,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.35</span>
+        <span class="home-version">v0.5.36</span>
       </section>
     </section>
 
@@ -234,6 +234,41 @@
       </section>
     </section>
 
+    <section id="commish" class="page">
+      <section class="card">
+        <span class="mini-label">Commissioner Only</span>
+        <h3>Manager Poll</h3>
+
+        <div id="commishActivePollBlock" class="hidden">
+          <p class="muted compact-note">An active poll is live on Home:</p>
+          <p id="commishActivePollQuestion" class="commish-active-question"></p>
+          <button class="secondary-btn compact-btn" id="closePollBtn" type="button">Close This Poll</button>
+        </div>
+
+        <div id="commishCreatePollBlock">
+          <label class="mini-label" for="pollQuestionInput">Question</label>
+          <input id="pollQuestionInput" type="text" maxlength="140" placeholder="Example: Move to 0.5 PPR for 2027?">
+
+          <label class="mini-label" for="pollOption1Input">Option 1</label>
+          <input id="pollOption1Input" type="text" maxlength="60" placeholder="Yes">
+
+          <label class="mini-label" for="pollOption2Input">Option 2</label>
+          <input id="pollOption2Input" type="text" maxlength="60" placeholder="No">
+
+          <label class="mini-label" for="pollOption3Input">Option 3 (optional)</label>
+          <input id="pollOption3Input" type="text" maxlength="60" placeholder="">
+
+          <label class="mini-label" for="pollOption4Input">Option 4 (optional)</label>
+          <input id="pollOption4Input" type="text" maxlength="60" placeholder="">
+
+          <div class="new-thread-actions">
+            <button class="primary-btn compact-btn" id="createPollBtn" type="button">Create Poll</button>
+          </div>
+          <p id="pollFormStatus" class="status-line"></p>
+        </div>
+      </section>
+    </section>
+
     <nav class="bottom-nav" aria-label="Primary">
       <button class="active" data-tab="home" type="button"><span>⌂</span>Home</button>
       <button data-tab="rules" type="button"><span>§</span>Rules</button>
@@ -246,6 +281,7 @@
         </span>
         Shit Show
       </button>
+      <button data-tab="commish" id="commishNavBtn" type="button" class="hidden"><span>⚑</span>Commish</button>
     </nav>
   </main>
 
