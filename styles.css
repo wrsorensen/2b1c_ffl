@@ -19,6 +19,10 @@
   --radius: 20px;
   --radius-sm: 14px;
   --tap: 52px;
+  --heat-hot: var(--gold);
+  --heat-hot-2: var(--gold-soft);
+  --heat-cold: var(--red);
+  --heat-pop: var(--blue);
 }
 
 * {
@@ -765,6 +769,19 @@ select:focus {
   font-size: .86rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.heat-icon {
+  display: block;
+  flex-shrink: 0;
+}
+
+.heat-value {
+  color: var(--text-strong);
+  font-weight: 800;
+  font-size: .86rem;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
