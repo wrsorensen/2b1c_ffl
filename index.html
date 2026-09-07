@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.42 Commish tab reorg</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.43 Shit Show feed</p>
     </section>
   </main>
 
@@ -129,7 +129,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.42</span>
+        <span class="home-version">v0.5.43</span>
       </section>
     </section>
 
@@ -161,39 +161,32 @@
       </section>
     </section>
 
-    <section id="trash" class="page">
-      <section class="card threads-card">
-        <div class="section-head">
-          <div>
-            <span class="mini-label">League Board</span>
-            <h3>The Shit Show</h3>
-            <p class="muted">Click a thread to open or close it.</p>
-          </div>
-          <button class="secondary-btn compact-btn" id="refreshTrashBtn" type="button">Refresh</button>
+    <section id="trash" class="page feed-page">
+      <div class="feed-head">
+        <div class="feed-head-title">
+          <span class="mini-label">League Board</span>
+          <h3>The Shit Show</h3>
         </div>
-        <div id="threadReplyNotice" class="reply-notice hidden"></div>
-        <div id="trashList" class="thread-list"></div>
-      </section>
+        <button class="secondary-btn compact-btn" id="refreshTrashBtn" type="button">Refresh</button>
+      </div>
 
-      <section class="add-trash-pill-wrap">
-        <button class="primary-btn add-trash-pill" id="openNewThreadBtn" type="button">Talk Some Shit</button>
+      <div id="feedPinned" class="feed-pinned hidden"></div>
 
-        <div id="newThreadForm" class="card add-trash-card hidden">
-          <h3>New Shit Talk Thread</h3>
+      <div id="feedScroll" class="feed-scroll">
+        <div id="feedList" class="feed-list"></div>
+      </div>
 
-          <label class="mini-label" for="threadTitleInput">Thread title / topic</label>
-          <input id="threadTitleInput" type="text" maxlength="80" placeholder="Example: Draft night, payouts, week 1 matchup">
-
-          <label class="mini-label" for="trashMessage">Message</label>
-          <textarea id="trashMessage" maxlength="500" placeholder="Start a new thread..."></textarea>
-
-          <div class="new-thread-actions">
-            <button class="primary-btn compact-btn" id="postTrashBtn" type="button">Post Thread</button>
-            <button class="secondary-btn compact-btn" id="cancelNewThreadBtn" type="button">Cancel</button>
-          </div>
-          <p id="trashStatus" class="status-line"></p>
+      <div class="feed-composer" id="feedComposer">
+        <div id="feedReplyChip" class="feed-reply-chip hidden">
+          <span id="feedReplyChipText" class="feed-reply-chip-text"></span>
+          <button class="feed-reply-chip-clear" id="feedReplyChipClear" type="button" aria-label="Cancel reply">&times;</button>
         </div>
-      </section>
+        <div class="feed-composer-row">
+          <textarea id="feedInput" rows="1" maxlength="500" placeholder="Talk your shit..."></textarea>
+          <button class="primary-btn feed-send-btn" id="feedSendBtn" type="button" aria-label="Send">Send</button>
+        </div>
+        <p id="feedStatus" class="status-line feed-status"></p>
+      </div>
     </section>
 
     <section id="commish" class="page">
