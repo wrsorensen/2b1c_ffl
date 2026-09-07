@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.42 - Draft Central + Commissioner Desk moved into Commish tab (commissioner-only)
+  v0.5.43 - Shit Show rebuilt as a single chronological feed; roster phone numbers + one-line rows
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -29,17 +29,16 @@ const state = {
   trashSeenKey: localStorage.getItem(TRASH_SEEN_KEY) || "",
   espnDashboardLoading: false,
   espnDashboardLoadedAt: null,
-  expandedThreads: new Set(),
   expandedRuleAreas: new Set(),
   ruleQuery: "",
   currentWeek: 1,
   rosterWeek: null,
   rosterByTeamId: null,
   rosterLoading: false,
-  activeReplyThreadId: "",
   isPostingTrash: false,
-  replyingToId: "",
-  replyingToTitle: ""
+  feedReplyToId: "",
+  feedUnreadCutKey: "",
+  expandedFeedMessages: new Set()
 };
 
 const loginScreen = document.getElementById("loginScreen");
@@ -49,7 +48,8 @@ const loginManagerSelect = document.getElementById("loginManagerSelect");
 const loginPinInput = document.getElementById("loginPinInput");
 const enterBtn = document.getElementById("enterBtn");
 const clearBtn = document.getElementById("clearBtn");
-const trashList = document.getElementById("trashList");
+const feedList = document.getElementById("feedList");
+const feedScroll = document.getElementById("feedScroll");
 
 const hasSavedLogin = Boolean(state.manager && state.pin);
 if (hasSavedLogin) {
@@ -62,10 +62,10 @@ document.getElementById("logoutBtn").addEventListener("click", logout);
 document.getElementById("createPollBtn")?.addEventListener("click", createPoll_);
 document.getElementById("closePollBtn")?.addEventListener("click", closeActivePoll_);
 document.getElementById("addManagerBtn")?.addEventListener("click", addManager_);
-document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewThreadForm);
-document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
-document.getElementById("postTrashBtn").addEventListener("click", postTrash);
+document.getElementById("feedSendBtn")?.addEventListener("click", sendFeedMessage);
+document.getElementById("feedReplyChipClear")?.addEventListener("click", clearFeedReply);
 document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
+setupFeedComposer_();
 document.getElementById("refreshHomeBtn")?.addEventListener("click", () => refreshData(false));
 document.getElementById("standingsRows")?.addEventListener("click", handleTeamRowClick_);
 document.getElementById("standingsRows")?.addEventListener("keydown", handleTeamRowKeydown_);
@@ -285,7 +285,7 @@ async function refreshData(silent = false) {
   if (!state.loggedIn || state.refreshDataLoading) return;
 
   state.refreshDataLoading = true;
-  const trashStatus = document.getElementById("trashStatus");
+  const trashStatus = document.getElementById("feedStatus");
   const lastUpdatedText = document.getElementById("lastUpdatedText");
   const shouldShowRefreshState = !silent;
 
@@ -433,7 +433,7 @@ function renderApp() {
   renderCommissionerDesk_(data.activePoll || null);
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
-  renderThreads(data.trash || []);
+  renderFeed(data.trash || []);
   renderShitShowPreview_(data.trash || []);
   renderCommishNav_(data.activePoll || null);
   renderClosedPolls_(data.closedPolls || []);
@@ -1554,6 +1554,7 @@ async function openRosterDrawer(teamId, teamName) {
           <span class="mini-label">Roster</span>
           <h3>${escapeHtml(teamName || "Team")}</h3>
         </div>
+        <div class="drawer-head-contacts">${renderTeamContacts_(teamName)}</div>
         <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="drawer-body" id="rosterDrawerBody">
@@ -1658,20 +1659,63 @@ function renderRosterGroup_(label, players) {
   `;
 }
 
+const INJURY_SHORTCODES = {
+  QUESTIONABLE: "Q",
+  DOUBTFUL: "D",
+  OUT: "O",
+  INJURY_RESERVE: "IR",
+  INJURED_RESERVE: "IR",
+  SUSPENSION: "SUS",
+  PROBABLE: "P"
+};
+
+function injuryShortcode_(status) {
+  const raw = String(status || "").trim().toUpperCase();
+  if (!raw || raw === "ACTIVE" || raw === "NORMAL") return "";
+  return INJURY_SHORTCODES[raw] || raw.slice(0, 2);
+}
+
 function renderRosterPlayerRow_(player) {
   const nflTeam = NFL_TEAM_ABBREV[player.proTeamId] || "";
-  const injury = player.injuryStatus && player.injuryStatus !== "ACTIVE" ? player.injuryStatus : "";
+  const injury = injuryShortcode_(player.injuryStatus);
 
   return `
     <div class="roster-player-row">
       <span class="roster-slot-tag">${escapeHtml(player.lineupSlot || "")}</span>
-      <div class="roster-player-info">
-        <strong>${escapeHtml(player.name || "Unknown")}</strong>
-        <small>${escapeHtml([nflTeam, player.defaultPosition].filter(Boolean).join(" - "))}</small>
-      </div>
+      <span class="roster-player-name">${escapeHtml(player.name || "Unknown")}</span>
+      <span class="roster-player-team">${escapeHtml(nflTeam)}</span>
       ${injury ? `<span class="roster-injury-tag">${escapeHtml(injury)}</span>` : ""}
     </div>
   `;
+}
+
+/**
+ * Managers on this team, with a tappable number when one is on file. The tel:
+ * protocol is never shown - just "Name · number".
+ */
+function renderTeamContacts_(teamName) {
+  const clean = String(teamName || "").trim().toLowerCase();
+  if (!clean) return "";
+
+  const managers = (state.appData?.managers || []).filter(
+    (m) => String(m.teamName || "").trim().toLowerCase() === clean
+  );
+
+  if (!managers.length) return "";
+
+  return managers
+    .map((m) => {
+      const name = escapeHtml(String(m.manager || "").trim());
+      const phone = String(m.phone || "").trim();
+      if (!name) return "";
+      if (!phone) return `<span class="team-contact">${name}</span>`;
+
+      return `<span class="team-contact">${name} · <a class="team-contact-phone" href="tel:${escapeHtml(
+        phone.replace(/[^\d+]/g, "")
+      )}">${escapeHtml(phone)}</a></span>`;
+    })
+    .filter(Boolean)
+    .join("");
 }
 
 function renderStandingRow(row) {
@@ -1689,100 +1733,277 @@ function renderStandingRow(row) {
 }
 
 
-function renderThreads(posts) {
-  trashList.innerHTML = "";
-  updateTrashUnreadBadge(posts);
+const FEED_TRUNCATE_AT = 180;
 
-  if (!posts.length) {
-    trashList.innerHTML = `<p class="muted">No trash yet. Start a thread below.</p>`;
+function renderFeed(posts) {
+  if (!feedList) return;
+
+  const wasAtBottom = isFeedAtBottom_();
+  updateTrashUnreadBadge(posts);
+  renderFeedPinned_(posts);
+
+  feedList.innerHTML = "";
+
+  const ordered = getFeedMessagesOldestFirst_(posts);
+  if (!ordered.length) {
+    feedList.innerHTML = `<p class="muted feed-empty">No trash yet. Be the first to talk shit.</p>`;
     return;
   }
 
-  const threads = buildThreads(posts);
+  const byId = new Map();
+  ordered.forEach((post) => {
+    if (post.id) byId.set(post.id, post);
+  });
 
-  threads.forEach((thread) => {
-    const isOpen = state.expandedThreads.has(thread.root.id);
-    const isReplying = state.activeReplyThreadId === thread.root.id;
+  // "N new since last visit" divider: the cut is frozen when the tab opens so
+  // the line does not jump around while reading.
+  const cutIndex = getFeedUnreadCutIndex_(ordered);
 
-    const card = document.createElement("div");
-    card.className = "thread-card" + (isOpen ? " open" : "");
-
-    const head = document.createElement("button");
-    head.className = "thread-head";
-    head.type = "button";
-    head.innerHTML = `
-      <span class="thread-title">${escapeHtml(thread.title)}</span>
-      <span class="thread-meta">${thread.posts.length} post${thread.posts.length === 1 ? "" : "s"} · Latest ${escapeHtml(thread.latestLabel)}</span>
-    `;
-    head.addEventListener("click", () => toggleThread(thread.root.id));
-
-    const body = document.createElement("div");
-    body.className = "thread-body compact-thread-body";
-
-    thread.posts.forEach((post) => {
-      const div = document.createElement("div");
-      const isReply = Boolean(post.parentId);
-      div.className = "thread-post compact-post" + (isReply ? " reply-post" : " root-post");
-      div.innerHTML = `
-        <b>${escapeHtml(displayPoster(post))}:</b>
-        <span class="post-time">${escapeHtml(post.timestamp || "")}</span>
-        <span class="post-dash">—</span>
-        <span class="post-message">${escapeHtml(post.message)}</span>
-      `;
-
-      if (isCommissioner_() && post.id) {
-        const hideBtn = document.createElement("button");
-        hideBtn.type = "button";
-        hideBtn.className = "post-hide-btn";
-        hideBtn.textContent = "Hide";
-        hideBtn.addEventListener("click", () => confirmHideTrashPost_(post.id));
-        div.appendChild(hideBtn);
-      }
-
-      body.appendChild(div);
-    });
-
-    if (isReplying) {
-      body.appendChild(buildInlineReplyBox(thread));
-    } else {
-      const replyButton = document.createElement("button");
-      replyButton.className = "secondary-btn compact-btn thread-reply-btn";
-      replyButton.type = "button";
-      replyButton.textContent = "Reply";
-      replyButton.addEventListener("click", () => startInlineReply(thread.root.id));
-      body.appendChild(replyButton);
+  ordered.forEach((post, index) => {
+    if (index === cutIndex) {
+      const unreadCount = ordered.length - cutIndex;
+      const divider = document.createElement("div");
+      divider.className = "feed-new-divider";
+      divider.innerHTML = `<span>${unreadCount} new since last visit</span>`;
+      feedList.appendChild(divider);
     }
 
-    card.appendChild(head);
-    card.appendChild(body);
-    trashList.appendChild(card);
+    feedList.appendChild(buildFeedRow_(post, byId));
   });
+
+  if (wasAtBottom) scrollFeedToBottom_(false);
+}
+
+function buildFeedRow_(post, byId) {
+  const row = document.createElement("div");
+  const isMine = String(post.manager || "").trim() === String(state.manager || "").trim();
+  row.className = "feed-row" + (isMine ? " mine" : "") + (post.pinned ? " pinned" : "");
+  if (post.id) row.dataset.messageId = post.id;
+
+  const message = String(post.message || "");
+  const isExpanded = state.expandedFeedMessages.has(post.id);
+  const needsTruncation = message.length > FEED_TRUNCATE_AT;
+  const shown = needsTruncation && !isExpanded ? message.slice(0, FEED_TRUNCATE_AT).trimEnd() + "…" : message;
+
+  const parent = post.parentId ? byId.get(post.parentId) : null;
+  const replyTag = parent
+    ? `<button class="feed-reply-tag" type="button" data-jump-to="${escapeHtml(parent.id)}">↩ replying to ${escapeHtml(displayPoster(parent))}</button>`
+    : "";
+
+  row.innerHTML = `
+    ${replyTag}
+    <div class="feed-row-main">
+      <span class="feed-avatar" aria-hidden="true">${escapeHtml(getInitials_(post))}</span>
+      <div class="feed-bubble">
+        <div class="feed-meta">
+          <b>${escapeHtml(displayPoster(post))}</b>
+          <span class="feed-time">${escapeHtml(post.timestamp || "")}</span>
+          ${post.pinned ? `<span class="feed-pin-tag">Pinned</span>` : ""}
+        </div>
+        <p class="feed-message">${escapeHtml(shown)}</p>
+        ${needsTruncation ? `<button class="feed-more-btn" type="button">${isExpanded ? "Show less" : "More"}</button>` : ""}
+      </div>
+    </div>
+  `;
+
+  const jumpBtn = row.querySelector(".feed-reply-tag");
+  if (jumpBtn) {
+    jumpBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      jumpToFeedMessage_(jumpBtn.dataset.jumpTo);
+    });
+  }
+
+  const moreBtn = row.querySelector(".feed-more-btn");
+  if (moreBtn) {
+    moreBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (state.expandedFeedMessages.has(post.id)) state.expandedFeedMessages.delete(post.id);
+      else state.expandedFeedMessages.add(post.id);
+      renderFeed(state.appData?.trash || []);
+    });
+  }
+
+  // Tapping the message itself starts a reply to it.
+  row.querySelector(".feed-bubble")?.addEventListener("click", () => startFeedReply_(post));
+
+  if (isCommissioner_() && post.id) {
+    const actions = document.createElement("div");
+    actions.className = "feed-admin-actions";
+
+    const pinBtn = document.createElement("button");
+    pinBtn.type = "button";
+    pinBtn.className = "feed-admin-btn";
+    pinBtn.textContent = post.pinned ? "Unpin" : "Pin";
+    pinBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      pinFeedPost_(post.id, !post.pinned);
+    });
+
+    const hideBtn = document.createElement("button");
+    hideBtn.type = "button";
+    hideBtn.className = "feed-admin-btn danger";
+    hideBtn.textContent = "Hide";
+    hideBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      confirmHideTrashPost_(post.id);
+    });
+
+    actions.appendChild(pinBtn);
+    actions.appendChild(hideBtn);
+    row.appendChild(actions);
+  }
+
+  return row;
+}
+
+function renderFeedPinned_(posts) {
+  const wrap = document.getElementById("feedPinned");
+  if (!wrap) return;
+
+  const pinned = (Array.isArray(posts) ? posts : []).filter((post) => post.pinned);
+  if (!pinned.length) {
+    wrap.classList.add("hidden");
+    wrap.innerHTML = "";
+    return;
+  }
+
+  wrap.classList.remove("hidden");
+  wrap.innerHTML = pinned
+    .map(
+      (post) => `
+        <button class="feed-pinned-item" type="button" data-jump-to="${escapeHtml(post.id)}">
+          <span class="feed-pin-icon" aria-hidden="true">📌</span>
+          <span class="feed-pinned-text"><b>${escapeHtml(displayPoster(post))}:</b> ${escapeHtml(post.message || "")}</span>
+        </button>
+      `
+    )
+    .join("");
+
+  wrap.querySelectorAll(".feed-pinned-item").forEach((item) => {
+    item.addEventListener("click", () => jumpToFeedMessage_(item.dataset.jumpTo));
+  });
+}
+
+function getFeedMessagesOldestFirst_(posts) {
+  return getTrashPostsNewestFirst_(posts).slice().reverse();
+}
+
+function getFeedUnreadCutIndex_(ordered) {
+  if (!state.feedUnreadCutKey) return -1;
+  const index = ordered.findIndex((post) => post._trashKey === state.feedUnreadCutKey);
+  // The cut sits directly after the last message that had already been seen.
+  if (index < 0 || index === ordered.length - 1) return -1;
+  return index + 1;
+}
+
+function jumpToFeedMessage_(messageId) {
+  if (!messageId) return;
+  const target = feedList?.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
+  if (!target) return;
+
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  target.classList.add("feed-row-flash");
+  setTimeout(() => target.classList.remove("feed-row-flash"), 1200);
+}
+
+function isFeedAtBottom_() {
+  if (!feedScroll) return true;
+  const slack = 80;
+  return feedScroll.scrollHeight - feedScroll.scrollTop - feedScroll.clientHeight < slack;
+}
+
+function scrollFeedToBottom_(smooth) {
+  if (!feedScroll) return;
+  feedScroll.scrollTo({ top: feedScroll.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+}
+
+function getInitials_(post) {
+  const source = String(post.manager || post.teamName || "?").trim();
+  if (!source) return "?";
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function startFeedReply_(post) {
+  if (!post || !post.id) return;
+
+  state.feedReplyToId = post.id;
+
+  const chip = document.getElementById("feedReplyChip");
+  const chipText = document.getElementById("feedReplyChipText");
+  if (chip && chipText) {
+    chipText.textContent = `↩ Replying to ${displayPoster(post)}`;
+    chip.classList.remove("hidden");
+  }
+
+  document.getElementById("feedInput")?.focus();
+}
+
+function clearFeedReply() {
+  state.feedReplyToId = "";
+  document.getElementById("feedReplyChip")?.classList.add("hidden");
+}
+
+function setupFeedComposer_() {
+  const input = document.getElementById("feedInput");
+  if (!input) return;
+
+  // Auto-grow from one line up to roughly four before it starts scrolling.
+  const grow = () => {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 108) + "px";
+  };
+
+  input.addEventListener("input", grow);
+  input.addEventListener("focus", () => {
+    // On mobile the keyboard opening shrinks the viewport; give it a beat and
+    // then make sure the newest message is still in view.
+    setTimeout(() => scrollFeedToBottom_(false), 250);
+  });
+}
+
+async function pinFeedPost_(postId, shouldPin) {
+  if (!postId) return;
+
+  try {
+    await api("pinTrashPost", {
+      manager: state.manager,
+      pin: state.pin,
+      id: postId,
+      pinned: shouldPin ? "TRUE" : "FALSE"
+    });
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not update pin: " + (err.message || err));
+    await refreshData(true);
+  }
 }
 
 function confirmHideTrashPost_(postId) {
   if (!postId) return;
-  const confirmed = window.confirm("Hide this post? This can't be undone from the app.");
+  const confirmed = window.confirm("Hide this message? This can't be undone from the app.");
   if (!confirmed) return;
   hideTrashPost_(postId);
 }
 
 async function hideTrashPost_(postId) {
-  // Optimistic UI: hide this post (and, if it's a thread root, its replies)
-  // immediately so the click feels instant, then reconcile with the server.
+  // Optimistic UI: drop this one message immediately so the tap feels instant,
+  // then reconcile with the server. Hide is per-message only - replies to a
+  // hidden message stay in the feed.
   const before = state.appData?.trash || [];
-  const target = before.find((p) => p.id === postId);
-  const isRoot = target && !target.parentId;
-  const optimistic = before.filter((p) => p.id !== postId && !(isRoot && p.parentId === postId));
+  const optimistic = before.filter((p) => p.id !== postId);
 
   if (state.appData) state.appData.trash = optimistic;
-  renderThreads(optimistic);
+  renderFeed(optimistic);
   renderShitShowPreview_(optimistic);
 
   try {
     await api("hideTrashPost", { manager: state.manager, pin: state.pin, id: postId });
     await refreshData(true);
   } catch (err) {
-    window.alert("Could not hide post: " + (err.message || err));
+    window.alert("Could not hide message: " + (err.message || err));
     await refreshData(true);
   }
 }
@@ -1850,113 +2071,6 @@ function getTrashPostsNewestFirst_(posts) {
     });
 }
 
-function buildInlineReplyBox(thread) {
-  const wrap = document.createElement("div");
-  wrap.className = "inline-reply-box";
-  wrap.innerHTML = `
-    <label class="mini-label" for="replyText_${escapeHtml(thread.root.id)}">Reply to ${escapeHtml(thread.title)}</label>
-    <textarea id="replyText_${escapeHtml(thread.root.id)}" maxlength="500" placeholder="Talk your shit..."></textarea>
-    <div class="inline-reply-actions">
-      <button class="primary-btn compact-btn post-reply-btn" type="button">Post Reply</button>
-      <button class="secondary-btn compact-btn cancel-reply-btn" type="button">Cancel</button>
-    </div>
-    <p class="inline-reply-status status-line"></p>
-  `;
-
-  const textarea = wrap.querySelector("textarea");
-  const postBtn = wrap.querySelector(".post-reply-btn");
-  const cancelBtn = wrap.querySelector(".cancel-reply-btn");
-  const status = wrap.querySelector(".inline-reply-status");
-
-  postBtn.addEventListener("click", () => postInlineReply(thread, textarea, postBtn, cancelBtn, status));
-  cancelBtn.addEventListener("click", () => {
-    state.activeReplyThreadId = "";
-    renderThreads(state.appData?.trash || []);
-  });
-
-  setTimeout(() => textarea.focus(), 0);
-  return wrap;
-}
-
-function startInlineReply(threadId) {
-  if (!threadId) return;
-  state.activeReplyThreadId = threadId;
-  state.expandedThreads.add(threadId);
-  renderThreads(state.appData?.trash || []);
-}
-
-async function postInlineReply(thread, textarea, postBtn, cancelBtn, status) {
-  const message = textarea.value.trim();
-
-  if (!message) {
-    status.textContent = "Type a reply first.";
-    return;
-  }
-
-  await submitTrashMessage({
-    message,
-    parentId: thread.root.id,
-    threadTitle: thread.title,
-    status,
-    buttons: [postBtn, cancelBtn],
-    postingLabel: "Posting reply..."
-  });
-
-  state.activeReplyThreadId = "";
-  state.expandedThreads.add(thread.root.id);
-}
-
-
-function buildThreads(posts) {
-  const decorated = posts.map((post, index) => ({
-    ...post,
-    _sourceIndex: index,
-    _timeValue: getPostTimeValue(post)
-  }));
-
-  const byId = new Map();
-  decorated.forEach((post) => {
-    if (post.id) byId.set(post.id, post);
-  });
-
-  const roots = [];
-  const repliesByParent = new Map();
-
-  decorated.forEach((post) => {
-    if (post.parentId && byId.has(post.parentId)) {
-      if (!repliesByParent.has(post.parentId)) repliesByParent.set(post.parentId, []);
-      repliesByParent.get(post.parentId).push(post);
-    } else {
-      roots.push(post);
-    }
-  });
-
-  const threads = roots.map((root) => {
-    const replies = repliesByParent.get(root.id) || [];
-    const threadPosts = [root, ...replies].sort(sortPostsOldestFirst);
-    const latestPost = threadPosts[threadPosts.length - 1] || root;
-    const title = root.threadTitle || root.message.slice(0, 60) || "Trash Thread";
-
-    return {
-      title,
-      root,
-      posts: threadPosts,
-      latestTime: latestPost._timeValue,
-      latestLabel: latestPost.timestamp || "recently"
-    };
-  });
-
-  return threads.sort((a, b) => {
-    if (a.latestTime !== b.latestTime) return b.latestTime - a.latestTime;
-    return String(b.root.id || "").localeCompare(String(a.root.id || ""));
-  });
-}
-
-function sortPostsOldestFirst(a, b) {
-  if (a._timeValue !== b._timeValue) return a._timeValue - b._timeValue;
-  return b._sourceIndex - a._sourceIndex;
-}
-
 function getPostTimeValue(post) {
   const raw = String(post.timestamp || "").trim();
   const parsed = raw ? Date.parse(raw) : NaN;
@@ -1964,47 +2078,6 @@ function getPostTimeValue(post) {
 
   // Fallback: backend currently returns newest first, so reverse the source index.
   return Number.MAX_SAFE_INTEGER - (post._sourceIndex || 0);
-}
-
-function toggleThread(threadId) {
-  if (!threadId) return;
-
-  if (state.expandedThreads.has(threadId)) {
-    state.expandedThreads.delete(threadId);
-  } else {
-    state.expandedThreads.add(threadId);
-  }
-
-  renderThreads(state.appData?.trash || []);
-}
-
-function openNewThreadForm() {
-  const form = document.getElementById("newThreadForm");
-  const openBtn = document.getElementById("openNewThreadBtn");
-  const textarea = document.getElementById("trashMessage");
-
-  if (!form || !openBtn) return;
-
-  form.classList.remove("hidden");
-  openBtn.classList.add("hidden");
-  setTimeout(() => textarea?.focus(), 0);
-}
-
-function closeNewThreadForm() {
-  const form = document.getElementById("newThreadForm");
-  const openBtn = document.getElementById("openNewThreadBtn");
-  const titleInput = document.getElementById("threadTitleInput");
-  const textarea = document.getElementById("trashMessage");
-  const status = document.getElementById("trashStatus");
-
-  if (!form || !openBtn) return;
-
-  form.classList.add("hidden");
-  openBtn.classList.remove("hidden");
-
-  if (titleInput) titleInput.value = "";
-  if (textarea) textarea.value = "";
-  if (status) status.textContent = "";
 }
 
 function setButtonBusy(buttons, isBusy, label) {
@@ -2022,36 +2095,40 @@ function setButtonBusy(buttons, isBusy, label) {
   });
 }
 
-async function postTrash() {
-  const titleInput = document.getElementById("threadTitleInput");
-  const textarea = document.getElementById("trashMessage");
-  const button = document.getElementById("postTrashBtn");
-  const status = document.getElementById("trashStatus");
-  const message = textarea.value.trim();
-  const threadTitle = titleInput.value.trim();
+async function sendFeedMessage() {
+  const input = document.getElementById("feedInput");
+  const button = document.getElementById("feedSendBtn");
+  const status = document.getElementById("feedStatus");
+  if (!input || !status) return;
 
+  const message = input.value.trim();
   if (!message) {
-    status.textContent = "Type a message first.";
+    status.textContent = "Type something first.";
     return;
   }
 
-  const response = await submitTrashMessage({
+  const parentId = state.feedReplyToId || "";
+  const sent = await submitTrashMessage({
     message,
-    parentId: "",
-    threadTitle,
+    parentId,
     status,
-    buttons: [button, document.getElementById("cancelNewThreadBtn")],
-    postingLabel: "Posting..."
+    buttons: [button],
+    postingLabel: "Sending..."
   });
 
-  if (response) {
-    textarea.value = "";
-    titleInput.value = "";
-    closeNewThreadForm();
+  if (sent) {
+    input.value = "";
+    input.style.height = "auto";
+    clearFeedReply();
+    // A message you just sent should never sit behind an unread divider.
+    markTrashSeen(state.appData?.trash || []);
+    state.feedUnreadCutKey = state.trashSeenKey;
+    renderFeed(state.appData?.trash || []);
+    scrollFeedToBottom_(true);
   }
 }
 
-async function submitTrashMessage({ message, parentId = "", threadTitle = "", status, buttons = [], postingLabel = "Posting..." }) {
+async function submitTrashMessage({ message, parentId = "", status, buttons = [], postingLabel = "Posting..." }) {
   if (state.isPostingTrash) return false;
 
   state.isPostingTrash = true;
@@ -2064,20 +2141,16 @@ async function submitTrashMessage({ message, parentId = "", threadTitle = "", st
       pin: state.pin,
       message,
       parentId,
-      threadTitle
+      threadTitle: ""
     });
 
-    status.textContent = "Posted. Refreshing...";
+    status.textContent = "Sent. Refreshing...";
     await refreshData(true);
-    status.textContent = "Posted.";
-
-    setTimeout(() => {
-      if (status.textContent === "Posted.") status.textContent = "";
-    }, 1400);
+    status.textContent = "";
 
     return true;
   } catch (error) {
-    status.textContent = "Post failed: " + error.message;
+    status.textContent = "Send failed: " + error.message;
     return false;
   } finally {
     state.isPostingTrash = false;
@@ -2123,8 +2196,14 @@ function showTab(id) {
   });
 
   if (id === "trash") {
+    // Freeze where the "new since last visit" line sits before marking
+    // everything read, so the divider stays put while reading.
+    state.feedUnreadCutKey = state.trashSeenKey;
     markTrashSeen(state.appData?.trash || []);
+    renderFeed(state.appData?.trash || []);
     updateTrashUnreadBadge(state.appData?.trash || []);
+    // Let the tab finish becoming visible before measuring scroll height.
+    setTimeout(() => scrollFeedToBottom_(false), 0);
     refreshData(true);
   }
 
