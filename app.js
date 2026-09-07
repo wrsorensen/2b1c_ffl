@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.35 - post hide fixes + faster feel
+  v0.5.36 - commish tab (create/close polls)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -58,6 +58,8 @@ if (hasSavedLogin) {
 enterBtn.addEventListener("click", () => login(false));
 clearBtn.addEventListener("click", clearSaved);
 document.getElementById("logoutBtn").addEventListener("click", logout);
+document.getElementById("createPollBtn")?.addEventListener("click", createPoll_);
+document.getElementById("closePollBtn")?.addEventListener("click", closeActivePoll_);
 document.getElementById("openNewThreadBtn")?.addEventListener("click", openNewThreadForm);
 document.getElementById("cancelNewThreadBtn")?.addEventListener("click", closeNewThreadForm);
 document.getElementById("postTrashBtn").addEventListener("click", postTrash);
@@ -431,8 +433,29 @@ function renderApp() {
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderThreads(data.trash || []);
   renderShitShowPreview_(data.trash || []);
+  renderCommishNav_(data.activePoll || null);
   HOME_CARD_IDS.forEach(applyCardCollapseState_);
   loadEspnDashboard();
+}
+
+function renderCommishNav_(activePoll) {
+  const navBtn = document.getElementById("commishNavBtn");
+  if (navBtn) navBtn.classList.toggle("hidden", !isCommissioner_());
+
+  const activeBlock = document.getElementById("commishActivePollBlock");
+  const createBlock = document.getElementById("commishCreatePollBlock");
+  const questionEl = document.getElementById("commishActivePollQuestion");
+  if (!activeBlock || !createBlock || !questionEl) return;
+
+  if (activePoll && activePoll.id) {
+    activeBlock.classList.remove("hidden");
+    createBlock.classList.add("hidden");
+    questionEl.textContent = activePoll.question || "";
+  } else {
+    activeBlock.classList.add("hidden");
+    createBlock.classList.remove("hidden");
+    questionEl.textContent = "";
+  }
 }
 
 function isCommissioner_() {
@@ -613,6 +636,75 @@ async function castPollVote_(pollId, choice) {
   } catch (err) {
     window.alert("Could not cast vote: " + (err.message || err));
     await refreshData(true);
+  }
+}
+
+async function createPoll_() {
+  const status = document.getElementById("pollFormStatus");
+  const questionInput = document.getElementById("pollQuestionInput");
+  const opt1Input = document.getElementById("pollOption1Input");
+  const opt2Input = document.getElementById("pollOption2Input");
+  const opt3Input = document.getElementById("pollOption3Input");
+  const opt4Input = document.getElementById("pollOption4Input");
+  const createBtn = document.getElementById("createPollBtn");
+  if (!questionInput || !opt1Input || !opt2Input) return;
+
+  const question = questionInput.value.trim();
+  const option1 = opt1Input.value.trim();
+  const option2 = opt2Input.value.trim();
+  const option3 = opt3Input.value.trim();
+  const option4 = opt4Input.value.trim();
+
+  if (!question || !option1 || !option2) {
+    if (status) status.textContent = "Question and at least 2 options are required.";
+    return;
+  }
+
+  if (createBtn) createBtn.disabled = true;
+  if (status) status.textContent = "Creating poll...";
+
+  try {
+    await api("createPoll", {
+      manager: state.manager,
+      pin: state.pin,
+      question,
+      option1,
+      option2,
+      option3,
+      option4
+    });
+
+    questionInput.value = "";
+    opt1Input.value = "";
+    opt2Input.value = "";
+    opt3Input.value = "";
+    opt4Input.value = "";
+    if (status) status.textContent = "Poll created and live on Home.";
+    await refreshData(true);
+  } catch (err) {
+    if (status) status.textContent = "Could not create poll: " + (err.message || err);
+  } finally {
+    if (createBtn) createBtn.disabled = false;
+  }
+}
+
+async function closeActivePoll_() {
+  const poll = state.appData?.activePoll;
+  if (!poll || !poll.id) return;
+
+  const confirmed = window.confirm("Close this poll? It will move off Home and stop accepting votes.");
+  if (!confirmed) return;
+
+  const closeBtn = document.getElementById("closePollBtn");
+  if (closeBtn) closeBtn.disabled = true;
+
+  try {
+    await api("closePoll", { manager: state.manager, pin: state.pin, pollId: poll.id });
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not close poll: " + (err.message || err));
+  } finally {
+    if (closeBtn) closeBtn.disabled = false;
   }
 }
 
