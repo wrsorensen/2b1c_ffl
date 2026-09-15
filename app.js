@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.49 - pin/unpin spinner: enforce minimum visible duration
+  v0.5.50 - roster drawer contact header: stacked name/phone, co-manager abbreviation
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1717,16 +1717,26 @@ function renderTeamContacts_(teamName) {
 
   if (!managers.length) return "";
 
+  // Co-managed teams get tight on space, so abbreviate to a first initial
+  // (Will -> W.) when there's more than one manager on the team.
+  const abbreviate = managers.length > 1;
+
   return managers
     .map((m) => {
-      const name = escapeHtml(String(m.manager || "").trim());
+      const rawName = String(m.manager || "").trim();
+      if (!rawName) return "";
+      const displayName = abbreviate ? `${rawName.charAt(0).toUpperCase()}.` : rawName;
+      const name = escapeHtml(displayName);
       const phone = String(m.phone || "").trim();
-      if (!name) return "";
-      if (!phone) return `<span class="team-contact">${name}</span>`;
 
-      return `<span class="team-contact">${name} · <a class="team-contact-phone" href="tel:${escapeHtml(
-        phone.replace(/[^\d+]/g, "")
-      )}">${escapeHtml(phone)}</a></span>`;
+      const phoneLine = phone
+        ? `<a class="team-contact-phone" href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ""))}">${escapeHtml(phone)}</a>`
+        : "";
+
+      return `<div class="team-contact">
+        <span class="team-contact-name">${name}</span>
+        ${phoneLine}
+      </div>`;
     })
     .filter(Boolean)
     .join("");
