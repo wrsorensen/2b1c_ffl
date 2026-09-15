@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.61 - Quote block wraps instead of stretching bubbles; PIN/HIDE anchored to its own bubble side
+  v1.0.0 - Go-live
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -104,6 +104,28 @@ document.getElementById("spotlightSelect")?.addEventListener("change", (event) =
 });
 
 document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
+
+// Stand-in opt-in button for OneSignal push notifications until the real
+// Commish notification-settings toggle is built. Hidden once permission has
+// already been granted or denied - a denied browser permission can't be
+// re-prompted from the page, only changed in the browser's own site settings.
+document.getElementById("enableNotifsBtn")?.addEventListener("click", () => {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal) => {
+    await OneSignal.slidedown.show();
+    updateNotifsButtonVisibility_();
+  });
+});
+
+function updateNotifsButtonVisibility_() {
+  const btn = document.getElementById("enableNotifsBtn");
+  if (!btn) return;
+  const supported = typeof Notification !== "undefined";
+  const permission = supported ? Notification.permission : "denied";
+  btn.classList.toggle("hidden", !supported || permission !== "default");
+}
+
+updateNotifsButtonVisibility_();
 
 loginPinInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") login();
