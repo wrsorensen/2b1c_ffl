@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.0.0 - Go-live
+  v1.0.2 - Fixed wrong OneSignal API method (Slidedown.promptPush, not slidedown.show)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -111,10 +111,12 @@ document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () =>
 // re-prompted from the page, only changed in the browser's own site settings.
 document.getElementById("enableNotifsBtn")?.addEventListener("click", () => {
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal) => {
-    await OneSignal.slidedown.show();
-    updateNotifsButtonVisibility_();
+  window.OneSignalDeferred.push((OneSignal) => {
+    OneSignal.Slidedown.promptPush({ force: true });
   });
+  // The slidedown prompt is async and has no return value to await here;
+  // just recheck visibility shortly after in case permission was granted.
+  setTimeout(updateNotifsButtonVisibility_, 1500);
 });
 
 function updateNotifsButtonVisibility_() {
