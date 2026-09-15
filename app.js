@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.51 - roster drawer: keep last names in co-manager abbreviation, remove "Roster" label
+  v0.5.52 - roster drawer header redesign: contacts moved full-width below team name, no more abbreviation
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1563,12 +1563,14 @@ async function openRosterDrawer(teamId, teamName) {
   drawer.innerHTML = `
     <section class="drawer-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(teamName)} roster">
       <div class="drawer-head">
-        <button class="ghost-btn drawer-back" type="button" aria-label="Back">&larr;</button>
-        <div class="drawer-head-title">
-          <h3>${escapeHtml(teamName || "Team")}</h3>
+        <div class="drawer-head-top">
+          <button class="ghost-btn drawer-back" type="button" aria-label="Back">&larr;</button>
+          <div class="drawer-head-title">
+            <h3>${escapeHtml(teamName || "Team")}</h3>
+          </div>
+          <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="drawer-head-contacts">${renderTeamContacts_(teamName)}</div>
-        <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="drawer-body" id="rosterDrawerBody">
         <p class="muted">Loading roster...</p>
@@ -1706,13 +1708,6 @@ function renderRosterPlayerRow_(player) {
  * Managers on this team, with a tappable number when one is on file. The tel:
  * protocol is never shown - just "Name · number".
  */
-function abbreviateManagerName_(fullName) {
-  const parts = fullName.split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return fullName;
-  const [first, ...rest] = parts;
-  return `${first.charAt(0).toUpperCase()}. ${rest.join(" ")}`;
-}
-
 function renderTeamContacts_(teamName) {
   const clean = String(teamName || "").trim().toLowerCase();
   if (!clean) return "";
@@ -1723,27 +1718,21 @@ function renderTeamContacts_(teamName) {
 
   if (!managers.length) return "";
 
-  // Co-managed teams get tight on space, so abbreviate the first name to an
-  // initial (Will Sorensen -> W. Sorensen) when there's more than one
-  // manager on the team. Last name always stays.
-  const abbreviate = managers.length > 1;
-
+  // Contacts now run full-width below the team name instead of being
+  // squeezed into the top-right corner, so full names fit fine - no more
+  // abbreviating to an initial.
   return managers
     .map((m) => {
       const rawName = String(m.manager || "").trim();
       if (!rawName) return "";
-      const displayName = abbreviate ? abbreviateManagerName_(rawName) : rawName;
-      const name = escapeHtml(displayName);
+      const name = escapeHtml(rawName);
       const phone = String(m.phone || "").trim();
 
-      const phoneLine = phone
-        ? `<a class="team-contact-phone" href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ""))}">${escapeHtml(phone)}</a>`
+      const phonePart = phone
+        ? ` <span class="team-contact-sep">&middot;</span> <a class="team-contact-phone" href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ""))}">${escapeHtml(phone)}</a>`
         : "";
 
-      return `<div class="team-contact">
-        <span class="team-contact-name">${name}</span>
-        ${phoneLine}
-      </div>`;
+      return `<div class="team-contact"><span class="team-contact-name">${name}</span>${phonePart}</div>`;
     })
     .filter(Boolean)
     .join("");
