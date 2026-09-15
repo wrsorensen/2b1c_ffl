@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.54 - scoreboard week picker: view any week's matchups
+  v0.5.56 - roster drawer close button switched to top-right X for consistency
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1060,12 +1060,23 @@ function scoreboardWeekLabel_(week) {
   return week === state.liveWeek ? `Week ${week}` : `Week ${week} · Viewing`;
 }
 
+// Sets the Scoreboard pill's text for a given week, adding a small green dot
+// when it's the live week - a visual anchor so it's obvious you're on the
+// current week even without reading "Viewing" on the others.
+function setScoreboardWeekStatus_(week) {
+  const status = document.getElementById("scoreboardStatus");
+  if (!status) return;
+  const dot = week === state.liveWeek ? '<span class="status-chip-live-dot" aria-hidden="true"></span>' : "";
+  status.innerHTML = `${dot}${escapeHtml(scoreboardWeekLabel_(week))}`;
+  status.classList.toggle("neutral", false);
+}
+
 function renderEspnScoreboard(games, week) {
   const body = document.getElementById("scoreboardBody");
   if (!body) return;
 
   if (!games.length) {
-    setScoreboardStatus(scoreboardWeekLabel_(week), true);
+    setScoreboardWeekStatus_(week);
     body.innerHTML = `
       <p class="big-placeholder">No Week ${week} scoreboard yet.</p>
       <p class="muted">ESPN is connected. Matchups will fill once the schedule has games.</p>
@@ -1073,7 +1084,7 @@ function renderEspnScoreboard(games, week) {
     return;
   }
 
-  setScoreboardStatus(scoreboardWeekLabel_(week), true);
+  setScoreboardWeekStatus_(week);
   body.innerHTML = `
     <div class="scoreboard-list">
       ${games.map(renderScoreboardGame).join("")}
@@ -1132,6 +1143,11 @@ function computeWeeklyHighlights_(games) {
 
   if (!teamScores.length) return null;
 
+  // Nothing has actually scored yet (current week before kickoff, or a
+  // future week) - don't crown a "leader" out of a bunch of 0.0s.
+  const anyScoring = teamScores.some((t) => t.score > 0);
+  if (!anyScoring) return null;
+
   const top = teamScores.reduce((best, t) => (t.score > best.score ? t : best), teamScores[0]);
   const bottom = teamScores.reduce((worst, t) => (t.score < worst.score ? t : worst), teamScores[0]);
 
@@ -1186,7 +1202,8 @@ function renderCookinFried_(games, week) {
 
   const highlights = computeWeeklyHighlights_(games);
   if (!highlights) {
-    body.innerHTML = `<p class="muted">No Week ${week} scores yet.</p>`;
+    const message = week > state.liveWeek ? "Week hasn't started yet." : "No scores yet.";
+    body.innerHTML = `<p class="muted">${message}</p>`;
     return;
   }
 
@@ -1643,10 +1660,10 @@ async function openRosterDrawer(teamId, teamName) {
     <section class="drawer-panel" role="dialog" aria-modal="true" aria-label="${escapeHtml(teamName)} roster">
       <div class="drawer-head">
         <div class="drawer-head-top">
-          <button class="ghost-btn drawer-back" type="button" aria-label="Back">&larr;</button>
           <div class="drawer-head-title">
             <h3>${escapeHtml(teamName || "Team")}</h3>
           </div>
+          <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="drawer-head-contacts">${renderTeamContacts_(teamName)}</div>
       </div>
@@ -1661,7 +1678,7 @@ async function openRosterDrawer(teamId, teamName) {
   });
 
   document.body.appendChild(drawer);
-  drawer.querySelector(".drawer-back").addEventListener("click", closeRosterDrawer);
+  drawer.querySelector(".drawer-close").addEventListener("click", closeRosterDrawer);
 
   try {
     const rosterMap = await ensureRosterData_(state.currentWeek || 1);
