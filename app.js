@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.46 - heat check rework: new labels, two-line rows, new flat icons
+  v0.5.47 - live scoring fix: Home tab auto-refresh, live score field for in-progress weeks
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -89,11 +89,11 @@ loginPinInput.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("focus", () => {
-  if (state.loggedIn && state.currentTab === "trash") refreshData(true);
+  if (state.loggedIn && (state.currentTab === "trash" || state.currentTab === "home")) refreshData(true);
 });
 
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden && state.loggedIn && state.currentTab === "trash") refreshData(true);
+  if (!document.hidden && state.loggedIn && (state.currentTab === "trash" || state.currentTab === "home")) refreshData(true);
 });
 
 init();
@@ -2317,7 +2317,7 @@ function startAutoRefresh() {
   if (state.trashTimer) return;
 
   state.trashTimer = setInterval(() => {
-    if (state.loggedIn && state.currentTab === "trash") {
+    if (state.loggedIn && (state.currentTab === "trash" || state.currentTab === "home")) {
       refreshData(true);
     }
   }, AUTO_REFRESH_MS);
