@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.47 - live scoring fix: Home tab auto-refresh, live score field for in-progress weeks
+  v0.5.48 - Shit Show pin/unpin loading spinner
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1896,7 +1896,17 @@ function buildFeedRow_(post, byId) {
     pinBtn.textContent = post.pinned ? "Unpin" : "Pin";
     pinBtn.addEventListener("click", (event) => {
       event.stopPropagation();
-      pinFeedPost_(post.id, !post.pinned);
+      if (pinBtn.disabled) return;
+      pinBtn.disabled = true;
+      pinBtn.classList.add("is-loading");
+      pinFeedPost_(post.id, !post.pinned).finally(() => {
+        // On success this button gets replaced by a fresh render anyway;
+        // this only matters if it's still on screen (e.g. after an error).
+        if (document.body.contains(pinBtn)) {
+          pinBtn.disabled = false;
+          pinBtn.classList.remove("is-loading");
+        }
+      });
     });
 
     const hideBtn = document.createElement("button");
