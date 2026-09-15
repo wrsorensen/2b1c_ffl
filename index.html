@@ -12,6 +12,20 @@
   <link rel="icon" type="image/png" href="assets/2b1c-ffl-favicon-primary.png">
   <link rel="apple-touch-icon" href="assets/2b1c-ffl-app-icon-primary.png">
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    OneSignalDeferred.push(async function (OneSignal) {
+      // App is served from a subfolder (github.io/2B1C_ffl), not the domain
+      // root, so the service worker file + its scope are pointed at that
+      // subfolder explicitly rather than relying on OneSignal's root defaults.
+      await OneSignal.init({
+        appId: "9ce1ef7d-f0cd-4b6a-b6ec-3c25e4fb31cb",
+        serviceWorkerPath: "OneSignalSDKWorker.js",
+        serviceWorkerParam: { scope: "/2B1C_ffl/" }
+      });
+    });
+  </script>
 </head>
 <body>
   <div class="app-bg" aria-hidden="true"></div>
@@ -39,7 +53,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.61 bubble sizing</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.0.0 — Go-live</p>
     </section>
   </main>
 
@@ -75,6 +89,8 @@
           <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
         </div>
       </section>
+
+      <button type="button" id="enableNotifsBtn" class="secondary-btn compact-btn enable-notifs-btn hidden">🔔 Enable Notifications</button>
 
       <button type="button" id="shitShowUnreadBanner" class="shitshow-unread-banner hidden" aria-label="View new Shit Show posts">
         <span id="shitShowUnreadBannerText"></span>
@@ -134,7 +150,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.61</span>
+        <span class="home-version">v1.0.0</span>
       </section>
     </section>
 
