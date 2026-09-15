@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.57 - Dashboard Spotlight: commissioner can feature Draft Central or Commissioner Desk on Home
+  v0.5.58 - Shit Show unread banner on Home + message reactions (fixed emoji set, tap to see reactors)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -95,6 +95,8 @@ document.getElementById("scoreboardStatus")?.addEventListener("click", (event) =
 document.getElementById("spotlightSelect")?.addEventListener("change", (event) => {
   setSpotlightCard_(event.target.value);
 });
+
+document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
 
 loginPinInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") login();
@@ -449,6 +451,7 @@ function renderApp() {
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderFeed(data.trash || []);
   renderShitShowPreview_(data.trash || []);
+  renderShitShowUnreadBanner_(data.trash || []);
   renderCommishNav_(data.activePoll || null);
   renderClosedPolls_(data.closedPolls || []);
   populateTeamSelect_();
@@ -1280,6 +1283,23 @@ function renderShitShowPreview_(posts) {
   `;
 }
 
+function renderShitShowUnreadBanner_(posts) {
+  const banner = document.getElementById("shitShowUnreadBanner");
+  const text = document.getElementById("shitShowUnreadBannerText");
+  if (!banner || !text) return;
+
+  const ordered = getTrashPostsNewestFirst_(posts || []);
+  const count = countUnreadTrashPosts_(ordered);
+
+  if (!count) {
+    banner.classList.add("hidden");
+    return;
+  }
+
+  text.textContent = count === 1 ? "1 new post in Shit Show" : `${count} new posts in Shit Show`;
+  banner.classList.remove("hidden");
+}
+
 function setScoreboardStatus(text, isLive) {
   const status = document.getElementById("scoreboardStatus");
   if (!status) return;
@@ -1893,6 +1913,8 @@ function renderStandingRow(row) {
 
 
 const FEED_TRUNCATE_AT = 180;
+// Fixed set on purpose - matches the backend's allowlist (Code.gs REACTION_EMOJIS).
+const REACTION_EMOJIS = ["🔥", "💀", "😂", "👍", "🤡"];
 const FEED_QUOTE_TRUNCATE_AT = 90;
 
 function truncateForQuote_(text) {
@@ -1967,6 +1989,77 @@ function renderFeed(posts) {
   if (wasAtBottom) scrollFeedToBottom_(false);
 }
 
+function buildReactionsBar_(post) {
+  const mine = String(state.manager || "").trim();
+  const reactions = Array.isArray(post.reactions) ? post.reactions : [];
+
+  const chips = reactions
+    .filter((r) => Array.isArray(r.reactors) && r.reactors.length)
+    .map((r) => {
+      const isMine = r.reactors.indexOf(mine) !== -1;
+      const reactorNames = r.reactors.join(", ");
+      return `<button type="button" class="feed-reaction-chip${isMine ? " mine" : ""}" data-emoji="${escapeHtml(r.emoji)}">
+        <span class="feed-reaction-emoji">${escapeHtml(r.emoji)}</span>
+        <span class="feed-reaction-count" data-reactors="${escapeHtml(reactorNames)}">${r.reactors.length}</span>
+      </button>`;
+    })
+    .join("");
+
+  const palette = REACTION_EMOJIS
+    .map((emoji) => `<button type="button" class="feed-reaction-palette-btn" data-emoji="${escapeHtml(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
+
+  return `
+    <div class="feed-reactions">
+      ${chips}
+      <button type="button" class="feed-reaction-add" aria-label="Add reaction">+</button>
+      <div class="feed-reaction-palette hidden">${palette}</div>
+    </div>
+  `;
+}
+
+function wireReactionsBar_(row, post) {
+  const bar = row.querySelector(".feed-reactions");
+  if (!bar) return;
+
+  bar.addEventListener("click", (event) => event.stopPropagation());
+
+  bar.querySelectorAll(".feed-reaction-chip").forEach((chip) => {
+    const countEl = chip.querySelector(".feed-reaction-count");
+    countEl?.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const names = countEl.dataset.reactors || "";
+      if (names) window.alert(`${chip.dataset.emoji} ${names}`);
+    });
+
+    chip.addEventListener("click", (event) => {
+      if (event.target === countEl) return;
+      toggleFeedReaction_(post.id, chip.dataset.emoji);
+    });
+  });
+
+  const addBtn = bar.querySelector(".feed-reaction-add");
+  const palette = bar.querySelector(".feed-reaction-palette");
+  addBtn?.addEventListener("click", () => palette?.classList.toggle("hidden"));
+
+  palette?.querySelectorAll(".feed-reaction-palette-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      palette.classList.add("hidden");
+      toggleFeedReaction_(post.id, btn.dataset.emoji);
+    });
+  });
+}
+
+async function toggleFeedReaction_(postId, emoji) {
+  if (!postId || !emoji) return;
+  try {
+    await api("toggleReaction", { manager: state.manager, pin: state.pin, postId, emoji });
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not react: " + (err.message || err));
+  }
+}
+
 function buildFeedRow_(post, byId) {
   const row = document.createElement("div");
   const isMine = String(post.manager || "").trim() === String(state.manager || "").trim();
@@ -2004,6 +2097,7 @@ function buildFeedRow_(post, byId) {
         ${quoteBlock}
         <p class="feed-message">${escapeHtml(shown)}</p>
         ${needsTruncation ? `<button class="feed-more-btn" type="button">${isExpanded ? "Show less" : "More"}</button>` : ""}
+        ${post.id && !post._pending ? buildReactionsBar_(post) : ""}
       </div>
     </div>
   `;
@@ -2028,6 +2122,8 @@ function buildFeedRow_(post, byId) {
 
   // Tapping the message itself starts a reply to it.
   row.querySelector(".feed-bubble")?.addEventListener("click", () => startFeedReply_(post));
+
+  wireReactionsBar_(row, post);
 
   // A message still in flight has no real id yet, so it cannot be pinned,
   // hidden, or replied to until the server confirms it.
