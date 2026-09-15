@@ -730,6 +730,13 @@ select:focus {
   gap: 11px;
 }
 
+/* Temporary opt-in trigger until the real Commish notification toggle
+   replaces it. */
+.enable-notifs-btn {
+  width: 100%;
+  margin: 10px 0 0;
+}
+
 .shitshow-unread-banner {
   display: flex;
   align-items: center;
