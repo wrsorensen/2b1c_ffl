@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.59 - Reaction emoji list from Settings; long-press/right-click to react
+  v0.5.60 - Fixed mobile long-press reaction picker; Shit Show now true left/right chat bubbles
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -2138,15 +2138,21 @@ function openReactionPalette_(bubble, post) {
     });
   });
 
-  // Close on the next tap/click anywhere else.
-  setTimeout(() => {
-    document.addEventListener("click", closeReactionPalette_, { once: true });
-    document.addEventListener("touchstart", closeReactionPalette_, { once: true, passive: true });
-  }, 0);
+  // Close on the next tap/click that lands outside the palette. Checking
+  // containment (rather than closing on the very next touch/click, once)
+  // avoids swallowing the tap on one of the palette's own emoji buttons.
+  document.addEventListener("click", handleOutsideReactionPaletteClick_, true);
+}
+
+function handleOutsideReactionPaletteClick_(event) {
+  if (!state.openReactionPalette) return;
+  if (state.openReactionPalette.contains(event.target)) return;
+  closeReactionPalette_();
 }
 
 function closeReactionPalette_() {
   if (state.openReactionPalette) {
+    document.removeEventListener("click", handleOutsideReactionPaletteClick_, true);
     state.openReactionPalette.remove();
     state.openReactionPalette = null;
   }
