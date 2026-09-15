@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.0.3 — notification fix</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.1.0 — push notifications live</p>
     </section>
   </main>
 
@@ -72,7 +72,10 @@
           <div id="managerLine" class="brand-sub">League data connected</div>
         </div>
       </div>
-      <button class="ghost-btn" id="logoutBtn" type="button">Logout</button>
+      <div class="topbar-actions">
+        <button class="ghost-btn icon-btn" id="notifSettingsBtn" type="button" aria-label="Notification settings" title="Notification settings">⚙</button>
+        <button class="ghost-btn" id="logoutBtn" type="button">Logout</button>
+      </div>
     </header>
 
     <section id="home" class="page active">
@@ -94,8 +97,6 @@
           <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
         </div>
       </section>
-
-      <button type="button" id="enableNotifsBtn" class="secondary-btn compact-btn enable-notifs-btn hidden">🔔 Enable Notifications</button>
 
       <button type="button" id="shitShowUnreadBanner" class="shitshow-unread-banner hidden" aria-label="View new Shit Show posts">
         <span id="shitShowUnreadBannerText"></span>
@@ -155,7 +156,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.0.3</span>
+        <span class="home-version">v1.1.0</span>
       </section>
     </section>
 
@@ -260,6 +261,29 @@
             <div><span>Location</span><strong id="draftLocationText">TBD</strong></div>
           </div>
           <p id="draftSettingsNote" class="muted compact-note">Snake draft · syncing ESPN draft settings...</p>
+        </div>
+      </article>
+
+      <article class="card" id="commishAnnounceCard">
+        <div class="card-head card-head-toggle" data-card-id="commishAnnounceCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Send Announcement">
+          <div>
+            <span class="mini-label">Commissioner Only</span>
+            <h3>Send Announcement</h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="muted compact-note">Pushes a notification to every subscribed manager. Doesn't post to the Shit Show feed.</p>
+
+          <label class="mini-label" for="announceTitleInput">Title</label>
+          <input id="announceTitleInput" type="text" maxlength="60" placeholder="Example: Waivers lock tonight">
+
+          <label class="mini-label" for="announceMessageInput">Message</label>
+          <textarea id="announceMessageInput" maxlength="200" rows="3" placeholder="Keep it short - this shows in a phone notification."></textarea>
+
+          <div class="new-thread-actions">
+            <button class="primary-btn compact-btn" id="sendAnnounceBtn" type="button">Send Announcement</button>
+          </div>
+          <p id="announceFormStatus" class="status-line"></p>
         </div>
       </article>
 
