@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.48 - Shit Show pin/unpin loading spinner
+  v0.5.49 - pin/unpin spinner: enforce minimum visible duration
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -2054,6 +2054,10 @@ function setupFeedComposer_() {
 
 async function pinFeedPost_(postId, shouldPin) {
   if (!postId) return;
+  // A same-region round trip can finish in well under 200ms, too fast for
+  // the loading spinner to actually register - hold the spinner up for a
+  // minimum stretch so the click always reads as "doing something."
+  const startedAt = Date.now();
 
   try {
     await api("pinTrashPost", {
@@ -2062,11 +2066,18 @@ async function pinFeedPost_(postId, shouldPin) {
       id: postId,
       pinned: shouldPin ? "TRUE" : "FALSE"
     });
+    await waitOutMinDelay_(startedAt, 350);
     await refreshData(true);
   } catch (err) {
+    await waitOutMinDelay_(startedAt, 350);
     window.alert("Could not update pin: " + (err.message || err));
     await refreshData(true);
   }
+}
+
+function waitOutMinDelay_(startedAt, minMs) {
+  const remaining = minMs - (Date.now() - startedAt);
+  return remaining > 0 ? new Promise((resolve) => setTimeout(resolve, remaining)) : Promise.resolve();
 }
 
 function confirmHideTrashPost_(postId) {
