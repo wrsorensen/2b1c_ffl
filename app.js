@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.58 - Shit Show unread banner on Home + message reactions (fixed emoji set, tap to see reactors)
+  v0.5.59 - Reaction emoji list from Settings; long-press/right-click to react
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -12,6 +12,11 @@ const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "shitShowPreviewCard"]
 const COMMISH_CARD_IDS = ["commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
+
+// Fallback only - the real list comes from Settings (key "reactionEmojis") so
+// Will can edit it without a code push. Kept in sync with Code.gs's default.
+const DEFAULT_REACTION_EMOJIS = ["🔥", "💀", "😂", "👍", "🤡", "👎", "😲", "😘", "🤑", "💩"];
+const LONG_PRESS_MS = 450;
 
 const state = {
   loggedIn: false,
@@ -41,7 +46,9 @@ const state = {
   isPostingTrash: false,
   feedReplyToId: "",
   feedUnreadCutKey: "",
-  expandedFeedMessages: new Set()
+  expandedFeedMessages: new Set(),
+  reactionEmojis: DEFAULT_REACTION_EMOJIS,
+  openReactionPalette: null
 };
 
 const loginScreen = document.getElementById("loginScreen");
@@ -441,6 +448,9 @@ function renderApp() {
   document.getElementById("managerLine").textContent = state.manager
     ? `Manager: ${state.manager}`
     : "League data connected";
+
+  const emojiList = Array.isArray(settings.reactionEmojis) ? settings.reactionEmojis : null;
+  state.reactionEmojis = emojiList && emojiList.length ? emojiList : DEFAULT_REACTION_EMOJIS;
 
   updateLastUpdatedText();
   renderHome(settings);
@@ -1913,8 +1923,6 @@ function renderStandingRow(row) {
 
 
 const FEED_TRUNCATE_AT = 180;
-// Fixed set on purpose - matches the backend's allowlist (Code.gs REACTION_EMOJIS).
-const REACTION_EMOJIS = ["🔥", "💀", "😂", "👍", "🤡"];
 const FEED_QUOTE_TRUNCATE_AT = 90;
 
 function truncateForQuote_(text) {
@@ -2005,17 +2013,9 @@ function buildReactionsBar_(post) {
     })
     .join("");
 
-  const palette = REACTION_EMOJIS
-    .map((emoji) => `<button type="button" class="feed-reaction-palette-btn" data-emoji="${escapeHtml(emoji)}">${escapeHtml(emoji)}</button>`)
-    .join("");
+  if (!chips) return "";
 
-  return `
-    <div class="feed-reactions">
-      ${chips}
-      <button type="button" class="feed-reaction-add" aria-label="Add reaction">+</button>
-      <div class="feed-reaction-palette hidden">${palette}</div>
-    </div>
-  `;
+  return `<div class="feed-reactions">${chips}</div>`;
 }
 
 function wireReactionsBar_(row, post) {
@@ -2037,17 +2037,6 @@ function wireReactionsBar_(row, post) {
       toggleFeedReaction_(post.id, chip.dataset.emoji);
     });
   });
-
-  const addBtn = bar.querySelector(".feed-reaction-add");
-  const palette = bar.querySelector(".feed-reaction-palette");
-  addBtn?.addEventListener("click", () => palette?.classList.toggle("hidden"));
-
-  palette?.querySelectorAll(".feed-reaction-palette-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      palette.classList.add("hidden");
-      toggleFeedReaction_(post.id, btn.dataset.emoji);
-    });
-  });
 }
 
 async function toggleFeedReaction_(postId, emoji) {
@@ -2057,6 +2046,109 @@ async function toggleFeedReaction_(postId, emoji) {
     await refreshData(true);
   } catch (err) {
     window.alert("Could not react: " + (err.message || err));
+  }
+}
+
+// Tap the bubble = reply (existing behavior). Long-press (touch) or
+// right-click (desktop) = open a floating emoji palette to react instead.
+function wireBubbleGestures_(row, post) {
+  const bubble = row.querySelector(".feed-bubble");
+  if (!bubble) return;
+
+  const canReact = Boolean(post.id) && !post._pending;
+  let longPressTimer = null;
+  let longPressFired = false;
+  let startX = 0;
+  let startY = 0;
+
+  const clearTimer = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
+
+  bubble.addEventListener("click", (event) => {
+    if (longPressFired) {
+      longPressFired = false;
+      event.stopPropagation();
+      return;
+    }
+    startFeedReply_(post);
+  });
+
+  if (!canReact) return;
+
+  bubble.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    openReactionPalette_(bubble, post);
+  });
+
+  bubble.addEventListener(
+    "touchstart",
+    (event) => {
+      if (!event.touches || event.touches.length !== 1) return;
+      startX = event.touches[0].clientX;
+      startY = event.touches[0].clientY;
+      longPressFired = false;
+      clearTimer();
+      longPressTimer = setTimeout(() => {
+        longPressFired = true;
+        longPressTimer = null;
+        openReactionPalette_(bubble, post);
+      }, LONG_PRESS_MS);
+    },
+    { passive: true }
+  );
+
+  bubble.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!longPressTimer || !event.touches || !event.touches.length) return;
+      const dx = Math.abs(event.touches[0].clientX - startX);
+      const dy = Math.abs(event.touches[0].clientY - startY);
+      if (dx > 10 || dy > 10) clearTimer();
+    },
+    { passive: true }
+  );
+
+  bubble.addEventListener("touchend", clearTimer);
+  bubble.addEventListener("touchcancel", clearTimer);
+}
+
+function openReactionPalette_(bubble, post) {
+  closeReactionPalette_();
+
+  const emojis = state.reactionEmojis && state.reactionEmojis.length ? state.reactionEmojis : DEFAULT_REACTION_EMOJIS;
+  const options = emojis
+    .map((emoji) => `<button type="button" class="feed-reaction-floating-btn" data-emoji="${escapeHtml(emoji)}">${escapeHtml(emoji)}</button>`)
+    .join("");
+
+  const palette = document.createElement("div");
+  palette.className = "feed-reaction-floating-palette";
+  palette.innerHTML = options;
+  bubble.appendChild(palette);
+  state.openReactionPalette = palette;
+
+  palette.querySelectorAll(".feed-reaction-floating-btn").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleFeedReaction_(post.id, btn.dataset.emoji);
+      closeReactionPalette_();
+    });
+  });
+
+  // Close on the next tap/click anywhere else.
+  setTimeout(() => {
+    document.addEventListener("click", closeReactionPalette_, { once: true });
+    document.addEventListener("touchstart", closeReactionPalette_, { once: true, passive: true });
+  }, 0);
+}
+
+function closeReactionPalette_() {
+  if (state.openReactionPalette) {
+    state.openReactionPalette.remove();
+    state.openReactionPalette = null;
   }
 }
 
@@ -2120,8 +2212,9 @@ function buildFeedRow_(post, byId) {
     });
   }
 
-  // Tapping the message itself starts a reply to it.
-  row.querySelector(".feed-bubble")?.addEventListener("click", () => startFeedReply_(post));
+  // Tap the bubble to reply. Long-press (touch) or right-click (desktop)
+  // opens a floating emoji palette to react instead.
+  wireBubbleGestures_(row, post);
 
   wireReactionsBar_(row, post);
 
