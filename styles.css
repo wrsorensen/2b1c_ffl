@@ -2053,6 +2053,25 @@ select:focus {
   text-decoration: underline;
 }
 
+.team-contact-text {
+  color: var(--muted);
+  font-size: .62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.team-contact-text:hover,
+.team-contact-text:focus-visible {
+  color: var(--gold-soft);
+  border-color: var(--gold-soft);
+}
+
 /* BOTTOM NAV */
 .bottom-nav {
   position: fixed;
