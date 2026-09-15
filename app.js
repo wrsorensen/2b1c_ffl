@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.56 - roster drawer close button switched to top-right X for consistency
+  v0.5.57 - Dashboard Spotlight: commissioner can feature Draft Central or Commissioner Desk on Home
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -90,6 +90,10 @@ document.querySelectorAll("[data-tab]").forEach((button) => {
 document.getElementById("scoreboardStatus")?.addEventListener("click", (event) => {
   event.stopPropagation();
   openWeekPicker_();
+});
+
+document.getElementById("spotlightSelect")?.addEventListener("change", (event) => {
+  setSpotlightCard_(event.target.value);
 });
 
 loginPinInput.addEventListener("keydown", (event) => {
@@ -439,6 +443,8 @@ function renderApp() {
   updateLastUpdatedText();
   renderHome(settings);
   renderCommissionerDesk_(data.activePoll || null);
+  applySpotlight_(settings.spotlightCard || "none", Boolean(data.activePoll && data.activePoll.id));
+  renderSpotlightControl_(settings.spotlightCard || "none");
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
   renderFeed(data.trash || []);
@@ -731,7 +737,6 @@ function renderCommissionerDesk_(poll) {
     pollStatus.classList.add("hidden");
     pollBody.innerHTML = "";
     titleEl.textContent = "2026 Preseason Focus";
-    moveCommissionerDeskCard_(false);
     return;
   }
 
@@ -761,24 +766,40 @@ function renderCommissionerDesk_(poll) {
     btn.addEventListener("click", () => castPollVote_(poll.id, opt.value));
     pollBody.appendChild(btn);
   });
-
-  moveCommissionerDeskCard_(true);
 }
 
-function moveCommissionerDeskCard_(toTop) {
-  const card = document.getElementById("commissionerDeskCard");
-  const grid = document.querySelector(".dashboard-grid");
-  const commishSection = document.getElementById("commish");
-  if (!card || !grid || !grid.parentNode || !commishSection) return;
+// Natural order of the cards that live in Commish by default, used to put
+// them back in place after any of them has been spotlighted onto Home.
+const COMMISH_HOME_ORDER = ["commissionerDeskCard", "draftCentralCard", "commishPollsCard", "commishManagersCard"];
 
-  if (toTop) {
-    // Active poll: surface the card at the top of Home.
-    if (card.parentNode === grid.parentNode && card.nextElementSibling === grid) return; // already at top
-    grid.parentNode.insertBefore(card, grid);
-  } else {
-    // No active poll: card lives in the Commish tab by default.
-    if (card.parentNode === commishSection && commishSection.firstElementChild === card) return; // already in place
-    commishSection.insertBefore(card, commishSection.firstElementChild);
+function restoreCommishOrder_() {
+  const commishSection = document.getElementById("commish");
+  if (!commishSection) return;
+  COMMISH_HOME_ORDER.forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) commishSection.appendChild(el);
+  });
+}
+
+function spotlightCardToTop_(cardId) {
+  const card = document.getElementById(cardId);
+  const grid = document.querySelector(".dashboard-grid");
+  if (!card || !grid || !grid.parentNode) return;
+  grid.parentNode.insertBefore(card, grid);
+}
+
+// Decides which card(s), if any, get pulled out of Commish and featured at
+// the top of Home. An active poll always surfaces Commissioner Desk (people
+// need to be able to vote); the commissioner's manual spotlight pick is
+// layered on top of that.
+function applySpotlight_(spotlightValue, hasActivePoll) {
+  restoreCommishOrder_();
+
+  if (hasActivePoll || spotlightValue === "commissionerDesk") {
+    spotlightCardToTop_("commissionerDeskCard");
+  }
+  if (spotlightValue === "draftCentral") {
+    spotlightCardToTop_("draftCentralCard");
   }
 }
 
@@ -1336,6 +1357,29 @@ function updateLastUpdatedText() {
   }
 
   el.textContent = `Updated ${stamp.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+function renderSpotlightControl_(value) {
+  const select = document.getElementById("spotlightSelect");
+  if (!select) return;
+  select.value = value;
+}
+
+async function setSpotlightCard_(value) {
+  const select = document.getElementById("spotlightSelect");
+  const status = document.getElementById("spotlightStatus");
+  if (select) select.disabled = true;
+  if (status) status.textContent = "Saving...";
+
+  try {
+    await api("setSpotlightCard", { manager: state.manager, pin: state.pin, value });
+    await refreshData(true);
+    if (status) status.textContent = "Saved.";
+  } catch (err) {
+    if (status) status.textContent = "Could not save: " + (err.message || err);
+  } finally {
+    if (select) select.disabled = false;
+  }
 }
 
 function renderRules(rules) {
