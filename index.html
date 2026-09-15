@@ -39,7 +39,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.56 roster close</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v0.5.57 spotlight</p>
     </section>
   </main>
 
@@ -129,7 +129,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v0.5.56</span>
+        <span class="home-version">v0.5.57</span>
       </section>
     </section>
 
@@ -190,6 +190,23 @@
     </section>
 
     <section id="commish" class="page">
+      <article class="card" id="spotlightControlCard">
+        <div class="card-head">
+          <div>
+            <h3>Dashboard Spotlight</h3>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="muted">Feature one card at the top of everyone's Home dashboard.</p>
+          <select id="spotlightSelect">
+            <option value="none">None (default)</option>
+            <option value="draftCentral">Draft Central</option>
+            <option value="commissionerDesk">Commissioner Desk</option>
+          </select>
+          <p id="spotlightStatus" class="muted compact-note"></p>
+        </div>
+      </article>
+
       <section class="card preseason-card" id="commissionerDeskCard">
         <div class="card-head">
           <div>
