@@ -186,6 +186,14 @@ select:focus {
   font-size: .78rem;
 }
 
+.icon-btn {
+  width: 40px;
+  padding: 8px;
+  font-size: 1.05rem;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
 .primary-btn:active,
 .secondary-btn:active,
 .ghost-btn:active,
@@ -449,6 +457,13 @@ select:focus {
   padding: 8px 4px 10px;
   background: linear-gradient(180deg, rgba(5,8,13,.97) 0%, rgba(5,8,13,.90) 70%, rgba(5,8,13,0) 100%);
   backdrop-filter: blur(8px);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
 }
 
 .brand {
@@ -728,13 +743,6 @@ select:focus {
 .dashboard-grid {
   display: grid;
   gap: 11px;
-}
-
-/* Temporary opt-in trigger until the real Commish notification toggle
-   replaces it. */
-.enable-notifs-btn {
-  width: 100%;
-  margin: 10px 0 0;
 }
 
 .shitshow-unread-banner {
@@ -2296,6 +2304,74 @@ select:focus {
   height: 6px;
   border-radius: 50%;
   background: #6fdc8c;
+}
+
+/* NOTIFICATION SETTINGS */
+.notif-settings-body {
+  display: grid;
+  gap: 10px;
+}
+
+.notif-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.notif-toggle-row strong {
+  font-size: .88rem;
+}
+
+.notif-toggle-switch {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 46px;
+  height: 26px;
+}
+
+.notif-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.notif-toggle-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background: rgba(255,255,255,.14);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  transition: background .15s ease;
+}
+
+.notif-toggle-slider::before {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  left: 2px;
+  top: 2px;
+  border-radius: 50%;
+  background: #dbe3ee;
+  transition: transform .15s ease;
+}
+
+.notif-toggle-switch input:checked + .notif-toggle-slider {
+  background: rgba(216, 180, 93, .5);
+  border-color: var(--gold-soft);
+}
+
+.notif-toggle-switch input:checked + .notif-toggle-slider::before {
+  transform: translateX(20px);
+  background: var(--gold-soft);
+}
+
+.notif-toggle-switch input:disabled + .notif-toggle-slider {
+  opacity: .45;
+  cursor: not-allowed;
 }
 
 /* BOTTOM NAV */
