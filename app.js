@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.52 - roster drawer header redesign: contacts moved full-width below team name, no more abbreviation
+  v0.5.53 - roster drawer: tap-to-text button, removed redundant close button
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1568,7 +1568,6 @@ async function openRosterDrawer(teamId, teamName) {
           <div class="drawer-head-title">
             <h3>${escapeHtml(teamName || "Team")}</h3>
           </div>
-          <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="drawer-head-contacts">${renderTeamContacts_(teamName)}</div>
       </div>
@@ -1584,7 +1583,6 @@ async function openRosterDrawer(teamId, teamName) {
 
   document.body.appendChild(drawer);
   drawer.querySelector(".drawer-back").addEventListener("click", closeRosterDrawer);
-  drawer.querySelector(".drawer-close").addEventListener("click", closeRosterDrawer);
 
   try {
     const rosterMap = await ensureRosterData_(state.currentWeek || 1);
@@ -1728,8 +1726,9 @@ function renderTeamContacts_(teamName) {
       const name = escapeHtml(rawName);
       const phone = String(m.phone || "").trim();
 
+      const digits = escapeHtml(phone.replace(/[^\d+]/g, ""));
       const phonePart = phone
-        ? ` <span class="team-contact-sep">&middot;</span> <a class="team-contact-phone" href="tel:${escapeHtml(phone.replace(/[^\d+]/g, ""))}">${escapeHtml(phone)}</a>`
+        ? ` <span class="team-contact-sep">&middot;</span> <a class="team-contact-phone" href="tel:${digits}">${escapeHtml(phone)}</a> <a class="team-contact-text" href="sms:${digits}" aria-label="Text ${name}">text</a>`
         : "";
 
       return `<div class="team-contact"><span class="team-contact-name">${name}</span>${phonePart}</div>`;
