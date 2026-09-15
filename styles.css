@@ -2008,24 +2008,33 @@ select:focus {
 .drawer-head-contacts {
   flex: 0 1 auto;
   display: grid;
-  gap: 1px;
+  gap: 6px;
   justify-items: end;
   min-width: 0;
   text-align: right;
 }
 
 .team-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  max-width: 190px;
+}
+
+.team-contact-name {
   color: var(--muted);
   font-size: .7rem;
   font-weight: 800;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 190px;
+  max-width: 100%;
 }
 
 .team-contact-phone {
   color: var(--gold-soft);
+  font-size: .68rem;
   text-decoration: none;
 }
 
