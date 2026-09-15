@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.0.2 - Fixed wrong OneSignal API method (Slidedown.promptPush, not slidedown.show)
+  v1.1.0 - Push notification triggers + real notification settings + Send Announcement
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -9,7 +9,7 @@ const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
 const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "shitShowPreviewCard"];
-const COMMISH_CARD_IDS = ["commishPollsCard", "commishManagersCard"];
+const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
@@ -105,29 +105,140 @@ document.getElementById("spotlightSelect")?.addEventListener("change", (event) =
 
 document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
 
-// Stand-in opt-in button for OneSignal push notifications until the real
-// Commish notification-settings toggle is built. Hidden once permission has
-// already been granted or denied - a denied browser permission can't be
-// re-prompted from the page, only changed in the browser's own site settings.
-document.getElementById("enableNotifsBtn")?.addEventListener("click", () => {
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push((OneSignal) => {
-    OneSignal.Slidedown.promptPush({ force: true });
-  });
-  // The slidedown prompt is async and has no return value to await here;
-  // just recheck visibility shortly after in case permission was granted.
-  setTimeout(updateNotifsButtonVisibility_, 1500);
-});
+document.getElementById("notifSettingsBtn")?.addEventListener("click", openNotifSettingsDrawer_);
+document.getElementById("sendAnnounceBtn")?.addEventListener("click", sendAnnouncement_);
 
-function updateNotifsButtonVisibility_() {
-  const btn = document.getElementById("enableNotifsBtn");
-  if (!btn) return;
-  const supported = typeof Notification !== "undefined";
-  const permission = supported ? Notification.permission : "denied";
-  btn.classList.toggle("hidden", !supported || permission !== "default");
+// Runs any queued OneSignal call once the SDK is ready. Safe to call even
+// before the SDK script has loaded - OneSignalDeferred just queues it.
+function withOneSignal_(fn) {
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(fn);
 }
 
-updateNotifsButtonVisibility_();
+// Ties this browser/device to the logged-in manager's name so the backend
+// can target pushes at them specifically (Code.gs sends to these external
+// IDs). Called after every successful login.
+function tagOneSignalDevice_(managerName) {
+  if (!managerName) return;
+  withOneSignal_((OneSignal) => OneSignal.login(managerName));
+}
+
+// Clears the device's manager tag on logout so a shared/borrowed device
+// doesn't keep getting pushes meant for the previous person.
+function untagOneSignalDevice_() {
+  withOneSignal_((OneSignal) => OneSignal.logout());
+}
+
+function openNotifSettingsDrawer_() {
+  const existing = document.getElementById("notifSettingsDrawer");
+  if (existing) existing.remove();
+
+  const supported = typeof Notification !== "undefined";
+  const permission = supported ? Notification.permission : "denied";
+
+  const drawer = document.createElement("div");
+  drawer.id = "notifSettingsDrawer";
+  drawer.className = "drawer-backdrop week-picker-backdrop";
+  drawer.innerHTML = `
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Notification settings">
+      <div class="week-picker-head">
+        <h4>Notifications</h4>
+        <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="notif-settings-body">
+        <div class="notif-toggle-row">
+          <div>
+            <strong>Shit Show Notifications</strong>
+            <p class="muted compact-note">Get pushed when someone posts or replies in The Shit Show.</p>
+          </div>
+          <label class="notif-toggle-switch">
+            <input type="checkbox" id="notifToggleInput">
+            <span class="notif-toggle-slider"></span>
+          </label>
+        </div>
+        <p id="notifSettingsStatus" class="muted compact-note"></p>
+      </div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) drawer.remove();
+  });
+  document.body.appendChild(drawer);
+  drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
+
+  const toggle = document.getElementById("notifToggleInput");
+  const status = document.getElementById("notifSettingsStatus");
+
+  if (!supported) {
+    toggle.disabled = true;
+    status.textContent = "Push notifications aren't supported in this browser.";
+    return;
+  }
+
+  if (permission === "denied") {
+    toggle.disabled = true;
+    status.textContent = "Notifications are blocked for this app in your browser/phone settings. Enable them there, then reopen this.";
+    return;
+  }
+
+  withOneSignal_((OneSignal) => {
+    toggle.checked = Boolean(OneSignal.User.PushSubscription.optedIn);
+  });
+
+  toggle.addEventListener("change", () => {
+    if (toggle.checked) {
+      if (permission === "default") {
+        // First time this device is opting in - needs the real browser
+        // permission prompt, not just the OneSignal-side opt-in.
+        withOneSignal_((OneSignal) => OneSignal.Slidedown.promptPush({ force: true }));
+        status.textContent = "Check for a prompt to allow notifications...";
+      } else {
+        withOneSignal_((OneSignal) => OneSignal.User.PushSubscription.optIn());
+        status.textContent = "Notifications on.";
+      }
+    } else {
+      withOneSignal_((OneSignal) => OneSignal.User.PushSubscription.optOut());
+      status.textContent = "Notifications off.";
+    }
+  });
+}
+
+async function sendAnnouncement_() {
+  const status = document.getElementById("announceFormStatus");
+  const titleInput = document.getElementById("announceTitleInput");
+  const messageInput = document.getElementById("announceMessageInput");
+  const sendBtn = document.getElementById("sendAnnounceBtn");
+  if (!titleInput || !messageInput) return;
+
+  const title = titleInput.value.trim();
+  const message = messageInput.value.trim();
+
+  if (!title || !message) {
+    if (status) status.textContent = "Title and message are both required.";
+    return;
+  }
+
+  if (sendBtn) sendBtn.disabled = true;
+  if (status) status.textContent = "Sending...";
+
+  try {
+    await api("sendAnnouncement", {
+      manager: state.manager,
+      pin: state.pin,
+      title,
+      message
+    });
+
+    titleInput.value = "";
+    messageInput.value = "";
+    if (status) status.textContent = "Announcement sent.";
+  } catch (err) {
+    if (status) status.textContent = "Could not send: " + (err.message || err);
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+  }
+}
 
 loginPinInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") login();
@@ -220,6 +331,8 @@ async function login(isAutoLogin = false) {
     localStorage.setItem("managerPin", state.pin);
     localStorage.setItem("teamName", state.teamName);
 
+    tagOneSignalDevice_(state.manager);
+
     loginScreen.classList.add("hidden");
     setLoginBusy(false);
     appScreen.classList.remove("hidden");
@@ -256,6 +369,7 @@ function clearSaved(showStatus = true) {
 }
 
 function logout() {
+  untagOneSignalDevice_();
   clearSaved(false);
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
