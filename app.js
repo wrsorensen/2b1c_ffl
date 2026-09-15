@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.50 - roster drawer contact header: stacked name/phone, co-manager abbreviation
+  v0.5.51 - roster drawer: keep last names in co-manager abbreviation, remove "Roster" label
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1565,7 +1565,6 @@ async function openRosterDrawer(teamId, teamName) {
       <div class="drawer-head">
         <button class="ghost-btn drawer-back" type="button" aria-label="Back">&larr;</button>
         <div class="drawer-head-title">
-          <span class="mini-label">Roster</span>
           <h3>${escapeHtml(teamName || "Team")}</h3>
         </div>
         <div class="drawer-head-contacts">${renderTeamContacts_(teamName)}</div>
@@ -1707,6 +1706,13 @@ function renderRosterPlayerRow_(player) {
  * Managers on this team, with a tappable number when one is on file. The tel:
  * protocol is never shown - just "Name · number".
  */
+function abbreviateManagerName_(fullName) {
+  const parts = fullName.split(/\s+/).filter(Boolean);
+  if (parts.length <= 1) return fullName;
+  const [first, ...rest] = parts;
+  return `${first.charAt(0).toUpperCase()}. ${rest.join(" ")}`;
+}
+
 function renderTeamContacts_(teamName) {
   const clean = String(teamName || "").trim().toLowerCase();
   if (!clean) return "";
@@ -1717,15 +1723,16 @@ function renderTeamContacts_(teamName) {
 
   if (!managers.length) return "";
 
-  // Co-managed teams get tight on space, so abbreviate to a first initial
-  // (Will -> W.) when there's more than one manager on the team.
+  // Co-managed teams get tight on space, so abbreviate the first name to an
+  // initial (Will Sorensen -> W. Sorensen) when there's more than one
+  // manager on the team. Last name always stays.
   const abbreviate = managers.length > 1;
 
   return managers
     .map((m) => {
       const rawName = String(m.manager || "").trim();
       if (!rawName) return "";
-      const displayName = abbreviate ? `${rawName.charAt(0).toUpperCase()}.` : rawName;
+      const displayName = abbreviate ? abbreviateManagerName_(rawName) : rawName;
       const name = escapeHtml(displayName);
       const phone = String(m.phone || "").trim();
 
