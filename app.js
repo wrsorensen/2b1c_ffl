@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v0.5.53 - roster drawer: tap-to-text button, removed redundant close button
+  v0.5.54 - scoreboard week picker: view any week's matchups
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -32,6 +32,9 @@ const state = {
   expandedRuleAreas: new Set(),
   ruleQuery: "",
   currentWeek: 1,
+  liveWeek: 1,
+  totalWeeks: null,
+  viewingWeek: null,
   rosterWeek: null,
   rosterByTeamId: null,
   rosterLoading: false,
@@ -82,6 +85,11 @@ document.querySelectorAll(".card-head-toggle[data-card-id]").forEach((head) => {
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
+});
+
+document.getElementById("scoreboardStatus")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  openWeekPicker_();
 });
 
 loginPinInput.addEventListener("keydown", (event) => {
@@ -914,8 +922,12 @@ async function loadEspnDashboard() {
     renderEspnDraftSettingsError(settingsResult.reason || new Error("Settings failed"));
   }
 
-  const week = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
-  state.currentWeek = week;
+  const liveWeek = Number(espnSettings.currentMatchupPeriod || espnSettings.scoringPeriodId || 1) || 1;
+  state.liveWeek = liveWeek;
+  state.currentWeek = liveWeek;
+  state.totalWeeks = Number(espnSettings.scheduleSettings?.matchupPeriodCount) || null;
+  // If the user has a specific week picked, stay on it; otherwise follow live.
+  const week = state.viewingWeek || liveWeek;
 
   const standingsOk = standingsResult.status === "fulfilled";
   if (standingsOk) {
@@ -924,17 +936,7 @@ async function loadEspnDashboard() {
     renderEspnStandingsError(standingsResult.reason || new Error("Standings failed"));
   }
 
-  let scoreboardOk = false;
-  try {
-    const scoreboardResponse = await api("espnScoreboard", { week });
-    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
-    renderEspnScoreboard(games, week);
-    renderCookinFried_(games, week);
-    scoreboardOk = true;
-  } catch (scoreboardError) {
-    renderEspnScoreboardError(scoreboardError);
-    renderCookinFriedError_(scoreboardError);
-  }
+  const scoreboardOk = await loadWeekScoreboard_(week);
 
   state.espnDashboardLoadedAt = new Date();
 
@@ -947,6 +949,79 @@ async function loadEspnDashboard() {
   }
 
   state.espnDashboardLoading = false;
+}
+
+// Loads and renders just the scoreboard + energy card for one week, without
+// re-syncing settings/standings. Used both by the initial dashboard load and
+// by the week picker (so switching weeks doesn't re-hit every endpoint).
+async function loadWeekScoreboard_(week) {
+  try {
+    const scoreboardResponse = await api("espnScoreboard", { week });
+    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
+    renderEspnScoreboard(games, week);
+    renderCookinFried_(games, week);
+    return true;
+  } catch (scoreboardError) {
+    renderEspnScoreboardError(scoreboardError);
+    renderCookinFriedError_(scoreboardError);
+    return false;
+  }
+}
+
+async function selectScoreboardWeek_(week) {
+  const clamped = Math.max(1, Number(week) || 1);
+  state.viewingWeek = clamped === state.liveWeek ? null : clamped;
+  setScoreboardStatus("Syncing", false);
+  await loadWeekScoreboard_(clamped);
+}
+
+function openWeekPicker_() {
+  const existing = document.getElementById("weekPicker");
+  if (existing) existing.remove();
+
+  const total = state.totalWeeks || Math.max(state.liveWeek, 18);
+  const current = state.viewingWeek || state.liveWeek;
+
+  const weeks = [];
+  for (let w = 1; w <= total; w++) weeks.push(w);
+
+  const picker = document.createElement("div");
+  picker.id = "weekPicker";
+  picker.className = "drawer-backdrop week-picker-backdrop";
+  picker.innerHTML = `
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Select week">
+      <div class="week-picker-head">
+        <h4>Select Week</h4>
+        <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="week-picker-grid">
+        ${weeks
+          .map((w) => {
+            const isLive = w === state.liveWeek;
+            const isSelected = w === current;
+            const classes = ["week-picker-btn"];
+            if (isSelected) classes.push("selected");
+            if (isLive) classes.push("live");
+            return `<button type="button" class="${classes.join(" ")}" data-week="${w}">Wk ${w}${isLive ? '<span class="week-picker-live-dot" aria-label="Current week"></span>' : ""}</button>`;
+          })
+          .join("")}
+      </div>
+    </section>
+  `;
+
+  picker.addEventListener("click", (event) => {
+    if (event.target === picker) picker.remove();
+  });
+
+  document.body.appendChild(picker);
+  picker.querySelector(".week-picker-close").addEventListener("click", () => picker.remove());
+  picker.querySelectorAll(".week-picker-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const week = Number(btn.dataset.week);
+      picker.remove();
+      selectScoreboardWeek_(week);
+    });
+  });
 }
 
 function renderEspnDraftSettings(settings) {
@@ -981,12 +1056,16 @@ function renderEspnStandings(standings, week) {
   `).join("");
 }
 
+function scoreboardWeekLabel_(week) {
+  return week === state.liveWeek ? `Week ${week}` : `Week ${week} · Viewing`;
+}
+
 function renderEspnScoreboard(games, week) {
   const body = document.getElementById("scoreboardBody");
   if (!body) return;
 
   if (!games.length) {
-    setScoreboardStatus(`Week ${week}`, true);
+    setScoreboardStatus(scoreboardWeekLabel_(week), true);
     body.innerHTML = `
       <p class="big-placeholder">No Week ${week} scoreboard yet.</p>
       <p class="muted">ESPN is connected. Matchups will fill once the schedule has games.</p>
@@ -994,7 +1073,7 @@ function renderEspnScoreboard(games, week) {
     return;
   }
 
-  setScoreboardStatus(`Week ${week}`, true);
+  setScoreboardStatus(scoreboardWeekLabel_(week), true);
   body.innerHTML = `
     <div class="scoreboard-list">
       ${games.map(renderScoreboardGame).join("")}
