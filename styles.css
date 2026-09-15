@@ -1485,32 +1485,36 @@ select:focus {
   text-align: center;
 }
 
-/* Messages read as one continuous stream - no cards, just a hairline between
-   each one and a gold bar marking anything pinned. */
+/* True chat bubbles: your posts hug the right edge with a gold-tinted
+   bubble, everyone else's hug the left with a dark card bubble. */
 .feed-row {
   display: grid;
   gap: 3px;
-  border-top: 1px solid rgba(255,255,255,.055);
-  padding: 9px 2px 9px 0;
+  margin-top: 9px;
+  padding: 0;
 }
 
 .feed-row:first-child {
-  border-top: 0;
+  margin-top: 0;
 }
 
-.feed-row.pinned {
-  border-left: 3px solid var(--gold);
-  padding-left: 8px;
+.feed-row.pinned .feed-bubble {
+  outline: 1px solid var(--gold);
+  outline-offset: -1px;
 }
 
 .feed-row-main {
-  display: grid;
-  grid-template-columns: 28px minmax(0, 1fr);
-  align-items: start;
+  display: flex;
+  align-items: flex-end;
   gap: 8px;
 }
 
+.feed-row.mine .feed-row-main {
+  flex-direction: row-reverse;
+}
+
 .feed-avatar {
+  flex: 0 0 auto;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -1531,10 +1535,20 @@ select:focus {
 .feed-bubble {
   position: relative;
   min-width: 0;
-  border: 0;
-  padding: 0;
-  background: none;
+  max-width: 85%;
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 14px;
+  padding: 8px 12px;
+  background: #1e2530;
   cursor: pointer;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.feed-row.mine .feed-bubble {
+  border-color: rgba(216,180,93,.35);
+  background: rgba(216,180,93,.14);
 }
 
 .feed-meta {
@@ -1701,6 +1715,7 @@ select:focus {
   justify-content: flex-end;
   gap: 10px;
   margin-right: 2px;
+  margin-top: 2px;
 }
 
 .feed-admin-btn {
@@ -1713,11 +1728,13 @@ select:focus {
   text-transform: uppercase;
   letter-spacing: .05em;
   cursor: pointer;
+  opacity: .45;
 }
 
 .feed-admin-btn:hover,
 .feed-admin-btn:focus-visible {
   color: var(--gold-soft);
+  opacity: 1;
 }
 
 .feed-admin-btn:disabled {
