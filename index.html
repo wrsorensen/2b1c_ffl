@@ -17,13 +17,15 @@
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function (OneSignal) {
       // App is served from a subfolder (github.io/2b1c_ffl), not the domain
-      // root, so the service worker file + its scope are pointed at that
-      // subfolder explicitly rather than relying on OneSignal's root defaults.
+      // root. "path" tells OneSignal where to fetch serviceWorkerPath FROM -
+      // without it, serviceWorkerPath is resolved against site root and 404s.
+      // serviceWorkerParam.scope controls what the worker is allowed to control.
       // NOTE: this must exactly match the repo name's real case - browsers
-      // treat scope paths as case-sensitive even though GitHub Pages URLs
+      // treat these paths as case-sensitive even though GitHub Pages URLs
       // redirect case-insensitively.
       await OneSignal.init({
         appId: "9ce1ef7d-f0cd-4b6a-b6ec-3c25e4fb31cb",
+        path: "/2b1c_ffl/",
         serviceWorkerPath: "OneSignalSDKWorker.js",
         serviceWorkerParam: { scope: "/2b1c_ffl/" }
       });
@@ -56,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.0.2 — notification fix</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.0.3 — notification fix</p>
     </section>
   </main>
 
@@ -153,7 +155,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.0.2</span>
+        <span class="home-version">v1.0.3</span>
       </section>
     </section>
 
