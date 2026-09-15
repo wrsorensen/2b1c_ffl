@@ -234,6 +234,15 @@ select:focus {
   filter: brightness(1.15);
 }
 
+.status-chip-live-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #6fdc8c;
+  margin-right: 5px;
+}
+
 .status-dot {
   width: 9px;
   height: 9px;
@@ -1954,7 +1963,6 @@ select:focus {
   margin: 2px 0 0;
 }
 
-.drawer-back,
 .drawer-close {
   flex: 0 0 auto;
   font-size: 1.2rem;
