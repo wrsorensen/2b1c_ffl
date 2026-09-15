@@ -1608,6 +1608,32 @@ select:focus {
   color: var(--gold-soft);
 }
 
+.feed-admin-btn:disabled {
+  cursor: default;
+}
+
+.feed-admin-btn.is-loading {
+  color: transparent;
+  position: relative;
+}
+
+.feed-admin-btn.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  border-top-color: var(--gold-soft);
+  animation: feedAdminSpin .6s linear infinite;
+}
+
+@keyframes feedAdminSpin {
+  to { transform: rotate(360deg); }
+}
+
 .feed-admin-btn.danger:hover,
 .feed-admin-btn.danger:focus-visible {
   color: var(--red);
