@@ -1,7 +1,6 @@
 /*
   2B1C FFL
-  v1.1.1 - Home cleanup: removed Shit Show preview card + manual refresh button,
-  moved ESPN shortcut into topbar next to Settings, Logout moved into Settings
+  v1.1.3 - Cleaner error states across standings, draft settings, roster, and scoreboard (no raw ESPN URL/error text)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1259,19 +1258,19 @@ function renderScoreboardGame(game) {
   `;
 }
 
-function renderEspnDraftSettingsError(error) {
+function renderEspnDraftSettingsError() {
   const note = document.getElementById("draftSettingsNote");
   if (note) {
-    note.textContent = "Draft settings unavailable - " + (error.message || "try Refresh data.");
+    note.textContent = "Draft settings unavailable - try Refresh data.";
   }
 }
 
-function renderEspnStandingsError(error) {
+function renderEspnStandingsError() {
   setStandingsStatus("Standings error", false);
 
   const rows = document.getElementById("standingsRows");
   if (rows) {
-    rows.innerHTML = `<div><b>?</b><span>Standings did not load</span><small>${escapeHtml(error.message || "Try Refresh data.")}</small></div>`;
+    rows.innerHTML = `<div><b>?</b><span>Standings did not load</span><small>Try Refresh data.</small></div>`;
   }
 }
 
@@ -1282,7 +1281,7 @@ function renderEspnScoreboardError(error) {
   if (body) {
     body.innerHTML = `
       <p class="big-placeholder">Scoreboard did not load.</p>
-      <p class="muted">${escapeHtml(error.message || "Try Refresh data.")}</p>
+      <p class="muted">ESPN didn't respond - try Refresh data in a bit.</p>
     `;
   }
 }
@@ -1391,11 +1390,10 @@ function heatRow_(icon, label, subject, value) {
   `;
 }
 
-function renderCookinFriedError_(error) {
+function renderCookinFriedError_() {
+  // Scoreboard error message above already covers this - don't duplicate it.
   const body = document.getElementById("cookinFriedBody");
-  if (body) {
-    body.innerHTML = `<p class="muted">Couldn't load this week's damage - ${escapeHtml(error.message || "try Refresh data.")}</p>`;
-  }
+  if (body) body.innerHTML = "";
 }
 
 function renderShitShowPreview_(posts) {
@@ -1882,7 +1880,7 @@ async function openRosterDrawer(teamId, teamName) {
   } catch (error) {
     const body = document.getElementById("rosterDrawerBody");
     if (body) {
-      body.innerHTML = `<p class="muted">Roster did not load - ${escapeHtml(error.message || "try again.")}</p>`;
+      body.innerHTML = `<p class="muted">Roster did not load - try again.</p>`;
     }
   }
 }
