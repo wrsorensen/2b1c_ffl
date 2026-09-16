@@ -462,8 +462,12 @@ select:focus {
 .topbar-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex: 0 0 auto;
+}
+
+.topbar-actions .espn-link-btn img {
+  width: 38px;
 }
 
 .brand {
@@ -654,15 +658,6 @@ select:focus {
 }
 
 
-.refresh-icon-btn {
-  min-height: 42px;
-  border: 1px solid rgba(255,255,255,.12);
-  border-radius: 12px;
-  color: var(--text);
-  background: rgba(255,255,255,.07);
-  cursor: pointer;
-}
-
 .espn-link-btn {
   width: auto;
   min-height: auto;
@@ -685,7 +680,7 @@ select:focus {
 .home-utility-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 12px;
   min-height: 0;
   border: 0;
@@ -696,48 +691,12 @@ select:focus {
   background: transparent;
 }
 
-.refresh-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  border: 0;
-  border-radius: 0;
-  padding: 0;
-  background: transparent;
-}
-
-.refresh-icon-btn {
-  width: 34px;
-  flex: 0 0 34px;
-  min-height: 34px;
-  display: inline-grid;
-  place-items: center;
-  padding: 0;
-  border: 1px solid rgba(216, 180, 93, .30);
-  border-radius: 10px;
-  color: var(--gold-soft);
-  background: rgba(216,180,93,.08);
-  font-size: .95rem;
-  font-weight: 900;
-}
-
-.refresh-icon-btn.is-refreshing .refresh-symbol {
-  animation: refresh-spin .8s linear infinite;
-}
-
 .hero-updated-text {
   min-width: 0;
   color: var(--muted);
   font-size: .7rem;
   font-weight: 700;
   line-height: 1.1;
-}
-
-@keyframes refresh-spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .dashboard-grid {
@@ -850,21 +809,6 @@ select:focus {
   font-size: .92rem;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-}
-
-.shitshow-preview-card {
-  display: grid;
-  gap: 4px;
-}
-
-.shitshow-preview-line {
-  font-size: .86rem;
-  line-height: 1.35;
-}
-
-.shitshow-preview-btn {
-  justify-self: start;
-  margin-top: 8px;
 }
 
 .feature-card {
@@ -2312,6 +2256,10 @@ select:focus {
   gap: 10px;
 }
 
+.settings-logout-btn {
+  margin-top: 6px;
+}
+
 .notif-toggle-row {
   display: flex;
   align-items: center;
@@ -2569,13 +2517,6 @@ select:focus {
     max-width: 150px;
   }
 
-  .espn-link-btn img {
-    width: 52px;
-  }
-
-  .refresh-cluster {
-    margin-left: auto;
-  }
 
   .placeholder-rows > div {
     grid-template-columns: 25px minmax(0, 1fr);
