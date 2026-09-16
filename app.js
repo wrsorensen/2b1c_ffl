@@ -1,6 +1,7 @@
 /*
   2B1C FFL
-  v1.1.0 - Push notification triggers + real notification settings + Send Announcement
+  v1.1.1 - Home cleanup: removed Shit Show preview card + manual refresh button,
+  moved ESPN shortcut into topbar next to Settings, Logout moved into Settings
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -8,7 +9,7 @@ const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
-const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "shitShowPreviewCard"];
+const HOME_CARD_IDS = ["scoreboardCard", "standingsCard"];
 const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
@@ -68,7 +69,6 @@ if (hasSavedLogin) {
 
 enterBtn.addEventListener("click", () => login(false));
 clearBtn.addEventListener("click", clearSaved);
-document.getElementById("logoutBtn").addEventListener("click", logout);
 document.getElementById("createPollBtn")?.addEventListener("click", createPoll_);
 document.getElementById("closePollBtn")?.addEventListener("click", closeActivePoll_);
 document.getElementById("addManagerBtn")?.addEventListener("click", addManager_);
@@ -76,7 +76,6 @@ document.getElementById("feedSendBtn")?.addEventListener("click", sendFeedMessag
 document.getElementById("feedReplyChipClear")?.addEventListener("click", clearFeedReply);
 document.getElementById("refreshTrashBtn").addEventListener("click", () => refreshData(false));
 setupFeedComposer_();
-document.getElementById("refreshHomeBtn")?.addEventListener("click", () => refreshData(false));
 document.getElementById("standingsRows")?.addEventListener("click", handleTeamRowClick_);
 document.getElementById("standingsRows")?.addEventListener("keydown", handleTeamRowKeydown_);
 document.getElementById("scoreboardBody")?.addEventListener("click", handleTeamRowClick_);
@@ -140,9 +139,9 @@ function openNotifSettingsDrawer_() {
   drawer.id = "notifSettingsDrawer";
   drawer.className = "drawer-backdrop week-picker-backdrop";
   drawer.innerHTML = `
-    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Notification settings">
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Settings">
       <div class="week-picker-head">
-        <h4>Notifications</h4>
+        <h4>Settings</h4>
         <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="notif-settings-body">
@@ -157,6 +156,7 @@ function openNotifSettingsDrawer_() {
           </label>
         </div>
         <p id="notifSettingsStatus" class="muted compact-note"></p>
+        <button class="secondary-btn compact-btn settings-logout-btn" id="settingsLogoutBtn" type="button">Logout</button>
       </div>
     </section>
   `;
@@ -166,6 +166,10 @@ function openNotifSettingsDrawer_() {
   });
   document.body.appendChild(drawer);
   drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
+  drawer.querySelector("#settingsLogoutBtn").addEventListener("click", () => {
+    drawer.remove();
+    logout();
+  });
 
   const toggle = document.getElementById("notifToggleInput");
   const status = document.getElementById("notifSettingsStatus");
@@ -487,10 +491,7 @@ async function refreshData(silent = false) {
 }
 
 function getRefreshButtons_() {
-  return [
-    document.getElementById("refreshHomeBtn"),
-    document.getElementById("refreshTrashBtn")
-  ].filter(Boolean);
+  return [document.getElementById("refreshTrashBtn")].filter(Boolean);
 }
 
 function setRefreshButtonsState(label, isDisabled) {
@@ -498,19 +499,8 @@ function setRefreshButtonsState(label, isDisabled) {
 
   getRefreshButtons_().forEach((button) => {
     if (!button.dataset.defaultLabel) {
-      button.dataset.defaultLabel = button.id === "refreshHomeBtn"
-        ? (button.getAttribute("aria-label") || "Refresh data")
-        : button.textContent;
+      button.dataset.defaultLabel = button.textContent;
     }
-
-    if (button.id === "refreshHomeBtn") {
-      button.setAttribute("aria-label", label);
-      button.title = label;
-      button.disabled = isDisabled;
-      button.classList.toggle("is-refreshing", isDisabled);
-      return;
-    }
-
     button.textContent = label;
     button.disabled = isDisabled;
   });
@@ -520,14 +510,7 @@ function flashRefreshButtonsState(label) {
   setRefreshButtonsState(label, false);
   state.refreshStatusTimer = setTimeout(() => {
     getRefreshButtons_().forEach((button) => {
-      if (button.id === "refreshHomeBtn") {
-        const label = button.dataset.defaultLabel || "Refresh data";
-        button.setAttribute("aria-label", label);
-        button.title = label;
-        button.classList.remove("is-refreshing");
-      } else {
-        button.textContent = button.dataset.defaultLabel || "Refresh";
-      }
+      button.textContent = button.dataset.defaultLabel || "Refresh";
       button.disabled = false;
     });
   }, 1200);
