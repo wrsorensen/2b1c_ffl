@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.1.0 — push notifications live</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.1.1 — Home cleanup</p>
     </section>
   </main>
 
@@ -73,8 +73,10 @@
         </div>
       </div>
       <div class="topbar-actions">
-        <button class="ghost-btn icon-btn" id="notifSettingsBtn" type="button" aria-label="Notification settings" title="Notification settings">⚙</button>
-        <button class="ghost-btn" id="logoutBtn" type="button">Logout</button>
+        <button class="espn-link-btn" id="espnBtn" type="button" aria-label="Open ESPN Fantasy">
+          <img src="assets/espn-ffl-button.png" alt="" aria-hidden="true">
+        </button>
+        <button class="ghost-btn icon-btn" id="notifSettingsBtn" type="button" aria-label="Settings" title="Settings">⚙</button>
       </div>
     </header>
 
@@ -86,16 +88,8 @@
         </div>
       </section>
 
-      <section class="home-utility-row" aria-label="Quick actions">
-        <button class="espn-link-btn" id="espnBtn" type="button" aria-label="Open ESPN Fantasy">
-          <img src="assets/espn-ffl-button.png" alt="" aria-hidden="true">
-        </button>
-        <div class="refresh-cluster">
-          <button class="refresh-icon-btn refresh-home-btn" id="refreshHomeBtn" type="button" aria-label="Refresh data" title="Refresh data">
-            <span class="refresh-symbol" aria-hidden="true">↻</span>
-          </button>
-          <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
-        </div>
+      <section class="home-utility-row" aria-label="Status">
+        <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
       </section>
 
       <button type="button" id="shitShowUnreadBanner" class="shitshow-unread-banner hidden" aria-label="View new Shit Show posts">
@@ -138,25 +132,11 @@
           </div>
         </article>
 
-        <article class="card shitshow-preview-card" id="shitShowPreviewCard">
-          <div class="card-head card-head-toggle" data-card-id="shitShowPreviewCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle The Shit Show preview">
-            <div>
-              <span class="mini-label">League Board</span>
-              <h3>The Shit Show</h3>
-            </div>
-          </div>
-          <div class="card-body">
-            <div id="shitShowPreviewBody">
-              <p class="muted">Loading latest trash talk...</p>
-            </div>
-            <button class="secondary-btn compact-btn shitshow-preview-btn" data-tab="trash" type="button">View The Shit Show →</button>
-          </div>
-        </article>
       </section>
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.1.0</span>
+        <span class="home-version">v1.1.1</span>
       </section>
     </section>
 
