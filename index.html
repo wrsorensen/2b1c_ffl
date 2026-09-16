@@ -16,18 +16,8 @@
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
     OneSignalDeferred.push(async function (OneSignal) {
-      // App is served from a subfolder (github.io/2b1c_ffl), not the domain
-      // root. "path" tells OneSignal where to fetch serviceWorkerPath FROM -
-      // without it, serviceWorkerPath is resolved against site root and 404s.
-      // serviceWorkerParam.scope controls what the worker is allowed to control.
-      // NOTE: this must exactly match the repo name's real case - browsers
-      // treat these paths as case-sensitive even though GitHub Pages URLs
-      // redirect case-insensitively.
       await OneSignal.init({
         appId: "9ce1ef7d-f0cd-4b6a-b6ec-3c25e4fb31cb",
-        path: "/2b1c_ffl/",
-        serviceWorkerPath: "OneSignalSDKWorker.js",
-        serviceWorkerParam: { scope: "/2b1c_ffl/" }
       });
     });
   </script>
