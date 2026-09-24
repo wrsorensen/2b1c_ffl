@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.1.3 - Cleaner error states across standings, draft settings, roster, and scoreboard (no raw ESPN URL/error text)
+  v1.1.4 - Commish tab reorg: promoted Send Announcement/Manager Poll/Manager Info, demoted+collapsed Commissioner Desk/Draft Central
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -586,7 +586,8 @@ function renderApp() {
   renderClosedPolls_(data.closedPolls || []);
   populateTeamSelect_();
   HOME_CARD_IDS.forEach(applyCardCollapseState_);
-  COMMISH_CARD_IDS.forEach((id) => applyCardCollapseState_(id, { defaultCollapsed: true }));
+  COMMISH_CARD_IDS.forEach((id) => applyCardCollapseState_(id, { defaultCollapsed: false }));
+  applyDeskDefaultCollapse_();
   loadEspnDashboard();
 }
 
@@ -903,7 +904,7 @@ function renderCommissionerDesk_(poll) {
 
 // Natural order of the cards that live in Commish by default, used to put
 // them back in place after any of them has been spotlighted onto Home.
-const COMMISH_HOME_ORDER = ["commissionerDeskCard", "draftCentralCard", "commishPollsCard", "commishManagersCard"];
+const COMMISH_HOME_ORDER = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard", "commissionerDeskCard", "draftCentralCard"];
 
 function restoreCommishOrder_() {
   const commishSection = document.getElementById("commish");
@@ -914,11 +915,28 @@ function restoreCommishOrder_() {
   });
 }
 
+// Commissioner Desk is collapsed by default while it's sitting in the
+// Commish tab (it's the least-used card), but must always show fully
+// expanded when it's spotlighted onto Home - e.g. so people can see/vote
+// on an active poll. Call this after any DOM move so the collapse state
+// matches wherever the card currently lives.
+function applyDeskDefaultCollapse_() {
+  const card = document.getElementById("commissionerDeskCard");
+  if (!card) return;
+  const inCommishTab = card.parentElement && card.parentElement.id === "commish";
+  if (inCommishTab) {
+    applyCardCollapseState_("commissionerDeskCard", { defaultCollapsed: true });
+  } else {
+    card.classList.remove("collapsed");
+  }
+}
+
 function spotlightCardToTop_(cardId) {
   const card = document.getElementById(cardId);
   const grid = document.querySelector(".dashboard-grid");
   if (!card || !grid || !grid.parentNode) return;
   grid.parentNode.insertBefore(card, grid);
+  card.classList.remove("collapsed");
 }
 
 // Decides which card(s), if any, get pulled out of Commish and featured at
@@ -934,6 +952,7 @@ function applySpotlight_(spotlightValue, hasActivePoll) {
   if (spotlightValue === "draftCentral") {
     spotlightCardToTop_("draftCentralCard");
   }
+  applyDeskDefaultCollapse_();
 }
 
 async function castPollVote_(pollId, choice) {
