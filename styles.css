@@ -2434,6 +2434,10 @@ select:focus {
     min-height: 200px;
   }
 
+  .league-business-card.collapsed {
+    min-height: 0;
+  }
+
   .qr-grid {
     grid-template-columns: 1fr 1fr;
   }
