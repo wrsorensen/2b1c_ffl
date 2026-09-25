@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.2.1 - Hot Sheet: compact inline layout + 4 more callouts (Wasted Talent, Waiver Win, Upset City, Total Carnage)
+  v1.2.2 - Hot Sheet: tabloid-style visual restyle (serif masthead, headline-style rows, no more pill chips)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1479,7 +1479,7 @@ function hotSheetRow_(label, text) {
   if (!text) return "";
   return `
     <p class="hot-sheet-row">
-      <span class="hot-sheet-tag">${escapeHtml(label)}</span><span class="hot-sheet-text">${escapeHtml(text)}</span>
+      <span class="hot-sheet-tag">${escapeHtml(label)}:</span> <span class="hot-sheet-text">${escapeHtml(text)}</span>
     </p>
   `;
 }
@@ -1574,8 +1574,8 @@ function computeUpsetOfWeek_(games, standings) {
 // the moment a new week's games kick off.
 async function loadHotSheet_() {
   const targetWeek = Math.max(1, Number(state.liveWeek || 1) - 1);
-  const title = document.getElementById("hotSheetTitle");
-  if (title) title.textContent = `Week ${targetWeek} Hot Sheet`;
+  const dateline = document.getElementById("hotSheetDateline");
+  if (dateline) dateline.textContent = `Week ${targetWeek} Edition`;
 
   const body = document.getElementById("hotSheetBody");
   if (!body) return;
