@@ -1059,6 +1059,47 @@ select:focus {
     var(--panel);
 }
 
+.hot-sheet-card {
+  border: 1px solid rgba(181, 77, 73, .45);
+  background:
+    linear-gradient(125deg, rgba(181, 77, 73, .16), transparent 55%),
+    var(--panel);
+  box-shadow: 0 14px 40px rgba(181, 77, 73, .18);
+}
+
+.hot-sheet-card .mini-label {
+  color: var(--red);
+}
+
+.hot-sheet-row {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 0;
+}
+
+.hot-sheet-row:not(:last-child) {
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+
+.hot-sheet-tag {
+  align-self: flex-start;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(181, 77, 73, .22);
+  color: #ffb3ae;
+  font-size: .68rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+
+.hot-sheet-text {
+  margin: 0;
+  font-size: .88rem;
+  line-height: 1.35;
+}
+
 .home-meta {
   display: flex;
   align-items: center;
