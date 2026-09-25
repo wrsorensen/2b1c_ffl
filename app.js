@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.2.2 - Hot Sheet: tabloid-style visual restyle (serif masthead, headline-style rows, no more pill chips)
+  v1.2.3 - Hot Sheet: highlighted team names (not just bold), removed Total Carnage callout
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1429,42 +1429,46 @@ function computeBenchRegret_(rosterByTeamId) {
 
 // Rotating snarky one-liners per category - picked at render time so the
 // card doesn't say the exact same thing every week for the same result type.
+// Wraps a team name in a highlighter-style span. Every dynamic value in the
+// templates below goes through this (for team names) or escapeHtml directly
+// (for player names) - the assembled line is trusted HTML by construction,
+// which is why hotSheetRow_ no longer re-escapes the whole string.
+function hlTeam_(name) {
+  return `<span class="hot-sheet-highlight">${escapeHtml(name || "")}</span>`;
+}
+
 const HOT_SHEET_TEMPLATES = {
   highRoller: [
-    (d) => `${d.teamName} dropped ${formatScore_(d.score)} points like it was nothing. Show-off.`,
-    (d) => `${d.teamName} put up ${formatScore_(d.score)} - somebody's feeling themselves.`
+    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} points like it was nothing. Show-off.`,
+    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} - somebody's feeling themselves.`
   ],
   seriouslyWtf: [
-    (d) => `${d.teamName} mustered a pathetic ${formatScore_(d.score)} points. Seriously? WTF.`,
-    (d) => `${d.teamName} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`
+    (d) => `${hlTeam_(d.teamName)} mustered a pathetic ${formatScore_(d.score)} points. Seriously? WTF.`,
+    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`
   ],
   mercyKilling: [
-    (d) => `${d.winner} beat ${d.loser} by ${formatScore_(d.margin)}. Somebody call the ref, it's over.`,
-    (d) => `${d.winner} put ${d.loser} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`
+    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody call the ref, it's over.`,
+    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`
   ],
   nailBiter: [
-    (d) => `${d.winner} survived ${d.loser} by a razor-thin ${formatScore_(d.margin)}.`,
-    (d) => `${d.winner} edged out ${d.loser} by ${formatScore_(d.margin)}. Heart-attack material.`
+    (d) => `${hlTeam_(d.winner)} survived ${hlTeam_(d.loser)} by a razor-thin ${formatScore_(d.margin)}.`,
+    (d) => `${hlTeam_(d.winner)} edged out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Heart-attack material.`
   ],
   benchedRegretted: [
-    (d) => `${d.teamName} started ${d.starterName} (${formatScore_(d.starterPoints)}) and left ${d.benchPlayerName} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
-    (d) => `${d.teamName} benched ${d.benchPlayerName}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`
+    (d) => `${hlTeam_(d.teamName)} started ${escapeHtml(d.starterName)} (${formatScore_(d.starterPoints)}) and left ${escapeHtml(d.benchPlayerName)} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
+    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.benchPlayerName)}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`
   ],
   wastedTalent: [
-    (d) => `${d.teamName} left ${d.playerName} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
-    (d) => `${d.playerName} dropped ${formatScore_(d.points)} points for ${d.teamName} - from the bench. Didn't matter one bit.`
+    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
+    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points for ${hlTeam_(d.teamName)} - from the bench. Didn't matter one bit.`
   ],
   waiverWin: [
-    (d) => `${d.playerName} (${d.teamName}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
-    (d) => `${d.teamName} grabbed ${d.playerName} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`
-  ],
-  totalCarnage: [
-    (d) => `${formatScore_(d.total)} combined points across the league this week. Somebody's touchdown celly is getting old.`,
-    (d) => `${formatScore_(d.total)} total points league-wide. The refs are tired.`
+    (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
+    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`
   ],
   upsetOfWeek: [
-    (d) => `${d.winner} had no business beating ${d.loser}. Somebody check the standings.`,
-    (d) => `${d.winner} pulled off the upset over ${d.loser}. Didn't see that coming.`
+    (d) => `${hlTeam_(d.winner)} had no business beating ${hlTeam_(d.loser)}. Somebody check the standings.`,
+    (d) => `${hlTeam_(d.winner)} pulled off the upset over ${hlTeam_(d.loser)}. Didn't see that coming.`
   ]
 };
 
@@ -1475,26 +1479,16 @@ function pickHotSheetLine_(key, data) {
   return template(data);
 }
 
+// text is trusted HTML assembled by the HOT_SHEET_TEMPLATES functions above
+// (every dynamic value already escaped at the point of interpolation) - do
+// not re-escape it here, that would show literal <span> tags.
 function hotSheetRow_(label, text) {
   if (!text) return "";
   return `
     <p class="hot-sheet-row">
-      <span class="hot-sheet-tag">${escapeHtml(label)}:</span> <span class="hot-sheet-text">${escapeHtml(text)}</span>
+      <span class="hot-sheet-tag">${escapeHtml(label)}:</span> <span class="hot-sheet-text">${text}</span>
     </p>
   `;
-}
-
-function computeTotalLeaguePoints_(games) {
-  if (!Array.isArray(games) || !games.length) return null;
-  let total = 0;
-  let anyScoring = false;
-  games.forEach((game) => {
-    const away = Number(game.awayScore || 0);
-    const home = Number(game.homeScore || 0);
-    if (away || home) anyScoring = true;
-    total += away + home;
-  });
-  return anyScoring ? total : null;
 }
 
 // Highest single point total left sitting on any bench league-wide - separate
@@ -1609,7 +1603,6 @@ function renderHotSheet_(week, games, rosterMap, standings) {
   const benchRegret = computeBenchRegret_(rosterMap);
   const wastedTalent = computeHighestScoringBench_(rosterMap);
   const waiverWin = computeWaiverWin_(rosterMap);
-  const totalPoints = computeTotalLeaguePoints_(games);
   const upset = computeUpsetOfWeek_(games, standings);
 
   const rows = [
@@ -1620,8 +1613,7 @@ function renderHotSheet_(week, games, rosterMap, standings) {
     benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret)) : "",
     wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent)) : "",
     waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin)) : "",
-    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset)) : "",
-    totalPoints ? hotSheetRow_("Total Carnage", pickHotSheetLine_("totalCarnage", { total: totalPoints })) : ""
+    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset)) : ""
   ].filter(Boolean);
 
   body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
