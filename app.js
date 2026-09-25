@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.2.0 - Hot Sheet: weekly recap card (High Roller / Seriously? WTF. / Mercy Killing / Nail-Biter / Benched. Regretted.)
+  v1.2.1 - Hot Sheet: compact inline layout + 4 more callouts (Wasted Talent, Waiver Win, Upset City, Total Carnage)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1449,6 +1449,22 @@ const HOT_SHEET_TEMPLATES = {
   benchedRegretted: [
     (d) => `${d.teamName} started ${d.starterName} (${formatScore_(d.starterPoints)}) and left ${d.benchPlayerName} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
     (d) => `${d.teamName} benched ${d.benchPlayerName}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`
+  ],
+  wastedTalent: [
+    (d) => `${d.teamName} left ${d.playerName} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
+    (d) => `${d.playerName} dropped ${formatScore_(d.points)} points for ${d.teamName} - from the bench. Didn't matter one bit.`
+  ],
+  waiverWin: [
+    (d) => `${d.playerName} (${d.teamName}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
+    (d) => `${d.teamName} grabbed ${d.playerName} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`
+  ],
+  totalCarnage: [
+    (d) => `${formatScore_(d.total)} combined points across the league this week. Somebody's touchdown celly is getting old.`,
+    (d) => `${formatScore_(d.total)} total points league-wide. The refs are tired.`
+  ],
+  upsetOfWeek: [
+    (d) => `${d.winner} had no business beating ${d.loser}. Somebody check the standings.`,
+    (d) => `${d.winner} pulled off the upset over ${d.loser}. Didn't see that coming.`
   ]
 };
 
@@ -1462,11 +1478,94 @@ function pickHotSheetLine_(key, data) {
 function hotSheetRow_(label, text) {
   if (!text) return "";
   return `
-    <div class="hot-sheet-row">
-      <span class="hot-sheet-tag">${escapeHtml(label)}</span>
-      <p class="hot-sheet-text">${escapeHtml(text)}</p>
-    </div>
+    <p class="hot-sheet-row">
+      <span class="hot-sheet-tag">${escapeHtml(label)}</span><span class="hot-sheet-text">${escapeHtml(text)}</span>
+    </p>
   `;
+}
+
+function computeTotalLeaguePoints_(games) {
+  if (!Array.isArray(games) || !games.length) return null;
+  let total = 0;
+  let anyScoring = false;
+  games.forEach((game) => {
+    const away = Number(game.awayScore || 0);
+    const home = Number(game.homeScore || 0);
+    if (away || home) anyScoring = true;
+    total += away + home;
+  });
+  return anyScoring ? total : null;
+}
+
+// Highest single point total left sitting on any bench league-wide - separate
+// from Benched. Regretted., which requires an actual worse-starter swap; this
+// one just flags raw wasted production.
+function computeHighestScoringBench_(rosterByTeamId) {
+  let best = null;
+  Object.values(rosterByTeamId || {}).forEach((team) => {
+    const bench = (Array.isArray(team.roster) ? team.roster : []).filter((p) => p.lineupSlot === "Bench");
+    bench.forEach((player) => {
+      const points = Number(player.points || 0);
+      if (!best || points > best.points) {
+        best = { teamName: team.teamName, playerName: player.name || "Unknown", points };
+      }
+    });
+  });
+  return best && best.points > 0 ? best : null;
+}
+
+// Best-scoring started player who was picked up off waivers/free agency
+// (acquisitionType stays tagged this way for as long as they're rostered,
+// so this reads as "your waiver-wire guy" more than "this week's pickup" -
+// close enough for the callout, just don't read it as brand-new adds only).
+function computeWaiverWin_(rosterByTeamId) {
+  let best = null;
+  Object.values(rosterByTeamId || {}).forEach((team) => {
+    const starters = (Array.isArray(team.roster) ? team.roster : []).filter(
+      (p) => p.lineupSlot !== "Bench" && p.lineupSlot !== "IR"
+    );
+    starters.forEach((player) => {
+      const acquisition = String(player.acquisitionType || "").toUpperCase();
+      if (acquisition !== "WAIVER" && acquisition !== "FREEAGENT") return;
+      const points = Number(player.points || 0);
+      if (!best || points > best.points) {
+        best = { teamName: team.teamName, playerName: player.name || "Unknown", points };
+      }
+    });
+  });
+  return best && best.points > 0 ? best : null;
+}
+
+// Approximate upset check: compares each winner/loser's overall season
+// record (as of right now, which already includes this result) rather than
+// their record heading into the game - a true pre-game upset check would
+// need week-by-week standings history we don't pull. Good enough for a
+// roast, not a stat-of-record.
+function computeUpsetOfWeek_(games, standings) {
+  if (!Array.isArray(games) || !games.length || !Array.isArray(standings) || !standings.length) return null;
+
+  const recordByTeamName = {};
+  standings.forEach((team) => {
+    recordByTeamName[team.teamName] = Number(team.wins || 0) - Number(team.losses || 0);
+  });
+
+  let upset = null;
+  games.forEach((game) => {
+    const away = Number(game.awayScore || 0);
+    const home = Number(game.homeScore || 0);
+    if (!away && !home) return;
+
+    const winner = away > home ? game.awayTeamName : game.homeTeamName;
+    const loser = away > home ? game.homeTeamName : game.awayTeamName;
+    if (!(winner in recordByTeamName) || !(loser in recordByTeamName)) return;
+
+    const gap = recordByTeamName[loser] - recordByTeamName[winner];
+    if (gap > 0 && (!upset || gap > upset.gap)) {
+      upset = { winner, loser, gap };
+    }
+  });
+
+  return upset;
 }
 
 // Always looks at the most recently *completed* week (liveWeek - 1), not
@@ -1482,19 +1581,21 @@ async function loadHotSheet_() {
   if (!body) return;
 
   try {
-    const [scoreboardResponse, rosterMap] = await Promise.all([
+    const [scoreboardResponse, rosterMap, standingsResponse] = await Promise.all([
       api("espnScoreboard", { week: targetWeek }),
-      ensureRosterData_(targetWeek)
+      ensureRosterData_(targetWeek),
+      api("espnStandings").catch(() => null)
     ]);
 
     const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], targetWeek);
-    renderHotSheet_(targetWeek, games, rosterMap);
+    const standings = standingsResponse ? standingsResponse.standings || [] : [];
+    renderHotSheet_(targetWeek, games, rosterMap, standings);
   } catch (err) {
     body.innerHTML = `<p class="muted">Couldn't load last week's Hot Sheet - try refreshing.</p>`;
   }
 }
 
-function renderHotSheet_(week, games, rosterMap) {
+function renderHotSheet_(week, games, rosterMap, standings) {
   const body = document.getElementById("hotSheetBody");
   if (!body) return;
 
@@ -1506,13 +1607,21 @@ function renderHotSheet_(week, games, rosterMap) {
 
   const closest = computeClosestGame_(games);
   const benchRegret = computeBenchRegret_(rosterMap);
+  const wastedTalent = computeHighestScoringBench_(rosterMap);
+  const waiverWin = computeWaiverWin_(rosterMap);
+  const totalPoints = computeTotalLeaguePoints_(games);
+  const upset = computeUpsetOfWeek_(games, standings);
 
   const rows = [
     hotSheetRow_("High Roller", pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score })),
     hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score })),
     highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout)) : "",
     closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest)) : "",
-    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret)) : ""
+    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret)) : "",
+    wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent)) : "",
+    waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin)) : "",
+    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset)) : "",
+    totalPoints ? hotSheetRow_("Total Carnage", pickHotSheetLine_("totalCarnage", { total: totalPoints })) : ""
   ].filter(Boolean);
 
   body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
