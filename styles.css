@@ -1130,6 +1130,18 @@ select:focus {
   color: var(--text);
 }
 
+/* Literal highlighter-marker treatment for team names inside Hot Sheet
+   lines - a translucent gold swipe behind the text, not just bold. */
+.hot-sheet-highlight {
+  background-image: linear-gradient(rgba(216, 180, 93, .38), rgba(216, 180, 93, .38));
+  background-repeat: no-repeat;
+  background-size: 100% 42%;
+  background-position: 0 78%;
+  padding: 0 1px;
+  font-weight: 700;
+  color: var(--text-strong);
+}
+
 .home-meta {
   display: flex;
   align-items: center;
