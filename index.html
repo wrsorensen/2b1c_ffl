@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.1.5 — Commish fixes</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.2.0 — Hot Sheet</p>
     </section>
   </main>
 
@@ -98,6 +98,18 @@
       </button>
 
       <section class="dashboard-grid">
+        <article class="card hot-sheet-card hidden" id="hotSheetCard">
+          <div class="card-head card-head-toggle" data-card-id="hotSheetCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Hot Sheet">
+            <div>
+              <span class="mini-label">League Intel</span>
+              <h3 id="hotSheetTitle">Hot Sheet</h3>
+            </div>
+          </div>
+          <div id="hotSheetBody" class="card-body">
+            <p class="muted">Loading last week's damage...</p>
+          </div>
+        </article>
+
         <article class="card feature-card scoreboard-card" id="scoreboardCard">
           <div class="card-head card-head-toggle" data-card-id="scoreboardCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Scoreboard">
             <div>
@@ -136,7 +148,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.1.5</span>
+        <span class="home-version">v1.2.0</span>
       </section>
     </section>
 
@@ -207,6 +219,7 @@
           <p class="muted">Feature one card at the top of everyone's Home dashboard.</p>
           <select id="spotlightSelect">
             <option value="none">None (default)</option>
+            <option value="hotSheet">Hot Sheet</option>
             <option value="draftCentral">Draft Central</option>
             <option value="commissionerDesk">Commissioner Desk</option>
           </select>
