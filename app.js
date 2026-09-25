@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.1.5 - Commish fixes: Draft Central collapse height, removed redundant labels
+  v1.2.0 - Hot Sheet: weekly recap card (High Roller / Seriously? WTF. / Mercy Killing / Nail-Biter / Benched. Regretted.)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -8,7 +8,7 @@ const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
-const HOME_CARD_IDS = ["scoreboardCard", "standingsCard"];
+const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
 const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
@@ -953,6 +953,26 @@ function applySpotlight_(spotlightValue, hasActivePoll) {
     spotlightCardToTop_("draftCentralCard");
   }
   applyDeskDefaultCollapse_();
+  updateHotSheetVisibility_(spotlightValue);
+}
+
+// Hot Sheet auto-shows Tuesday 12:00 AM through Thursday 12:00 PM (local
+// time) - the window when last week's results are freshest and next week's
+// games haven't buried them yet. The commissioner can also force it to show
+// any time via the Dashboard Spotlight dropdown.
+function isHotSheetWindowActive_() {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sunday ... 6 = Saturday
+  if (day === 2 || day === 3) return true; // all of Tue/Wed
+  if (day === 4) return now.getHours() < 12; // Thursday before noon
+  return false;
+}
+
+function updateHotSheetVisibility_(spotlightValue) {
+  const card = document.getElementById("hotSheetCard");
+  if (!card) return;
+  const shouldShow = isHotSheetWindowActive_() || spotlightValue === "hotSheet";
+  card.classList.toggle("hidden", !shouldShow);
 }
 
 async function castPollVote_(pollId, choice) {
@@ -1110,6 +1130,7 @@ async function loadEspnDashboard() {
   }
 
   const scoreboardOk = await loadWeekScoreboard_(week);
+  loadHotSheet_();
 
   state.espnDashboardLoadedAt = new Date();
 
@@ -1339,6 +1360,162 @@ function computeWeeklyHighlights_(games) {
   });
 
   return { top, bottom, blowout };
+}
+
+function computeClosestGame_(games) {
+  if (!Array.isArray(games) || !games.length) return null;
+
+  let closest = null;
+  games.forEach((game) => {
+    const away = Number(game.awayScore || 0);
+    const home = Number(game.homeScore || 0);
+    if (!away && !home) return; // game hasn't started/scored yet
+
+    const margin = Math.abs(away - home);
+    const entry = {
+      margin,
+      winner: away > home ? (game.awayTeamName || "Away") : (game.homeTeamName || "Home"),
+      loser: away > home ? (game.homeTeamName || "Home") : (game.awayTeamName || "Away")
+    };
+    if (!closest || margin < closest.margin) closest = entry;
+  });
+
+  return closest;
+}
+
+// Positions a FLEX slot can be filled by - used to decide whether a benched
+// player could have actually replaced a given starter.
+const HOT_SHEET_FLEX_ELIGIBLE = ["RB", "WR", "TE"];
+
+// Finds the single worst "should've started him" case across the league for
+// a given week: the bench player who outscored a starter who could have
+// been swapped for him, by the largest margin. v1 heuristic - matches by
+// exact position (or FLEX for RB/WR/TE) rather than full ESPN eligibility
+// rules, which is close enough for a roast, not a lineup optimizer.
+function computeBenchRegret_(rosterByTeamId) {
+  let worst = null;
+
+  Object.values(rosterByTeamId || {}).forEach((team) => {
+    const roster = Array.isArray(team.roster) ? team.roster : [];
+    const bench = roster.filter((p) => p.lineupSlot === "Bench");
+    const starters = roster.filter((p) => p.lineupSlot !== "Bench" && p.lineupSlot !== "IR");
+
+    bench.forEach((benchPlayer) => {
+      const candidates = starters.filter((s) => {
+        if (s.lineupSlot === benchPlayer.defaultPosition) return true;
+        if (s.lineupSlot === "FLEX" && HOT_SHEET_FLEX_ELIGIBLE.includes(benchPlayer.defaultPosition)) return true;
+        return false;
+      });
+      if (!candidates.length) return;
+
+      const worstStarter = candidates.reduce((min, c) => (c.points < min.points ? c : min), candidates[0]);
+      const diff = Number(benchPlayer.points || 0) - Number(worstStarter.points || 0);
+
+      if (diff > 0 && (!worst || diff > worst.diff)) {
+        worst = {
+          teamName: team.teamName,
+          benchPlayerName: benchPlayer.name || "Unknown",
+          benchPoints: benchPlayer.points || 0,
+          starterName: worstStarter.name || "Unknown",
+          starterPoints: worstStarter.points || 0,
+          diff
+        };
+      }
+    });
+  });
+
+  return worst;
+}
+
+// Rotating snarky one-liners per category - picked at render time so the
+// card doesn't say the exact same thing every week for the same result type.
+const HOT_SHEET_TEMPLATES = {
+  highRoller: [
+    (d) => `${d.teamName} dropped ${formatScore_(d.score)} points like it was nothing. Show-off.`,
+    (d) => `${d.teamName} put up ${formatScore_(d.score)} - somebody's feeling themselves.`
+  ],
+  seriouslyWtf: [
+    (d) => `${d.teamName} mustered a pathetic ${formatScore_(d.score)} points. Seriously? WTF.`,
+    (d) => `${d.teamName} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`
+  ],
+  mercyKilling: [
+    (d) => `${d.winner} beat ${d.loser} by ${formatScore_(d.margin)}. Somebody call the ref, it's over.`,
+    (d) => `${d.winner} put ${d.loser} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`
+  ],
+  nailBiter: [
+    (d) => `${d.winner} survived ${d.loser} by a razor-thin ${formatScore_(d.margin)}.`,
+    (d) => `${d.winner} edged out ${d.loser} by ${formatScore_(d.margin)}. Heart-attack material.`
+  ],
+  benchedRegretted: [
+    (d) => `${d.teamName} started ${d.starterName} (${formatScore_(d.starterPoints)}) and left ${d.benchPlayerName} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
+    (d) => `${d.teamName} benched ${d.benchPlayerName}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`
+  ]
+};
+
+function pickHotSheetLine_(key, data) {
+  const templates = HOT_SHEET_TEMPLATES[key] || [];
+  if (!templates.length || !data) return "";
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  return template(data);
+}
+
+function hotSheetRow_(label, text) {
+  if (!text) return "";
+  return `
+    <div class="hot-sheet-row">
+      <span class="hot-sheet-tag">${escapeHtml(label)}</span>
+      <p class="hot-sheet-text">${escapeHtml(text)}</p>
+    </div>
+  `;
+}
+
+// Always looks at the most recently *completed* week (liveWeek - 1), not
+// whatever week the Scoreboard picker happens to be viewing - that's what
+// keeps this readable as "last week's recap" instead of resetting to blank
+// the moment a new week's games kick off.
+async function loadHotSheet_() {
+  const targetWeek = Math.max(1, Number(state.liveWeek || 1) - 1);
+  const title = document.getElementById("hotSheetTitle");
+  if (title) title.textContent = `Week ${targetWeek} Hot Sheet`;
+
+  const body = document.getElementById("hotSheetBody");
+  if (!body) return;
+
+  try {
+    const [scoreboardResponse, rosterMap] = await Promise.all([
+      api("espnScoreboard", { week: targetWeek }),
+      ensureRosterData_(targetWeek)
+    ]);
+
+    const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], targetWeek);
+    renderHotSheet_(targetWeek, games, rosterMap);
+  } catch (err) {
+    body.innerHTML = `<p class="muted">Couldn't load last week's Hot Sheet - try refreshing.</p>`;
+  }
+}
+
+function renderHotSheet_(week, games, rosterMap) {
+  const body = document.getElementById("hotSheetBody");
+  if (!body) return;
+
+  const highlights = computeWeeklyHighlights_(games);
+  if (!highlights) {
+    body.innerHTML = `<p class="muted">No Week ${week} results yet.</p>`;
+    return;
+  }
+
+  const closest = computeClosestGame_(games);
+  const benchRegret = computeBenchRegret_(rosterMap);
+
+  const rows = [
+    hotSheetRow_("High Roller", pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score })),
+    hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score })),
+    highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout)) : "",
+    closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest)) : "",
+    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret)) : ""
+  ].filter(Boolean);
+
+  body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
 }
 
 /**
