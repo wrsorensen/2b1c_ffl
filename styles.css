@@ -19,10 +19,6 @@
   --radius: 20px;
   --radius-sm: 14px;
   --tap: 52px;
-  --heat-hot: var(--gold);
-  --heat-hot-2: var(--gold-soft);
-  --heat-cold: var(--red);
-  --heat-pop: var(--blue);
 }
 
 * {
@@ -600,15 +596,8 @@ select:focus {
   outline-offset: 2px;
 }
 
-.card.collapsed .card-body,
-.card.collapsed .heat-check-block {
+.card.collapsed .card-body {
   display: none;
-}
-
-.heat-check-block {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid rgba(255,255,255,.08);
 }
 
 .league-business-card .card-head {
@@ -752,63 +741,6 @@ select:focus {
   color: var(--gold-soft);
   font-size: 1.45rem;
   line-height: 1;
-}
-
-/* Weekly heat check: full-height icon, two-line text block, value on the right. */
-.heat-row {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  border-top: 1px solid rgba(255,255,255,.06);
-  padding-top: 9px;
-  margin-top: 9px;
-}
-
-.heat-row:first-child {
-  border-top: 0;
-  padding-top: 0;
-  margin-top: 0;
-}
-
-.heat-text {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.heat-label {
-  color: var(--text-strong);
-  font-size: .82rem;
-  font-weight: 950;
-  line-height: 1.15;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heat-team {
-  min-width: 0;
-  color: var(--muted);
-  font-weight: 750;
-  font-size: .72rem;
-  line-height: 1.2;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.heat-icon {
-  display: block;
-  flex-shrink: 0;
-}
-
-.heat-value {
-  color: var(--text-strong);
-  font-weight: 900;
-  font-size: .92rem;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .feature-card {
