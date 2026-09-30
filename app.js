@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.3.1 - Hot Sheet: wording now locked per week (seeded, not random) so it stops reshuffling on every reload; trash talk turned up a notch
+  v1.3.2 - Hot Sheet: merged Benched. Regretted. into Wasted Talent (same signal, was redundant); vintage newsprint card restyle (cream paper, torn edge, drop-cap, fold crease, lifted shadow) - CSS only, no other cards touched
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1384,50 +1384,6 @@ function computeClosestGame_(games) {
   return closest;
 }
 
-// Positions a FLEX slot can be filled by - used to decide whether a benched
-// player could have actually replaced a given starter.
-const HOT_SHEET_FLEX_ELIGIBLE = ["RB", "WR", "TE"];
-
-// Finds the single worst "should've started him" case across the league for
-// a given week: the bench player who outscored a starter who could have
-// been swapped for him, by the largest margin. v1 heuristic - matches by
-// exact position (or FLEX for RB/WR/TE) rather than full ESPN eligibility
-// rules, which is close enough for a roast, not a lineup optimizer.
-function computeBenchRegret_(rosterByTeamId) {
-  let worst = null;
-
-  Object.values(rosterByTeamId || {}).forEach((team) => {
-    const roster = Array.isArray(team.roster) ? team.roster : [];
-    const bench = roster.filter((p) => p.lineupSlot === "Bench");
-    const starters = roster.filter((p) => p.lineupSlot !== "Bench" && p.lineupSlot !== "IR");
-
-    bench.forEach((benchPlayer) => {
-      const candidates = starters.filter((s) => {
-        if (s.lineupSlot === benchPlayer.defaultPosition) return true;
-        if (s.lineupSlot === "FLEX" && HOT_SHEET_FLEX_ELIGIBLE.includes(benchPlayer.defaultPosition)) return true;
-        return false;
-      });
-      if (!candidates.length) return;
-
-      const worstStarter = candidates.reduce((min, c) => (c.points < min.points ? c : min), candidates[0]);
-      const diff = Number(benchPlayer.points || 0) - Number(worstStarter.points || 0);
-
-      if (diff > 0 && (!worst || diff > worst.diff)) {
-        worst = {
-          teamName: team.teamName,
-          benchPlayerName: benchPlayer.name || "Unknown",
-          benchPoints: benchPlayer.points || 0,
-          starterName: worstStarter.name || "Unknown",
-          starterPoints: worstStarter.points || 0,
-          diff
-        };
-      }
-    });
-  });
-
-  return worst;
-}
-
 // Rotating snarky one-liners per category - picked at render time so the
 // card doesn't say the exact same thing every week for the same result type.
 // Wraps a team name in a highlighter-style span. Every dynamic value in the
@@ -1462,15 +1418,11 @@ const HOT_SHEET_TEMPLATES = {
     (d) => `${hlTeam_(d.winner)} edged out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Heart-attack material.`,
     (d) => `${hlTeam_(d.winner)} barely squeaked past ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. That's a hospital-visit kind of finish.`
   ],
-  benchedRegretted: [
-    (d) => `${hlTeam_(d.teamName)} started ${escapeHtml(d.starterName)} (${formatScore_(d.starterPoints)}) and left ${escapeHtml(d.benchPlayerName)} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
-    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.benchPlayerName)}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`,
-    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.benchPlayerName)} (${formatScore_(d.benchPoints)}) on the bench to start ${escapeHtml(d.starterName)} (${formatScore_(d.starterPoints)}). Somebody get this manager a white cane.`
-  ],
   wastedTalent: [
     (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
     (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points for ${hlTeam_(d.teamName)} - from the bench. Didn't matter one bit.`,
-    (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine for ${hlTeam_(d.teamName)}. All dressed up with nowhere to go.`
+    (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine for ${hlTeam_(d.teamName)}. All dressed up with nowhere to go.`,
+    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.playerName)}, who dropped ${formatScore_(d.points)} points doing nothing for them. Somebody get this manager a white cane.`
   ],
   waiverWin: [
     (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
@@ -1626,7 +1578,6 @@ function renderHotSheet_(week, games, rosterMap, standings) {
   }
 
   const closest = computeClosestGame_(games);
-  const benchRegret = computeBenchRegret_(rosterMap);
   const wastedTalent = computeHighestScoringBench_(rosterMap);
   const waiverWin = computeWaiverWin_(rosterMap);
   const upset = computeUpsetOfWeek_(games, standings);
@@ -1636,7 +1587,6 @@ function renderHotSheet_(week, games, rosterMap, standings) {
     hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score }, week)),
     highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout, week)) : "",
     closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest, week)) : "",
-    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret, week)) : "",
     wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent, week)) : "",
     waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin, week)) : "",
     upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset, week)) : ""
