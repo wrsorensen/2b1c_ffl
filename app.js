@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.3.0 - Rules tab now shows Final Value (fallback to Baseline when blank); retired the old per-week Heat Check block (Hot Sheet replaces it)
+  v1.3.1 - Hot Sheet: wording now locked per week (seeded, not random) so it stops reshuffling on every reload; trash talk turned up a notch
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1441,43 +1441,68 @@ function hlTeam_(name) {
 const HOT_SHEET_TEMPLATES = {
   highRoller: [
     (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} points like it was nothing. Show-off.`,
-    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} - somebody's feeling themselves.`
+    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} - somebody's feeling themselves.`,
+    (d) => `${hlTeam_(d.teamName)} went off for ${formatScore_(d.score)}. Somebody's getting cocky in the group chat tonight.`,
+    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} on everybody's face. Wipe it off.`
   ],
   seriouslyWtf: [
     (d) => `${hlTeam_(d.teamName)} mustered a pathetic ${formatScore_(d.score)} points. Seriously? WTF.`,
-    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`
+    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`,
+    (d) => `${hlTeam_(d.teamName)} laid a ${formatScore_(d.score)}-point egg. Somebody check if they even set a lineup.`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)}, that's an embarrassment to the whole family.`
   ],
   mercyKilling: [
     (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody call the ref, it's over.`,
-    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`
+    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`,
+    (d) => `${hlTeam_(d.winner)} bent ${hlTeam_(d.loser)} over the table by ${formatScore_(d.margin)}. No lube, no lotion, nothing.`,
+    (d) => `${hlTeam_(d.winner)} ran up ${formatScore_(d.margin)} on ${hlTeam_(d.loser)} like it owed them money.`
   ],
   nailBiter: [
     (d) => `${hlTeam_(d.winner)} survived ${hlTeam_(d.loser)} by a razor-thin ${formatScore_(d.margin)}.`,
-    (d) => `${hlTeam_(d.winner)} edged out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Heart-attack material.`
+    (d) => `${hlTeam_(d.winner)} edged out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Heart-attack material.`,
+    (d) => `${hlTeam_(d.winner)} barely squeaked past ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. That's a hospital-visit kind of finish.`
   ],
   benchedRegretted: [
     (d) => `${hlTeam_(d.teamName)} started ${escapeHtml(d.starterName)} (${formatScore_(d.starterPoints)}) and left ${escapeHtml(d.benchPlayerName)} (${formatScore_(d.benchPoints)}) on the bench. Rough week to guess wrong.`,
-    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.benchPlayerName)}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`
+    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.benchPlayerName)}, who dropped ${formatScore_(d.benchPoints)} points doing nothing for them. Ouch.`,
+    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.benchPlayerName)} (${formatScore_(d.benchPoints)}) on the bench to start ${escapeHtml(d.starterName)} (${formatScore_(d.starterPoints)}). Somebody get this manager a white cane.`
   ],
   wastedTalent: [
     (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
-    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points for ${hlTeam_(d.teamName)} - from the bench. Didn't matter one bit.`
+    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points for ${hlTeam_(d.teamName)} - from the bench. Didn't matter one bit.`,
+    (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine for ${hlTeam_(d.teamName)}. All dressed up with nowhere to go.`
   ],
   waiverWin: [
     (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
-    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`
+    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`,
+    (d) => `${hlTeam_(d.teamName)} dumpster-dove for ${escapeHtml(d.playerName)} and came up with ${formatScore_(d.points)} points. Trash to treasure.`
   ],
   upsetOfWeek: [
     (d) => `${hlTeam_(d.winner)} had no business beating ${hlTeam_(d.loser)}. Somebody check the standings.`,
-    (d) => `${hlTeam_(d.winner)} pulled off the upset over ${hlTeam_(d.loser)}. Didn't see that coming.`
+    (d) => `${hlTeam_(d.winner)} pulled off the upset over ${hlTeam_(d.loser)}. Didn't see that coming.`,
+    (d) => `${hlTeam_(d.winner)} snuck up on ${hlTeam_(d.loser)} and stole its lunch money. Nobody saw it coming, least of all ${hlTeam_(d.loser)}.`
   ]
 };
 
-function pickHotSheetLine_(key, data) {
+// Deterministic per-week pick instead of Math.random() - the same week's
+// card must read identically on every reload/refresh (and once it's
+// archived), not reshuffle its wording each time someone opens the app.
+// Seeding off week + category means each week's line is stable, and a
+// different week naturally lands on a different template.
+function hotSheetTemplateIndex_(week, key, count) {
+  const seed = `${week}-${key}`;
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash % count;
+}
+
+function pickHotSheetLine_(key, data, week) {
   const templates = HOT_SHEET_TEMPLATES[key] || [];
   if (!templates.length || !data) return "";
-  const template = templates[Math.floor(Math.random() * templates.length)];
-  return template(data);
+  const index = hotSheetTemplateIndex_(week, key, templates.length);
+  return templates[index](data);
 }
 
 // text is trusted HTML assembled by the HOT_SHEET_TEMPLATES functions above
@@ -1607,14 +1632,14 @@ function renderHotSheet_(week, games, rosterMap, standings) {
   const upset = computeUpsetOfWeek_(games, standings);
 
   const rows = [
-    hotSheetRow_("High Roller", pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score })),
-    hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score })),
-    highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout)) : "",
-    closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest)) : "",
-    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret)) : "",
-    wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent)) : "",
-    waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin)) : "",
-    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset)) : ""
+    hotSheetRow_("High Roller", pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score }, week)),
+    hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score }, week)),
+    highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout, week)) : "",
+    closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest, week)) : "",
+    benchRegret ? hotSheetRow_("Benched. Regretted.", pickHotSheetLine_("benchedRegretted", benchRegret, week)) : "",
+    wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent, week)) : "",
+    waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin, week)) : "",
+    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset, week)) : ""
   ].filter(Boolean);
 
   body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
