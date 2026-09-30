@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.3.2 - Hot Sheet: merged Benched. Regretted. into Wasted Talent (same signal, was redundant); vintage newsprint card restyle (cream paper, torn edge, drop-cap, fold crease, lifted shadow) - CSS only, no other cards touched
+  v1.3.3 - Hot Sheet: burnt/irregular edge (not uniform scallop), halftone print-grain texture, tighter padding, darker true-black ink, team names back to plain bold (highlighter removed) - CSS only, no other cards touched
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
