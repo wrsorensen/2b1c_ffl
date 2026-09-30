@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.2.3 - Hot Sheet: highlighted team names (not just bold), removed Total Carnage callout
+  v1.3.0 - Rules tab now shows Final Value (fallback to Baseline when blank); retired the old per-week Heat Check block (Hot Sheet replaces it)
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -1145,19 +1145,20 @@ async function loadEspnDashboard() {
   state.espnDashboardLoading = false;
 }
 
-// Loads and renders just the scoreboard + energy card for one week, without
-// re-syncing settings/standings. Used both by the initial dashboard load and
-// by the week picker (so switching weeks doesn't re-hit every endpoint).
+// Loads and renders just the scoreboard for one week, without re-syncing
+// settings/standings. Used both by the initial dashboard load and by the
+// week picker (so switching weeks doesn't re-hit every endpoint). The old
+// per-week "heat check" block that used to live here was retired in favor
+// of Hot Sheet, which covers the same ground plus more and doesn't have to
+// compete with the live in-progress week's numbers.
 async function loadWeekScoreboard_(week) {
   try {
     const scoreboardResponse = await api("espnScoreboard", { week });
     const games = getVisibleScoreboardGames_(scoreboardResponse.scoreboard || [], week);
     renderEspnScoreboard(games, week);
-    renderCookinFried_(games, week);
     return true;
   } catch (scoreboardError) {
     renderEspnScoreboardError(scoreboardError);
-    renderCookinFriedError_(scoreboardError);
     return false;
   }
 }
@@ -1619,80 +1620,6 @@ function renderHotSheet_(week, games, rosterMap, standings) {
   body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
 }
 
-/**
- * Weekly heat check icons. Flat, no outlines, two tones each, drawn inline so
- * they inherit the palette through CSS variables instead of baked-in hex.
- */
-const HEAT_ICONS = {
-  // Highest score - flame, darker body with a brighter inner core.
-  flame: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
-    <path d="M17.6 2.4c1.6 4.6.1 7.2-2.3 9.6-2.9 2.9-6.5 5.2-6.5 10.3a10.2 10.2 0 0 0 20.4 0c0-3.6-1.6-6.5-3.5-8.8-.3 1.9-1.4 3.2-3.1 3.8 1.5-4.8-1.6-11.4-5-14.9Z" fill="var(--heat-hot)"/>
-    <path d="M6.4 12.6c-1 2.7-2.4 4-2.4 6.7a5 5 0 0 0 5.3 5c-1.9-3.3-2.2-7.8-2.9-11.7Z" fill="var(--heat-hot)" fill-opacity=".45"/>
-    <path d="M17.2 17.9c1.9 2.5 3.1 4 3.1 6.3a4.3 4.3 0 0 1-8.6 0c0-2.6 3.1-4 5.5-6.3Z" fill="var(--heat-hot-2)"/>
-  </svg>`,
-
-  // Lowest score - toilet in side profile: tank, bowl, water line, base.
-  toilet: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
-    <rect x="3.2" y="3.6" width="9.4" height="12.2" rx="1.8" fill="var(--heat-cold)" fill-opacity=".45"/>
-    <rect x="4.8" y="6.2" width="6.2" height="1.6" rx=".8" fill="var(--heat-cold)" fill-opacity=".75"/>
-    <path d="M12.2 13.8h15.1c.8 0 1.4.7 1.2 1.5l-.7 3.5c-.7 3.5-3.5 6-7 6h-3c-3.5 0-6.3-2.5-7-6l-.7-3.5c-.2-.8.4-1.5 1.2-1.5Z" fill="var(--heat-cold)"/>
-    <ellipse cx="19.9" cy="16.3" rx="5.1" ry="1.9" fill="var(--panel)"/>
-    <path d="M16.6 24.8h6.2l2 4.8H14.6l2-4.8Z" fill="var(--heat-cold)" fill-opacity=".45"/>
-  </svg>`,
-
-  // Blowout - medical cross on a soft rounded field.
-  cross: `<svg class="heat-icon" viewBox="0 0 32 32" width="34" height="34" aria-hidden="true">
-    <rect x="3" y="3" width="26" height="26" rx="7" fill="var(--heat-pop)" fill-opacity=".28"/>
-    <path d="M13.4 8.2h5.2a1 1 0 0 1 1 1v4.2h4.2a1 1 0 0 1 1 1v5.2a1 1 0 0 1-1 1h-4.2v4.2a1 1 0 0 1-1 1h-5.2a1 1 0 0 1-1-1v-4.2H8.2a1 1 0 0 1-1-1v-5.2a1 1 0 0 1 1-1h4.2V9.2a1 1 0 0 1 1-1Z" fill="var(--heat-pop)"/>
-  </svg>`
-};
-
-function renderCookinFried_(games, week) {
-  const body = document.getElementById("cookinFriedBody");
-  if (!body) return;
-
-  const highlights = computeWeeklyHighlights_(games);
-  if (!highlights) {
-    const message = week > state.liveWeek ? "Week hasn't started yet." : "No scores yet.";
-    body.innerHTML = `<p class="muted">${message}</p>`;
-    return;
-  }
-
-  const { top, bottom, blowout } = highlights;
-
-  body.innerHTML = `
-    ${heatRow_(HEAT_ICONS.flame, "Big Dick Energy", top.teamName, formatScore_(top.score))}
-    ${heatRow_(HEAT_ICONS.toilet, "JV Performance", bottom.teamName, formatScore_(bottom.score))}
-    ${blowout
-      ? heatRow_(
-          HEAT_ICONS.cross,
-          "Someone Call HR",
-          `${blowout.winner} over ${blowout.loser}`,
-          `+${formatScore_(blowout.margin)}`
-        )
-      : ""}
-  `;
-}
-
-function heatRow_(icon, label, subject, value) {
-  return `
-    <div class="heat-row">
-      ${icon}
-      <div class="heat-text">
-        <span class="heat-label">${escapeHtml(label)}</span>
-        <span class="heat-team">${escapeHtml(subject)}</span>
-      </div>
-      <strong class="heat-value">${escapeHtml(value)}</strong>
-    </div>
-  `;
-}
-
-function renderCookinFriedError_() {
-  // Scoreboard error message above already covers this - don't duplicate it.
-  const body = document.getElementById("cookinFriedBody");
-  if (body) body.innerHTML = "";
-}
-
 function renderShitShowPreview_(posts) {
   const body = document.getElementById("shitShowPreviewBody");
   if (!body) return;
@@ -1885,15 +1812,21 @@ function renderRules(rules) {
       const notes = rule.notes || "";
       const status = finalValue ? "Final" : (saved || "Needs review");
 
+      // Display value: Final Value once a rule is finalized, falling back to
+      // Baseline Value while it's still pending review. Only one "current"
+      // value line is shown - Proposed only shows separately while a rule
+      // hasn't been finalized yet (matches the "not final until commissioner
+      // review" framing above).
+      const currentValue = finalValue || baseline;
+
       const row = document.createElement("div");
       row.className = "rule-row";
       row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, status]);
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
-          ${baseline ? `<span><b>Baseline:</b> ${escapeHtml(baseline)}</span>` : ""}
-          ${proposed ? `<span><b>Proposed:</b> ${escapeHtml(proposed)}</span>` : ""}
-          ${finalValue ? `<span><b>Final:</b> ${escapeHtml(finalValue)}</span>` : ""}
+          ${currentValue ? `<span><b>${finalValue ? "Final" : "Baseline"}:</b> ${escapeHtml(currentValue)}</span>` : ""}
+          ${(proposed && !finalValue) ? `<span><b>Proposed:</b> ${escapeHtml(proposed)}</span>` : ""}
           ${notes ? `<em>${escapeHtml(notes)}</em>` : ""}
         </div>
         <small>${escapeHtml(status)}</small>
