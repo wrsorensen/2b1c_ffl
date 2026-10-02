@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.3.3 - Hot Sheet: burnt/irregular edge (not uniform scallop), halftone print-grain texture, tighter padding, darker true-black ink, team names back to plain bold (highlighter removed) - CSS only, no other cards touched
+  v1.3.6 - What's New restyled: newest version shown expanded (version + date + summary), older entries collapsed behind a "Show older updates" toggle - closer to a real app changelog look
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -12,6 +12,17 @@ const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
 const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
+
+// Release notes shown in Settings > What's New. Newest entry goes at the
+// TOP of this array. Claude appends one short entry here every time a new
+// version ships (reusing the same one-liner from the delivery's release
+// note, plus the ship date) - this is the only place this list lives, no
+// backend/Sheet involved. History starts at v1.3.5 (when this feature
+// shipped); earlier versions were not backfilled.
+const RELEASE_NOTES = [
+  { version: "v1.3.6", date: "Oct 2, 2026", summary: "What's New restyled: latest update shown front and center, older ones tucked behind a toggle." },
+  { version: "v1.3.5", date: "Oct 2, 2026", summary: "Settings now has a What's New section showing recent updates." }
+];
 
 // Fallback only - the real list comes from Settings (key "reactionEmojis") so
 // Will can edit it without a code push. Kept in sync with Code.gs's default.
@@ -127,6 +138,43 @@ function untagOneSignalDevice_() {
   withOneSignal_((OneSignal) => OneSignal.logout());
 }
 
+// Builds the Settings > What's New block: the newest release shown
+// expanded (version + date header, one-line summary), everything older
+// collapsed behind a single "Show older updates" toggle.
+function renderWhatsNew_() {
+  if (!RELEASE_NOTES.length) return "";
+
+  const [latest, ...older] = RELEASE_NOTES;
+  const latestHtml = `
+    <div class="whats-new-latest">
+      <div class="whats-new-head">
+        <span class="whats-new-version">${escapeHtml(latest.version)}</span>
+        ${latest.date ? `<span class="whats-new-date">${escapeHtml(latest.date)}</span>` : ""}
+      </div>
+      <p class="whats-new-summary">${escapeHtml(latest.summary)}</p>
+    </div>
+  `;
+
+  const olderHtml = older.length ? `
+    <button class="ghost-btn compact-btn whats-new-toggle" id="whatsNewOlderToggle" type="button" aria-expanded="false">Show older updates</button>
+    <ul class="whats-new-list hidden" id="whatsNewOlderList">
+      ${older.map((note) => `
+        <li>
+          <span class="whats-new-version">${escapeHtml(note.version)}</span>
+          ${note.date ? `<span class="whats-new-date">${escapeHtml(note.date)}</span>` : ""}
+          <br>${escapeHtml(note.summary)}
+        </li>
+      `).join("")}
+    </ul>
+  ` : "";
+
+  return `
+    <strong>What's New</strong>
+    ${latestHtml}
+    ${olderHtml}
+  `;
+}
+
 function openNotifSettingsDrawer_() {
   const existing = document.getElementById("notifSettingsDrawer");
   if (existing) existing.remove();
@@ -155,6 +203,11 @@ function openNotifSettingsDrawer_() {
           </label>
         </div>
         <p id="notifSettingsStatus" class="muted compact-note"></p>
+
+        <div class="whats-new-block">
+          ${renderWhatsNew_()}
+        </div>
+
         <button class="secondary-btn compact-btn settings-logout-btn" id="settingsLogoutBtn" type="button">Logout</button>
       </div>
     </section>
@@ -169,6 +222,16 @@ function openNotifSettingsDrawer_() {
     drawer.remove();
     logout();
   });
+
+  const olderToggle = document.getElementById("whatsNewOlderToggle");
+  const olderList = document.getElementById("whatsNewOlderList");
+  if (olderToggle && olderList) {
+    olderToggle.addEventListener("click", () => {
+      const nowHidden = olderList.classList.toggle("hidden");
+      olderToggle.textContent = nowHidden ? "Show older updates" : "Hide older updates";
+      olderToggle.setAttribute("aria-expanded", String(!nowHidden));
+    });
+  }
 
   const toggle = document.getElementById("notifToggleInput");
   const status = document.getElementById("notifSettingsStatus");
@@ -736,6 +799,7 @@ async function addManager_() {
   const teamSelect = document.getElementById("newManagerTeamSelect");
   const nameInput = document.getElementById("newManagerNameInput");
   const pinInput = document.getElementById("newManagerPinInput");
+  const phoneInput = document.getElementById("newManagerPhoneInput");
   const status = document.getElementById("managerFormStatus");
   const addBtn = document.getElementById("addManagerBtn");
   if (!teamSelect || !nameInput || !pinInput) return;
@@ -743,6 +807,7 @@ async function addManager_() {
   const teamName = teamSelect.value;
   const newManagerName = nameInput.value.trim();
   const newPin = pinInput.value.trim();
+  const newPhone = (phoneInput?.value || "").trim();
 
   if (!teamName || !newManagerName || !newPin) {
     if (status) status.textContent = "Team, name, and PIN are all required.";
@@ -753,9 +818,10 @@ async function addManager_() {
   if (status) status.textContent = "Adding manager...";
 
   try {
-    await api("addManager", { manager: state.manager, pin: state.pin, teamName, newManagerName, newPin });
+    await api("addManager", { manager: state.manager, pin: state.pin, teamName, newManagerName, newPin, newPhone });
     nameInput.value = "";
     pinInput.value = "";
+    if (phoneInput) phoneInput.value = "";
     if (status) status.textContent = "Manager added.";
     await loadManagersAdmin_();
     await refreshData(true);
@@ -1111,6 +1177,7 @@ async function loadEspnDashboard() {
   if (settingsOk) {
     espnSettings = settingsResult.value || {};
     renderEspnDraftSettings(espnSettings);
+    state.espnDivisions = Array.isArray(espnSettings.divisions) ? espnSettings.divisions : [];
   } else {
     renderEspnDraftSettingsError(settingsResult.reason || new Error("Settings failed"));
   }
@@ -1124,7 +1191,7 @@ async function loadEspnDashboard() {
 
   const standingsOk = standingsResult.status === "fulfilled";
   if (standingsOk) {
-    renderEspnStandings(standingsResult.value.standings || [], week);
+    renderEspnStandings(standingsResult.value.standings || [], week, state.espnDivisions || []);
   } else {
     renderEspnStandingsError(standingsResult.reason || new Error("Standings failed"));
   }
@@ -1230,24 +1297,65 @@ function renderEspnDraftSettings(settings) {
   note.textContent = `${capitalize_(draftType)} draft - ${timerText} - ESPN settings`;
 }
 
-function renderEspnStandings(standings, week) {
+// Groups standings into ESPN's own divisions (divisionId straight from
+// ESPN, so this can't drift out of sync with their site) and ranks teams
+// within each division by rank (wins/seed, already how the backend sorts
+// `standings`) then PF as the tiebreaker. Division order follows ESPN's own
+// division list; a team with no matching division (or no division data
+// returned at all) falls into an "All Teams" group so standings never
+// silently disappear if ESPN's settings call fails to include divisions.
+function groupStandingsByDivision_(standings, divisions) {
+  const divisionById = {};
+  (divisions || []).forEach((d) => {
+    if (d && d.id !== null && d.id !== undefined) divisionById[String(d.id)] = d.name || `Division ${d.id}`;
+  });
+
+  if (!Object.keys(divisionById).length) {
+    return [{ id: null, name: null, teams: standings.slice() }];
+  }
+
+  const groups = [];
+  const groupById = {};
+  Object.keys(divisionById).forEach((id) => {
+    const group = { id, name: divisionById[id], teams: [] };
+    groupById[id] = group;
+    groups.push(group);
+  });
+
+  const unassigned = { id: "none", name: "All Teams", teams: [] };
+
+  standings.forEach((team) => {
+    const key = team.divisionId !== null && team.divisionId !== undefined ? String(team.divisionId) : null;
+    const group = key !== null ? groupById[key] : null;
+    (group || unassigned).teams.push(team);
+  });
+
+  if (unassigned.teams.length) groups.push(unassigned);
+  return groups.filter((g) => g.teams.length);
+}
+
+function renderEspnStandings(standings, week, divisions) {
   const rows = document.getElementById("standingsRows");
   if (!rows) return;
 
-  const top = standings.slice(0, 12);
-  if (!top.length) {
+  if (!standings.length) {
     rows.innerHTML = `<div><b>?</b><span>No ESPN standings loaded</span><small>Week ${week}</small></div>`;
     setStandingsStatus("No data", false);
     return;
   }
 
   setStandingsStatus("ESPN live", true);
-  rows.innerHTML = top.map((team, index) => `
-    <div class="standing-row-clickable" data-team-id="${escapeHtml(String(team.teamId || ""))}" data-team-name="${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}" role="button" tabindex="0">
-      <b>${index + 1}</b>
-      <span>${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}</span>
-      <small>${formatRecord_(team)} - ${formatPoints_(team.pointsFor)} PF</small>
-    </div>
+
+  const groups = groupStandingsByDivision_(standings, divisions);
+  rows.innerHTML = groups.map((group) => `
+    ${group.name ? `<div class="standings-division-header">${escapeHtml(group.name)}</div>` : ""}
+    ${group.teams.map((team, index) => `
+      <div class="standing-row-clickable" data-team-id="${escapeHtml(String(team.teamId || ""))}" data-team-name="${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}" role="button" tabindex="0">
+        <b>${index + 1}</b>
+        <span>${escapeHtml(team.teamName || `Team ${team.teamId || index + 1}`)}</span>
+        <small>${formatRecord_(team)} - ${formatPoints_(team.pointsFor)} PF</small>
+      </div>
+    `).join("")}
   `).join("");
 }
 
