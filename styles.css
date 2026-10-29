@@ -904,6 +904,10 @@ select:focus {
   background: rgba(255,255,255,.028);
 }
 
+.release-note-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
 .manager-admin-info {
   display: flex;
   flex-direction: column;
