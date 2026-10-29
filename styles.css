@@ -1568,31 +1568,7 @@ select:focus {
   font-size: .82rem;
 }
 
-/* HELP DESK FAB */
-.help-desk-fab {
-  position: fixed;
-  right: 16px;
-  bottom: 78px;
-  z-index: 70;
-  width: 52px;
-  height: 52px;
-  border: 0;
-  border-radius: 50%;
-  background: var(--gold);
-  color: #1a1206;
-  font-size: 1.4rem;
-  line-height: 1;
-  box-shadow: 0 6px 18px rgba(0,0,0,.4);
-  cursor: pointer;
-}
-
-@media (min-width: 784px) {
-  .help-desk-fab {
-    right: calc(50% - 364px);
-    bottom: 26px;
-  }
-}
-
+/* HELP DESK */
 .help-desk-body {
   display: flex;
   flex-direction: column;
