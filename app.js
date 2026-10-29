@@ -1,5 +1,9 @@
 /*
   2B1C FFL
+  v1.6.0 - What's New (Settings) now reads from the ReleaseNotes Sheet tab
+  instead of a hardcoded list in this file - add/edit entries yourself,
+  no code deploy needed. New Commish tab "Release Notes" card lets you
+  toggle which entries are public. Public-facing UI is unchanged.
   v1.5.4 - Rules tab: badge chip now sits in the same row as the 👍👎 vote
   buttons instead of its own line above. Badge redesigned as a subtle
   outlined pill (border + gold-soft text, no solid fill) instead of the
@@ -36,26 +40,15 @@ const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
 const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
-const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
+const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard", "commishReleaseNotesCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
-// Release notes shown in Settings > What's New. Newest entry goes at the
-// TOP of this array. Claude appends one short entry here every time a new
-// version ships (reusing the same one-liner from the delivery's release
-// note, plus the ship date) - this is the only place this list lives, no
-// backend/Sheet involved. History starts at v1.3.5 (when this feature
-// shipped); earlier versions were not backfilled.
-const RELEASE_NOTES = [
-  { version: "v1.5.4", date: "Oct 29, 2026", summary: "Rules tab: Changed-for-'26 badge now sits in the same row as the vote buttons, redesigned as a subtler outlined pill instead of a solid gold block." },
-  { version: "v1.5.3", date: "Oct 29, 2026", summary: "Rules tab: fixed the loud full-width 2026-Changes badge (CSS bug), and the vote comment box only shows after you pick 👍/👎 - then Submit to lock it in." },
-  { version: "v1.5.2", date: "Oct 29, 2026", summary: "Rules tab: killed the leftover Confirmed/Final status tag on every rule row - blank unless flagged, matching the original plan." },
-  { version: "v1.5.1", date: "Oct 29, 2026", summary: "Rules tab: 2026 Changes list moved out of the main page into a \"Changes from last year\" popout link next to search - less crowded, same votes." },
-  { version: "v1.5.0", date: "Oct 29, 2026", summary: "Rules tab: flagged \"Changed for '26\" / \"Considering for '27\" rules now show a 2026 Changes summary card, a 👍👎 vote (one locked vote, optional comment, public tallies), and a Suggest-a-change box for everything else." },
-  { version: "v1.4.0", date: "Oct 29, 2026", summary: "Hot Sheet overhaul: past-week browsing now shows that week's own recap, a new Manager Malfunction category, rotating category titles, gated categories so they only fire when notable, and a grittier full rewrite." },
-  { version: "v1.3.6", date: "Oct 2, 2026", summary: "What's New restyled: latest update shown front and center, older ones tucked behind a toggle." },
-  { version: "v1.3.5", date: "Oct 2, 2026", summary: "Settings now has a What's New section showing recent updates." }
-];
+// Release notes shown in Settings > What's New now live in the ReleaseNotes
+// Sheet tab (Version/Date/Summary/Visible), not hardcoded here - Will adds
+// and edits entries himself, and toggles what's public from the Commish
+// tab's Release Notes admin list. See getReleaseNotesPublic_ /
+// getReleaseNotesAdminPublic_ / setReleaseNoteVisiblePublic_ in Code.gs.
 
 // Fallback only - the real list comes from Settings (key "reactionEmojis") so
 // Will can edit it without a code push. Kept in sync with Code.gs's default.
@@ -178,9 +171,10 @@ function untagOneSignalDevice_() {
 // expanded (version + date header, one-line summary), everything older
 // collapsed behind a single "Show older updates" toggle.
 function renderWhatsNew_() {
-  if (!RELEASE_NOTES.length) return "";
+  const notes = state.appData?.whatsNew || [];
+  if (!notes.length) return "";
 
-  const [latest, ...older] = RELEASE_NOTES;
+  const [latest, ...older] = notes;
   const latestHtml = `
     <div class="whats-new-latest">
       <div class="whats-new-head">
@@ -893,6 +887,63 @@ async function addManager_() {
 
 function isCommissioner_() {
   return String(state.role || "").trim().toLowerCase() === "commissioner";
+}
+
+async function loadReleaseNotesAdmin_() {
+  if (!isCommissioner_()) return;
+  const list = document.getElementById("commishReleaseNotesList");
+
+  try {
+    const res = await api("getReleaseNotesAdmin", { manager: state.manager, pin: state.pin });
+    renderCommishReleaseNotes_(res.data || []);
+  } catch (err) {
+    if (list) list.innerHTML = `<p class="muted">Could not load release notes: ${escapeHtml(err.message || String(err))}</p>`;
+  }
+}
+
+function renderCommishReleaseNotes_(notes) {
+  const list = document.getElementById("commishReleaseNotesList");
+  if (!list) return;
+
+  if (!Array.isArray(notes) || !notes.length) {
+    list.innerHTML = `<p class="muted">No release notes yet - add rows to the ReleaseNotes sheet.</p>`;
+    return;
+  }
+
+  list.innerHTML = "";
+  notes.forEach((note) => {
+    const row = document.createElement("div");
+    row.className = "manager-admin-row release-note-row";
+    row.innerHTML = `
+      <div class="manager-admin-info">
+        <b>${escapeHtml(note.version)}</b>
+        <span class="muted">${escapeHtml(note.date || "")}</span>
+        <span class="manager-admin-stats">${escapeHtml(note.summary || "")}</span>
+      </div>
+      <label class="notif-toggle-switch">
+        <input type="checkbox" class="release-note-visible-toggle" ${note.visible ? "checked" : ""}>
+        <span class="notif-toggle-slider"></span>
+      </label>
+    `;
+
+    const toggle = row.querySelector(".release-note-visible-toggle");
+    toggle.addEventListener("change", () => setReleaseNoteVisible_(note.version, toggle.checked, toggle));
+    list.appendChild(row);
+  });
+}
+
+async function setReleaseNoteVisible_(version, visible, toggleEl) {
+  if (toggleEl) toggleEl.disabled = true;
+
+  try {
+    await api("setReleaseNoteVisible", { manager: state.manager, pin: state.pin, version, visible: visible ? "TRUE" : "FALSE" });
+    await refreshData(true);
+  } catch (err) {
+    window.alert("Could not update release note: " + (err.message || err));
+    if (toggleEl) toggleEl.checked = !visible;
+  } finally {
+    if (toggleEl) toggleEl.disabled = false;
+  }
 }
 
 function cardCollapseKey_(cardId) {
@@ -3475,6 +3526,7 @@ function showTab(id) {
 
   if (id === "commish") {
     loadManagersAdmin_();
+    loadReleaseNotesAdmin_();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
