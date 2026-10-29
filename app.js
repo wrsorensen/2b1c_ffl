@@ -1,5 +1,11 @@
 /*
   2B1C FFL
+  v1.6.5 - Killed What's New entirely - gone from Settings. Code.gs's
+  ReleaseNotes sheet/endpoints are left in place (harmless, unused) in case
+  this comes back later; nothing to clean up on the backend for this one.
+  v1.6.4 - Dropped the topbar help-desk icon, wasn't it. Now it's a row in
+  the Settings list ("💬 Suggest a change / Ask a question"), same place as
+  Commish Tools and Logout.
   v1.6.3 - Mobile testing fixes: help desk button moved out of a floating
   overlay (was colliding with the bottom nav) into the topbar next to
   Settings - always visible, no collision. Commish is reached through
@@ -158,7 +164,6 @@ document.getElementById("spotlightSelect")?.addEventListener("change", (event) =
 document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
 
 document.getElementById("notifSettingsBtn")?.addEventListener("click", openNotifSettingsDrawer_);
-document.getElementById("helpDeskTopbarBtn")?.addEventListener("click", openHelpDeskDrawer_);
 document.getElementById("sendAnnounceBtn")?.addEventListener("click", sendAnnouncement_);
 
 // Runs any queued OneSignal call once the SDK is ready. Safe to call even
@@ -180,27 +185,6 @@ function tagOneSignalDevice_(managerName) {
 // doesn't keep getting pushes meant for the previous person.
 function untagOneSignalDevice_() {
   withOneSignal_((OneSignal) => OneSignal.logout());
-}
-
-// Builds the Settings > What's New block: just the single latest release
-// (version + date header, one-line summary). No older-updates list/toggle -
-// Will controls what's "latest" via the Commish tab, one entry at a time.
-function renderWhatsNew_() {
-  const notes = state.appData?.whatsNew || [];
-  if (!notes.length) return "";
-
-  const latest = notes[0];
-
-  return `
-    <strong>What's New</strong>
-    <div class="whats-new-latest">
-      <div class="whats-new-head">
-        <span class="whats-new-version">${escapeHtml(latest.version)}</span>
-        ${latest.date ? `<span class="whats-new-date">${escapeHtml(latest.date)}</span>` : ""}
-      </div>
-      <p class="whats-new-summary">${escapeHtml(latest.summary)}</p>
-    </div>
-  `;
 }
 
 function openNotifSettingsDrawer_() {
@@ -232,10 +216,7 @@ function openNotifSettingsDrawer_() {
         </div>
         <p id="notifSettingsStatus" class="muted compact-note"></p>
 
-        <div class="whats-new-block">
-          ${renderWhatsNew_()}
-        </div>
-
+        <button class="secondary-btn compact-btn settings-helpdesk-btn" id="settingsHelpDeskBtn" type="button">💬 Suggest a change / Ask a question</button>
         ${isCommissioner_() ? `<button class="secondary-btn compact-btn settings-commish-btn" id="settingsCommishBtn" type="button">⚑ Commish Tools</button>` : ""}
         <button class="secondary-btn compact-btn settings-logout-btn" id="settingsLogoutBtn" type="button">Logout</button>
       </div>
@@ -250,6 +231,10 @@ function openNotifSettingsDrawer_() {
   drawer.querySelector("#settingsLogoutBtn").addEventListener("click", () => {
     drawer.remove();
     logout();
+  });
+  drawer.querySelector("#settingsHelpDeskBtn").addEventListener("click", () => {
+    drawer.remove();
+    openHelpDeskDrawer_();
   });
   const commishBtn = drawer.querySelector("#settingsCommishBtn");
   if (commishBtn) {
@@ -2112,11 +2097,11 @@ async function castRuleVote_(widget) {
   }
 }
 
-// Help desk button lives in the topbar now (next to Settings), not a
-// floating overlay - avoids colliding with the bottom nav on mobile. Two
-// quick actions, both post through the same submitRuleSuggestion endpoint:
-// ruleArea carries "Suggestion" or "Question" so Will can tell them apart,
-// plus an email alert to the commish on every submission (Code.gs).
+// Help desk is reached from Settings > "Suggest a change / Ask a question"
+// now, not a floating overlay or a topbar icon. Two quick actions, both
+// post through the same submitRuleSuggestion endpoint: ruleArea carries
+// "Suggestion" or "Question" so Will can tell them apart, plus an email
+// alert to the commish on every submission (Code.gs).
 function openHelpDeskDrawer_() {
   const existing = document.getElementById("helpDeskDrawer");
   if (existing) existing.remove();
