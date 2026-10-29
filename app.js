@@ -1,14 +1,18 @@
 /*
   2B1C FFL
+  v1.5.1 - Rules tab cleanup: the 2026 Changes list was crowding the page
+  sitting inline above the rule search, so it's now a small "Changes from
+  last year" link on the right side of the search row that opens a popout
+  with the same votable list. Per-row badges + vote widgets inside each
+  flagged rule's accordion entry are unchanged.
   v1.5.0 - 2026 Changes feature: Rules tab now flags rules that changed for
   2026 ("Changed for '26") or are being floated for 2027 ("Considering for
-  '27"), with a 📌 2026 Changes from 2025 summary card up top (short/abrasive
-  one-liners) and an inline 👍👎 vote + optional comment on each flagged rule
-  - one locked vote per manager, no revote, public tallies and comments.
-  Also adds a "Suggest a change" catch-all box at the bottom of Rules for
-  anything not flagged. Also folds in the v1.4.1 fix that was never shipped:
-  dropped the confusing "Final:"/"Baseline:" label on every rule row - just
-  shows the plain value now.
+  '27"), with an inline 👍👎 vote + optional comment on each flagged rule -
+  one locked vote per manager, no revote, public tallies and comments. Also
+  adds a "Suggest a change" catch-all box at the bottom of Rules for anything
+  not flagged. Also folds in the v1.4.1 fix that was never shipped: dropped
+  the confusing "Final:"/"Baseline:" label on every rule row - just shows the
+  plain value now.
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -28,6 +32,7 @@ const AUTO_REFRESH_MS = 25000;
 // backend/Sheet involved. History starts at v1.3.5 (when this feature
 // shipped); earlier versions were not backfilled.
 const RELEASE_NOTES = [
+  { version: "v1.5.1", date: "Oct 29, 2026", summary: "Rules tab: 2026 Changes list moved out of the main page into a \"Changes from last year\" popout link next to search - less crowded, same votes." },
   { version: "v1.5.0", date: "Oct 29, 2026", summary: "Rules tab: flagged \"Changed for '26\" / \"Considering for '27\" rules now show a 2026 Changes summary card, a 👍👎 vote (one locked vote, optional comment, public tallies), and a Suggest-a-change box for everything else." },
   { version: "v1.4.0", date: "Oct 29, 2026", summary: "Hot Sheet overhaul: past-week browsing now shows that week's own recap, a new Manager Malfunction category, rotating category titles, gated categories so they only fire when notable, and a grittier full rewrite." },
   { version: "v1.3.6", date: "Oct 2, 2026", summary: "What's New restyled: latest update shown front and center, older ones tucked behind a toggle." },
@@ -340,6 +345,9 @@ document.addEventListener("click", (e) => {
   }
   if (e.target.closest("#ruleSuggestBtn")) {
     submitRuleSuggestion_();
+  }
+  if (e.target.closest("#ruleChangesLinkBtn")) {
+    openRuleChangesDrawer_();
   }
 });
 
@@ -2011,6 +2019,7 @@ async function castRuleVote_(widget, vote) {
     await api("submitRuleVote", { manager: state.manager, pin: state.pin, setting: key, vote, comment });
     state.myRuleVotes[key] = { vote, comment };
     await refreshData(true);
+    refreshRuleChangesDrawerIfOpen_();
   } catch (err) {
     if (status) status.textContent = "Could not vote: " + (err.message || err);
   }
@@ -2076,42 +2085,82 @@ function renderRuleVoteWidget_(setting, feedback) {
   `;
 }
 
+function ruleChangesListHtml_() {
+  const rules = state.appData?.rules || state.appData?.ruleSettings || [];
+  const feedback = state.appData?.ruleFeedback || {};
+  const changedRules = rules.filter((r) => r.badge);
+
+  if (!changedRules.length) return `<p class="muted">Nothing flagged yet.</p>`;
+
+  return changedRules.map((rule) => {
+    const key = ruleVoteKey_(rule.setting);
+    const oneLiner = RULE_CHANGE_ONE_LINERS[rule.setting] || rule.setting;
+    return `
+      <div class="rules-change-item">
+        <span class="rule-badge ${rule.badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(rule.badge)}</span>
+        <p>${escapeHtml(oneLiner)}</p>
+        ${renderRuleVoteWidget_(key, feedback[key])}
+      </div>
+    `;
+  }).join("");
+}
+
+function openRuleChangesDrawer_() {
+  const existing = document.getElementById("ruleChangesDrawer");
+  if (existing) existing.remove();
+
+  const drawer = document.createElement("div");
+  drawer.id = "ruleChangesDrawer";
+  drawer.className = "drawer-backdrop";
+  drawer.innerHTML = `
+    <section class="drawer-panel" role="dialog" aria-modal="true" aria-label="2026 Changes from 2025">
+      <div class="drawer-head">
+        <div class="drawer-head-top">
+          <div class="drawer-head-title">
+            <h3>📌 2026 Changes from 2025</h3>
+          </div>
+          <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
+        </div>
+      </div>
+      <div class="drawer-body" id="ruleChangesDrawerBody">${ruleChangesListHtml_()}</div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) closeRuleChangesDrawer_();
+  });
+
+  document.body.appendChild(drawer);
+  drawer.querySelector(".drawer-close").addEventListener("click", closeRuleChangesDrawer_);
+}
+
+function closeRuleChangesDrawer_() {
+  const drawer = document.getElementById("ruleChangesDrawer");
+  if (drawer) drawer.remove();
+}
+
+function refreshRuleChangesDrawerIfOpen_() {
+  const body = document.getElementById("ruleChangesDrawerBody");
+  if (body) body.innerHTML = ruleChangesListHtml_();
+}
+
 function renderRules(rules) {
   const section = document.getElementById("rules");
   const feedback = state.appData?.ruleFeedback || {};
 
-  const changedRules = rules.filter((r) => r.badge);
-
-  const changesCardHtml = changedRules.length
-    ? `
-      <section class="card rules-changes-card">
-        <h3>📌 2026 Changes from 2025</h3>
-        ${changedRules.map((rule) => {
-          const key = ruleVoteKey_(rule.setting);
-          const oneLiner = RULE_CHANGE_ONE_LINERS[rule.setting] || rule.setting;
-          return `
-            <div class="rules-change-item">
-              <span class="rule-badge ${rule.badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(rule.badge)}</span>
-              <p>${escapeHtml(oneLiner)}</p>
-              ${renderRuleVoteWidget_(key, feedback[key])}
-            </div>
-          `;
-        }).join("")}
-      </section>
-    `
-    : "";
+  const changedCount = rules.filter((r) => r.badge).length;
 
   section.innerHTML = `
     <section class="card rules-intro-card">
       <h3>Rule Review</h3>
       <p class="muted">Current league rules for 2026. Rules tagged "Changed for '26" are new this season - vote and tell us what you think below.</p>
     </section>
-    ${changesCardHtml}
     <section class="rule-search-card">
       <div class="rule-search-bar">
         <span class="rule-search-icon" aria-hidden="true">⌕</span>
         <input id="ruleSearchInput" type="text" placeholder="Search rules - kicker, waivers, playoffs, IR..." aria-label="Search rules">
         <button class="rule-search-clear-btn hidden" id="ruleSearchClearBtn" type="button" aria-label="Clear search">✕</button>
+        ${changedCount ? `<button type="button" id="ruleChangesLinkBtn" class="rule-changes-link">Changes from last year</button>` : ""}
       </div>
       <p id="ruleSearchStatus" class="muted compact-note hidden"></p>
     </section>
