@@ -1,5 +1,12 @@
 /*
   2B1C FFL
+  v1.6.3 - Mobile testing fixes: help desk button moved out of a floating
+  overlay (was colliding with the bottom nav) into the topbar next to
+  Settings - always visible, no collision. Commish is reached through
+  Settings > Commish Tools now instead of its own bottom-nav slot (nav
+  button was already commissioner-only/hidden from everyone else - this
+  was purely decluttering Will's own nav). Help desk submissions now also
+  email the commissioner (Code.gs).
   v1.6.2 - Three fixes from testing: (1) What's New simplified to just the
   single latest entry, no more "Show older updates" toggle/list. (2) Rule
   badges redesigned - dropped the bordered pill for a plain bold label with
@@ -151,6 +158,7 @@ document.getElementById("spotlightSelect")?.addEventListener("change", (event) =
 document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
 
 document.getElementById("notifSettingsBtn")?.addEventListener("click", openNotifSettingsDrawer_);
+document.getElementById("helpDeskTopbarBtn")?.addEventListener("click", openHelpDeskDrawer_);
 document.getElementById("sendAnnounceBtn")?.addEventListener("click", sendAnnouncement_);
 
 // Runs any queued OneSignal call once the SDK is ready. Safe to call even
@@ -228,6 +236,7 @@ function openNotifSettingsDrawer_() {
           ${renderWhatsNew_()}
         </div>
 
+        ${isCommissioner_() ? `<button class="secondary-btn compact-btn settings-commish-btn" id="settingsCommishBtn" type="button">⚑ Commish Tools</button>` : ""}
         <button class="secondary-btn compact-btn settings-logout-btn" id="settingsLogoutBtn" type="button">Logout</button>
       </div>
     </section>
@@ -242,6 +251,13 @@ function openNotifSettingsDrawer_() {
     drawer.remove();
     logout();
   });
+  const commishBtn = drawer.querySelector("#settingsCommishBtn");
+  if (commishBtn) {
+    commishBtn.addEventListener("click", () => {
+      drawer.remove();
+      showTab("commish");
+    });
+  }
 
   const toggle = document.getElementById("notifToggleInput");
   const status = document.getElementById("notifSettingsStatus");
@@ -427,7 +443,6 @@ async function login(isAutoLogin = false) {
 
     tagOneSignalDevice_(state.manager);
     loadMyRuleVotes_();
-    renderHelpDeskFab_();
 
     loginScreen.classList.add("hidden");
     setLoginBusy(false);
@@ -467,7 +482,7 @@ function clearSaved(showStatus = true) {
 function logout() {
   untagOneSignalDevice_();
   clearSaved(false);
-  removeHelpDeskFab_();
+  closeHelpDeskDrawer_();
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   showTab("home");
@@ -687,8 +702,9 @@ function renderApp() {
 }
 
 function renderCommishNav_(activePoll) {
-  const navBtn = document.getElementById("commishNavBtn");
-  if (navBtn) navBtn.classList.toggle("hidden", !isCommissioner_());
+  // Commish is reached through Settings > Commish Tools now, not the bottom
+  // nav - the nav button stays permanently hidden (DOM left in place in
+  // case we ever want it back, just never shown).
 
   const activeBlock = document.getElementById("commishActivePollBlock");
   const createBlock = document.getElementById("commishCreatePollBlock");
@@ -2096,32 +2112,11 @@ async function castRuleVote_(widget) {
   }
 }
 
-// Global "help desk" floating button (bottom-right, visible on every tab
-// once logged in) - replaces the old inline Suggest-a-change box that lived
-// only at the bottom of Rules. Two quick actions, both post through the
-// same submitRuleSuggestion endpoint: ruleArea carries "Suggestion" or
-// "Question" so Will can tell them apart in the sheet, no new backend
-// needed for this.
-function renderHelpDeskFab_() {
-  if (!state.loggedIn) return;
-  if (document.getElementById("helpDeskFab")) return;
-
-  const fab = document.createElement("button");
-  fab.id = "helpDeskFab";
-  fab.type = "button";
-  fab.className = "help-desk-fab";
-  fab.setAttribute("aria-label", "Suggest a change or ask a question");
-  fab.innerHTML = "💬";
-  fab.addEventListener("click", openHelpDeskDrawer_);
-  document.body.appendChild(fab);
-}
-
-function removeHelpDeskFab_() {
-  const fab = document.getElementById("helpDeskFab");
-  if (fab) fab.remove();
-  closeHelpDeskDrawer_();
-}
-
+// Help desk button lives in the topbar now (next to Settings), not a
+// floating overlay - avoids colliding with the bottom nav on mobile. Two
+// quick actions, both post through the same submitRuleSuggestion endpoint:
+// ruleArea carries "Suggestion" or "Question" so Will can tell them apart,
+// plus an email alert to the commish on every submission (Code.gs).
 function openHelpDeskDrawer_() {
   const existing = document.getElementById("helpDeskDrawer");
   if (existing) existing.remove();
