@@ -1,5 +1,15 @@
 /*
   2B1C FFL
+  v1.5.4 - Rules tab: badge chip now sits in the same row as the 👍👎 vote
+  buttons instead of its own line above. Badge redesigned as a subtle
+  outlined pill (border + gold-soft text, no solid fill) instead of the
+  heavier gold block it was.
+  v1.5.3 - Rules tab: fixed the "loud" full-width Changed-for-'26 badge (a
+  CSS specificity bug - .rule-row span was forcing display:block onto it,
+  not actual design). Vote widget no longer shows the comment box by
+  default - picking 👍/👎 reveals it plus a Submit button, comment doesn't
+  post until Submit is clicked. Placeholder now reads "Explain why you're
+  bitchin'".
   v1.5.2 - Rules tab cleanup: killed the leftover "Confirmed"/"Final"/"Needs
   review" status tag that was still sitting on the right of every rule row -
   that was separate, older cruft from before the Badge system existed.
@@ -37,6 +47,8 @@ const AUTO_REFRESH_MS = 25000;
 // backend/Sheet involved. History starts at v1.3.5 (when this feature
 // shipped); earlier versions were not backfilled.
 const RELEASE_NOTES = [
+  { version: "v1.5.4", date: "Oct 29, 2026", summary: "Rules tab: Changed-for-'26 badge now sits in the same row as the vote buttons, redesigned as a subtler outlined pill instead of a solid gold block." },
+  { version: "v1.5.3", date: "Oct 29, 2026", summary: "Rules tab: fixed the loud full-width 2026-Changes badge (CSS bug), and the vote comment box only shows after you pick 👍/👎 - then Submit to lock it in." },
   { version: "v1.5.2", date: "Oct 29, 2026", summary: "Rules tab: killed the leftover Confirmed/Final status tag on every rule row - blank unless flagged, matching the original plan." },
   { version: "v1.5.1", date: "Oct 29, 2026", summary: "Rules tab: 2026 Changes list moved out of the main page into a \"Changes from last year\" popout link next to search - less crowded, same votes." },
   { version: "v1.5.0", date: "Oct 29, 2026", summary: "Rules tab: flagged \"Changed for '26\" / \"Considering for '27\" rules now show a 2026 Changes summary card, a 👍👎 vote (one locked vote, optional comment, public tallies), and a Suggest-a-change box for everything else." },
@@ -344,9 +356,15 @@ document.addEventListener("visibilitychange", () => {
 
 document.addEventListener("click", (e) => {
   const voteBtn = e.target.closest(".rule-vote-btn");
-  if (voteBtn) {
+  if (voteBtn && !voteBtn.disabled) {
     const widget = voteBtn.closest(".rule-vote-widget");
-    if (widget) castRuleVote_(widget, voteBtn.dataset.vote);
+    if (widget) selectRuleVotePending_(widget, voteBtn.dataset.vote);
+    return;
+  }
+  const submitBtn = e.target.closest(".rule-vote-submit-btn");
+  if (submitBtn) {
+    const widget = submitBtn.closest(".rule-vote-widget");
+    if (widget) castRuleVote_(widget);
     return;
   }
   if (e.target.closest("#ruleSuggestBtn")) {
@@ -2010,15 +2028,31 @@ async function loadMyRuleVotes_() {
   }
 }
 
-async function castRuleVote_(widget, vote) {
+// Picking 👍/👎 doesn't submit right away - it just picks a side and reveals
+// the comment box + a Submit button, so the box isn't sitting there empty on
+// every flagged rule until someone actually wants to vote.
+function selectRuleVotePending_(widget, vote) {
+  if (!widget || (vote !== "up" && vote !== "down")) return;
+  widget.dataset.pendingVote = vote;
+  widget.querySelectorAll(".rule-vote-btn").forEach((btn) => {
+    btn.classList.toggle("pending", btn.dataset.vote === vote);
+  });
+  const confirmWrap = widget.querySelector(".rule-vote-confirm");
+  if (confirmWrap) confirmWrap.classList.remove("hidden");
+}
+
+async function castRuleVote_(widget) {
   const key = ruleVoteKey_(widget ? widget.dataset.setting : "");
+  const vote = widget ? widget.dataset.pendingVote : "";
   if (!key || (vote !== "up" && vote !== "down")) return;
   if (state.myRuleVotes[key]) return; // already locked, no revote
 
   const commentInput = widget.querySelector(".rule-vote-comment");
   const comment = commentInput ? commentInput.value.trim() : "";
   const status = widget.querySelector(".rule-vote-status");
+  const submitBtn = widget.querySelector(".rule-vote-submit-btn");
 
+  if (submitBtn) submitBtn.disabled = true;
   if (status) status.textContent = "Submitting...";
 
   try {
@@ -2028,6 +2062,7 @@ async function castRuleVote_(widget, vote) {
     refreshRuleChangesDrawerIfOpen_();
   } catch (err) {
     if (status) status.textContent = "Could not vote: " + (err.message || err);
+    if (submitBtn) submitBtn.disabled = false;
   }
 }
 
@@ -2063,7 +2098,7 @@ async function submitRuleSuggestion_() {
   }
 }
 
-function renderRuleVoteWidget_(setting, feedback) {
+function renderRuleVoteWidget_(setting, feedback, badge) {
   const key = ruleVoteKey_(setting);
   const tally = feedback || { up: 0, down: 0, comments: [] };
   const mine = state.myRuleVotes[key];
@@ -2075,16 +2110,24 @@ function renderRuleVoteWidget_(setting, feedback) {
     .map((c) => `<p class="rule-vote-comment-line"><b>${escapeHtml(c.manager)}</b> ${c.vote === "up" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}: ${escapeHtml(c.comment)}</p>`)
     .join("");
 
+  const badgeHtml = badge
+    ? `<span class="rule-badge ${badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(badge)}</span>`
+    : "";
+
   return `
     <div class="rule-vote-widget" data-setting="${escapeHtml(key)}">
       <div class="rule-vote-buttons">
+        ${badgeHtml}
         <button type="button" class="rule-vote-btn ${mine?.vote === "up" ? "voted" : ""}" data-vote="up" ${locked ? "disabled" : ""}>👍 ${tally.up || 0}</button>
         <button type="button" class="rule-vote-btn ${mine?.vote === "down" ? "voted" : ""}" data-vote="down" ${locked ? "disabled" : ""}>👎 ${tally.down || 0}</button>
         ${locked ? `<small class="muted">You voted ${mine.vote === "up" ? "👍" : "👎"}${mine.comment ? ` - "${escapeHtml(mine.comment)}"` : ""}</small>` : ""}
       </div>
       ${!locked ? `
-        <input type="text" class="rule-vote-comment" placeholder="Optional comment (shown with your vote)" maxlength="500">
-        <small class="rule-vote-status muted"></small>
+        <div class="rule-vote-confirm hidden">
+          <input type="text" class="rule-vote-comment" placeholder="Explain why you're bitchin'" maxlength="500">
+          <button type="button" class="rule-vote-submit-btn">Submit vote</button>
+          <small class="rule-vote-status muted"></small>
+        </div>
       ` : ""}
       ${comments ? `<div class="rule-vote-comments">${comments}</div>` : ""}
     </div>
@@ -2103,9 +2146,8 @@ function ruleChangesListHtml_() {
     const oneLiner = RULE_CHANGE_ONE_LINERS[rule.setting] || rule.setting;
     return `
       <div class="rules-change-item">
-        <span class="rule-badge ${rule.badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(rule.badge)}</span>
         <p>${escapeHtml(oneLiner)}</p>
-        ${renderRuleVoteWidget_(key, feedback[key])}
+        ${renderRuleVoteWidget_(key, feedback[key], rule.badge)}
       </div>
     `;
   }).join("");
@@ -2225,11 +2267,10 @@ function renderRules(rules) {
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
-          ${badge ? `<span class="rule-badge ${badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(badge)}</span>` : ""}
           ${currentValue ? `<span>${escapeHtml(currentValue)}</span>` : ""}
           ${(proposed && !finalValue) ? `<span><b>Proposed:</b> ${escapeHtml(proposed)}</span>` : ""}
           ${notes ? `<em>${escapeHtml(notes)}</em>` : ""}
-          ${badge ? renderRuleVoteWidget_(key, feedback[key]) : ""}
+          ${badge ? renderRuleVoteWidget_(key, feedback[key], badge) : ""}
         </div>
       `;
       body.appendChild(row);
