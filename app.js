@@ -1,5 +1,12 @@
 /*
   2B1C FFL
+  v1.6.2 - Three fixes from testing: (1) What's New simplified to just the
+  single latest entry, no more "Show older updates" toggle/list. (2) Rule
+  badges redesigned - dropped the bordered pill for a plain bold label with
+  a small color dot. (3) Replaced the inline "Suggest a change" box at the
+  bottom of Rules with a global floating help-desk button (bottom-right,
+  all tabs) offering Suggest a change / Ask a question - same backend
+  endpoint, just a better entry point.
   v1.6.0 - What's New (Settings) now reads from the ReleaseNotes Sheet tab
   instead of a hardcoded list in this file - add/edit entries yourself,
   no code deploy needed. New Commish tab "Release Notes" card lets you
@@ -167,15 +174,17 @@ function untagOneSignalDevice_() {
   withOneSignal_((OneSignal) => OneSignal.logout());
 }
 
-// Builds the Settings > What's New block: the newest release shown
-// expanded (version + date header, one-line summary), everything older
-// collapsed behind a single "Show older updates" toggle.
+// Builds the Settings > What's New block: just the single latest release
+// (version + date header, one-line summary). No older-updates list/toggle -
+// Will controls what's "latest" via the Commish tab, one entry at a time.
 function renderWhatsNew_() {
   const notes = state.appData?.whatsNew || [];
   if (!notes.length) return "";
 
-  const [latest, ...older] = notes;
-  const latestHtml = `
+  const latest = notes[0];
+
+  return `
+    <strong>What's New</strong>
     <div class="whats-new-latest">
       <div class="whats-new-head">
         <span class="whats-new-version">${escapeHtml(latest.version)}</span>
@@ -183,25 +192,6 @@ function renderWhatsNew_() {
       </div>
       <p class="whats-new-summary">${escapeHtml(latest.summary)}</p>
     </div>
-  `;
-
-  const olderHtml = older.length ? `
-    <button class="ghost-btn compact-btn whats-new-toggle" id="whatsNewOlderToggle" type="button" aria-expanded="false">Show older updates</button>
-    <ul class="whats-new-list hidden" id="whatsNewOlderList">
-      ${older.map((note) => `
-        <li>
-          <span class="whats-new-version">${escapeHtml(note.version)}</span>
-          ${note.date ? `<span class="whats-new-date">${escapeHtml(note.date)}</span>` : ""}
-          <br>${escapeHtml(note.summary)}
-        </li>
-      `).join("")}
-    </ul>
-  ` : "";
-
-  return `
-    <strong>What's New</strong>
-    ${latestHtml}
-    ${olderHtml}
   `;
 }
 
@@ -252,16 +242,6 @@ function openNotifSettingsDrawer_() {
     drawer.remove();
     logout();
   });
-
-  const olderToggle = document.getElementById("whatsNewOlderToggle");
-  const olderList = document.getElementById("whatsNewOlderList");
-  if (olderToggle && olderList) {
-    olderToggle.addEventListener("click", () => {
-      const nowHidden = olderList.classList.toggle("hidden");
-      olderToggle.textContent = nowHidden ? "Show older updates" : "Hide older updates";
-      olderToggle.setAttribute("aria-expanded", String(!nowHidden));
-    });
-  }
 
   const toggle = document.getElementById("notifToggleInput");
   const status = document.getElementById("notifSettingsStatus");
@@ -361,9 +341,6 @@ document.addEventListener("click", (e) => {
     if (widget) castRuleVote_(widget);
     return;
   }
-  if (e.target.closest("#ruleSuggestBtn")) {
-    submitRuleSuggestion_();
-  }
   if (e.target.closest("#ruleChangesLinkBtn")) {
     openRuleChangesDrawer_();
   }
@@ -450,6 +427,7 @@ async function login(isAutoLogin = false) {
 
     tagOneSignalDevice_(state.manager);
     loadMyRuleVotes_();
+    renderHelpDeskFab_();
 
     loginScreen.classList.add("hidden");
     setLoginBusy(false);
@@ -489,6 +467,7 @@ function clearSaved(showStatus = true) {
 function logout() {
   untagOneSignalDevice_();
   clearSaved(false);
+  removeHelpDeskFab_();
   appScreen.classList.add("hidden");
   loginScreen.classList.remove("hidden");
   showTab("home");
@@ -2117,16 +2096,92 @@ async function castRuleVote_(widget) {
   }
 }
 
-async function submitRuleSuggestion_() {
-  const areaSelect = document.getElementById("ruleSuggestAreaInput");
-  const textInput = document.getElementById("ruleSuggestTextInput");
-  const status = document.getElementById("ruleSuggestStatus");
-  const btn = document.getElementById("ruleSuggestBtn");
-  if (!textInput) return;
+// Global "help desk" floating button (bottom-right, visible on every tab
+// once logged in) - replaces the old inline Suggest-a-change box that lived
+// only at the bottom of Rules. Two quick actions, both post through the
+// same submitRuleSuggestion endpoint: ruleArea carries "Suggestion" or
+// "Question" so Will can tell them apart in the sheet, no new backend
+// needed for this.
+function renderHelpDeskFab_() {
+  if (!state.loggedIn) return;
+  if (document.getElementById("helpDeskFab")) return;
+
+  const fab = document.createElement("button");
+  fab.id = "helpDeskFab";
+  fab.type = "button";
+  fab.className = "help-desk-fab";
+  fab.setAttribute("aria-label", "Suggest a change or ask a question");
+  fab.innerHTML = "💬";
+  fab.addEventListener("click", openHelpDeskDrawer_);
+  document.body.appendChild(fab);
+}
+
+function removeHelpDeskFab_() {
+  const fab = document.getElementById("helpDeskFab");
+  if (fab) fab.remove();
+  closeHelpDeskDrawer_();
+}
+
+function openHelpDeskDrawer_() {
+  const existing = document.getElementById("helpDeskDrawer");
+  if (existing) existing.remove();
+
+  const drawer = document.createElement("div");
+  drawer.id = "helpDeskDrawer";
+  drawer.className = "drawer-backdrop week-picker-backdrop";
+  drawer.innerHTML = `
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Suggest a change or ask a question">
+      <div class="week-picker-head">
+        <h4>Suggest a change / Ask a question</h4>
+        <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="help-desk-body">
+        <div class="help-desk-kind-row">
+          <button type="button" class="help-desk-kind-btn active" data-kind="Suggestion">💡 Suggest a change</button>
+          <button type="button" class="help-desk-kind-btn" data-kind="Question">❓ Ask a question</button>
+        </div>
+        <textarea id="helpDeskTextInput" maxlength="1000" placeholder="What should we change?"></textarea>
+        <button type="button" id="helpDeskSendBtn" class="primary-btn compact-btn">Send</button>
+        <small id="helpDeskStatus" class="muted"></small>
+      </div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) drawer.remove();
+  });
+  document.body.appendChild(drawer);
+  drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
+
+  const textInput = drawer.querySelector("#helpDeskTextInput");
+  drawer.querySelectorAll(".help-desk-kind-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      drawer.querySelectorAll(".help-desk-kind-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      textInput.placeholder = btn.dataset.kind === "Question" ? "What do you want to know?" : "What should we change?";
+    });
+  });
+
+  drawer.querySelector("#helpDeskSendBtn").addEventListener("click", submitHelpDeskMessage_);
+}
+
+function closeHelpDeskDrawer_() {
+  const drawer = document.getElementById("helpDeskDrawer");
+  if (drawer) drawer.remove();
+}
+
+async function submitHelpDeskMessage_() {
+  const drawer = document.getElementById("helpDeskDrawer");
+  if (!drawer) return;
+
+  const textInput = drawer.querySelector("#helpDeskTextInput");
+  const status = drawer.querySelector("#helpDeskStatus");
+  const btn = drawer.querySelector("#helpDeskSendBtn");
+  const kind = drawer.querySelector(".help-desk-kind-btn.active")?.dataset.kind || "Suggestion";
 
   const comment = textInput.value.trim();
   if (!comment) {
-    if (status) status.textContent = "Enter a suggestion first.";
+    if (status) status.textContent = "Type something first.";
     return;
   }
 
@@ -2134,14 +2189,9 @@ async function submitRuleSuggestion_() {
   if (status) status.textContent = "Sending...";
 
   try {
-    await api("submitRuleSuggestion", {
-      manager: state.manager,
-      pin: state.pin,
-      ruleArea: areaSelect ? areaSelect.value : "",
-      comment
-    });
-    textInput.value = "";
+    await api("submitRuleSuggestion", { manager: state.manager, pin: state.pin, ruleArea: kind, comment });
     if (status) status.textContent = "Got it - thanks.";
+    setTimeout(() => closeHelpDeskDrawer_(), 900);
   } catch (err) {
     if (status) status.textContent = "Could not send: " + (err.message || err);
   } finally {
@@ -2331,21 +2381,6 @@ function renderRules(rules) {
     card.appendChild(body);
     section.appendChild(card);
   });
-
-  const suggestCard = document.createElement("section");
-  suggestCard.className = "card rule-suggest-card";
-  suggestCard.innerHTML = `
-    <h3>Suggest a change</h3>
-    <p class="muted compact-note">Got a take on a rule that isn't flagged above? Drop it here - goes straight to the commissioner.</p>
-    <select id="ruleSuggestAreaInput">
-      ${Object.keys(grouped).map((area) => `<option value="${escapeHtml(area)}">${escapeHtml(area)}</option>`).join("")}
-      <option value="General">General</option>
-    </select>
-    <input type="text" id="ruleSuggestTextInput" placeholder="What should we change?" maxlength="1000">
-    <button type="button" id="ruleSuggestBtn" class="primary-btn compact-btn">Send suggestion</button>
-    <small id="ruleSuggestStatus" class="muted"></small>
-  `;
-  section.appendChild(suggestCard);
 
   const searchInput = document.getElementById("ruleSearchInput");
   const clearBtn = document.getElementById("ruleSearchClearBtn");
