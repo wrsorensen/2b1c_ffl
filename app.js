@@ -1,6 +1,14 @@
 /*
   2B1C FFL
-  v1.4.0 - Hot Sheet overhaul: browsing a past week now shows that week's own Hot Sheet (recomputed live, no archive storage needed); 3 gated categories (Mercy Killing >20pt margin, Nail-Biter <=9pt margin, Upset City requires a 2+ win record gap) so they only fire when actually notable; new "Manager Malfunction" category (total bench points stranded, separate from Wasted Talent's single-player stat); category titles now rotate per week from a 4-option pool (OG name kept at the back); full raunchier/grittier line rewrite across all 8 categories, 5 variants each
+  v1.5.0 - 2026 Changes feature: Rules tab now flags rules that changed for
+  2026 ("Changed for '26") or are being floated for 2027 ("Considering for
+  '27"), with a 📌 2026 Changes from 2025 summary card up top (short/abrasive
+  one-liners) and an inline 👍👎 vote + optional comment on each flagged rule
+  - one locked vote per manager, no revote, public tallies and comments.
+  Also adds a "Suggest a change" catch-all box at the bottom of Rules for
+  anything not flagged. Also folds in the v1.4.1 fix that was never shipped:
+  dropped the confusing "Final:"/"Baseline:" label on every rule row - just
+  shows the plain value now.
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -20,6 +28,7 @@ const AUTO_REFRESH_MS = 25000;
 // backend/Sheet involved. History starts at v1.3.5 (when this feature
 // shipped); earlier versions were not backfilled.
 const RELEASE_NOTES = [
+  { version: "v1.5.0", date: "Oct 29, 2026", summary: "Rules tab: flagged \"Changed for '26\" / \"Considering for '27\" rules now show a 2026 Changes summary card, a 👍👎 vote (one locked vote, optional comment, public tallies), and a Suggest-a-change box for everything else." },
   { version: "v1.4.0", date: "Oct 29, 2026", summary: "Hot Sheet overhaul: past-week browsing now shows that week's own recap, a new Manager Malfunction category, rotating category titles, gated categories so they only fire when notable, and a grittier full rewrite." },
   { version: "v1.3.6", date: "Oct 2, 2026", summary: "What's New restyled: latest update shown front and center, older ones tucked behind a toggle." },
   { version: "v1.3.5", date: "Oct 2, 2026", summary: "Settings now has a What's New section showing recent updates." }
@@ -61,7 +70,9 @@ const state = {
   feedUnreadCutKey: "",
   expandedFeedMessages: new Set(),
   reactionEmojis: DEFAULT_REACTION_EMOJIS,
-  openReactionPalette: null
+  openReactionPalette: null,
+  myRuleVotes: {},
+  myRuleVotesLoaded: false
 };
 
 const loginScreen = document.getElementById("loginScreen");
@@ -320,6 +331,18 @@ document.addEventListener("visibilitychange", () => {
   if (!document.hidden && state.loggedIn && (state.currentTab === "trash" || state.currentTab === "home")) refreshData(true);
 });
 
+document.addEventListener("click", (e) => {
+  const voteBtn = e.target.closest(".rule-vote-btn");
+  if (voteBtn) {
+    const widget = voteBtn.closest(".rule-vote-widget");
+    if (widget) castRuleVote_(widget, voteBtn.dataset.vote);
+    return;
+  }
+  if (e.target.closest("#ruleSuggestBtn")) {
+    submitRuleSuggestion_();
+  }
+});
+
 init();
 
 async function init() {
@@ -400,6 +423,7 @@ async function login(isAutoLogin = false) {
     localStorage.setItem("teamName", state.teamName);
 
     tagOneSignalDevice_(state.manager);
+    loadMyRuleVotes_();
 
     loginScreen.classList.add("hidden");
     setLoginBusy(false);
@@ -1934,13 +1958,155 @@ async function setSpotlightCard_(value) {
   }
 }
 
+// Abrasive one-liner summaries for the "2026 Changes from 2025" card, keyed
+// by the exact Setting string from the RuleSettings sheet. These are the fun
+// version of the change - the actual rule text in each accordion row stays
+// serious/unambiguous, per the "keep the Rules tab unambiguous" rule.
+const RULE_CHANGE_ONE_LINERS = {
+  "Time Per Pick": "Draft Timer: Bumped to 90 seconds because somebody couldn't pick a kicker in under a minute.",
+  "Passing": "Passing Bonus: Only pays out at 400+ yards now. Stop settling for mediocre.",
+  "Rushing": "Yardage Bonuses: Stack bonuses for 100+ and 200+ yard games. Go off or go home.",
+  "Receiving": "Yardage Bonuses: Stack bonuses for 100+ and 200+ yard games. Go off or go home.",
+  "Kicking": "Kicking: Missed kicks hurt more now. Draft a better kicker.",
+  "D/ST Stat Scoring": "D/ST Scoring: Turnovers pay bigger. Draft a defense that actually hits people.",
+  "Playoff Transactions": "Playoff Lockout: Eliminated? Your roster's frozen. No sneaky last-minute moves.",
+  "Votes Required to Veto": "Trades: Normal clock runs unless both sides ask for a rush job. Clean trade, both parties asking? Commish fast-tracks it. Smells shady? Enjoy the group vote, snake.",
+  "Other Settings": "Schedule: Hand-built for 2026, and no, home field doesn't matter. Stop asking.",
+  "Playoff Teams": "Playoffs: Win your division or grind for a wild card. Either way, earn it.",
+  "Round 1 Format": "Playoffs: Win your division or grind for a wild card. Either way, earn it.",
+  "Current Layout": "Divisions: Finish last? Enjoy getting shuffled into a new division like the rest of the bottom-feeders.",
+  "Use Keepers": "Keepers: Floating the idea for 2027. Vote now before we decide for you."
+};
+
+function ruleVoteKey_(setting) {
+  return String(setting || "").trim();
+}
+
+async function loadMyRuleVotes_() {
+  if (!state.manager || !state.pin) return;
+  try {
+    const response = await api("getMyRuleVotes", { manager: state.manager, pin: state.pin });
+    state.myRuleVotes = response.data?.votes || {};
+    state.myRuleVotesLoaded = true;
+    if (state.currentTab === "rules" && state.appData) {
+      renderRules(state.appData.rules || state.appData.ruleSettings || []);
+    }
+  } catch (err) {
+    // Non-fatal - votes just won't show as locked until a retry/refresh.
+  }
+}
+
+async function castRuleVote_(widget, vote) {
+  const key = ruleVoteKey_(widget ? widget.dataset.setting : "");
+  if (!key || (vote !== "up" && vote !== "down")) return;
+  if (state.myRuleVotes[key]) return; // already locked, no revote
+
+  const commentInput = widget.querySelector(".rule-vote-comment");
+  const comment = commentInput ? commentInput.value.trim() : "";
+  const status = widget.querySelector(".rule-vote-status");
+
+  if (status) status.textContent = "Submitting...";
+
+  try {
+    await api("submitRuleVote", { manager: state.manager, pin: state.pin, setting: key, vote, comment });
+    state.myRuleVotes[key] = { vote, comment };
+    await refreshData(true);
+  } catch (err) {
+    if (status) status.textContent = "Could not vote: " + (err.message || err);
+  }
+}
+
+async function submitRuleSuggestion_() {
+  const areaSelect = document.getElementById("ruleSuggestAreaInput");
+  const textInput = document.getElementById("ruleSuggestTextInput");
+  const status = document.getElementById("ruleSuggestStatus");
+  const btn = document.getElementById("ruleSuggestBtn");
+  if (!textInput) return;
+
+  const comment = textInput.value.trim();
+  if (!comment) {
+    if (status) status.textContent = "Enter a suggestion first.";
+    return;
+  }
+
+  if (btn) btn.disabled = true;
+  if (status) status.textContent = "Sending...";
+
+  try {
+    await api("submitRuleSuggestion", {
+      manager: state.manager,
+      pin: state.pin,
+      ruleArea: areaSelect ? areaSelect.value : "",
+      comment
+    });
+    textInput.value = "";
+    if (status) status.textContent = "Got it - thanks.";
+  } catch (err) {
+    if (status) status.textContent = "Could not send: " + (err.message || err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function renderRuleVoteWidget_(setting, feedback) {
+  const key = ruleVoteKey_(setting);
+  const tally = feedback || { up: 0, down: 0, comments: [] };
+  const mine = state.myRuleVotes[key];
+  const locked = Boolean(mine);
+
+  const comments = (tally.comments || [])
+    .filter((c) => c.comment)
+    .slice(-5)
+    .map((c) => `<p class="rule-vote-comment-line"><b>${escapeHtml(c.manager)}</b> ${c.vote === "up" ? "\uD83D\uDC4D" : "\uD83D\uDC4E"}: ${escapeHtml(c.comment)}</p>`)
+    .join("");
+
+  return `
+    <div class="rule-vote-widget" data-setting="${escapeHtml(key)}">
+      <div class="rule-vote-buttons">
+        <button type="button" class="rule-vote-btn ${mine?.vote === "up" ? "voted" : ""}" data-vote="up" ${locked ? "disabled" : ""}>👍 ${tally.up || 0}</button>
+        <button type="button" class="rule-vote-btn ${mine?.vote === "down" ? "voted" : ""}" data-vote="down" ${locked ? "disabled" : ""}>👎 ${tally.down || 0}</button>
+        ${locked ? `<small class="muted">You voted ${mine.vote === "up" ? "👍" : "👎"}${mine.comment ? ` - "${escapeHtml(mine.comment)}"` : ""}</small>` : ""}
+      </div>
+      ${!locked ? `
+        <input type="text" class="rule-vote-comment" placeholder="Optional comment (shown with your vote)" maxlength="500">
+        <small class="rule-vote-status muted"></small>
+      ` : ""}
+      ${comments ? `<div class="rule-vote-comments">${comments}</div>` : ""}
+    </div>
+  `;
+}
+
 function renderRules(rules) {
   const section = document.getElementById("rules");
+  const feedback = state.appData?.ruleFeedback || {};
+
+  const changedRules = rules.filter((r) => r.badge);
+
+  const changesCardHtml = changedRules.length
+    ? `
+      <section class="card rules-changes-card">
+        <h3>📌 2026 Changes from 2025</h3>
+        ${changedRules.map((rule) => {
+          const key = ruleVoteKey_(rule.setting);
+          const oneLiner = RULE_CHANGE_ONE_LINERS[rule.setting] || rule.setting;
+          return `
+            <div class="rules-change-item">
+              <span class="rule-badge ${rule.badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(rule.badge)}</span>
+              <p>${escapeHtml(oneLiner)}</p>
+              ${renderRuleVoteWidget_(key, feedback[key])}
+            </div>
+          `;
+        }).join("")}
+      </section>
+    `
+    : "";
+
   section.innerHTML = `
     <section class="card rules-intro-card">
       <h3>Rule Review</h3>
-      <p class="muted">Baseline/current ESPN settings only. Proposed changes are not final until commissioner review.</p>
+      <p class="muted">Current league rules for 2026. Rules tagged "Changed for '26" are new this season - vote and tell us what you think below.</p>
     </section>
+    ${changesCardHtml}
     <section class="rule-search-card">
       <div class="rule-search-bar">
         <span class="rule-search-icon" aria-hidden="true">⌕</span>
@@ -1989,6 +2155,7 @@ function renderRules(rules) {
       const finalValue = rule.finalValue || "";
       const saved = rule.espnSaved || "";
       const notes = rule.notes || "";
+      const badge = rule.badge || "";
       const status = finalValue ? "Final" : (saved || "Needs review");
 
       // Display value: Final Value once a rule is finalized, falling back to
@@ -1997,16 +2164,19 @@ function renderRules(rules) {
       // hasn't been finalized yet (matches the "not final until commissioner
       // review" framing above).
       const currentValue = finalValue || baseline;
+      const key = ruleVoteKey_(setting);
 
       const row = document.createElement("div");
       row.className = "rule-row";
-      row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, status]);
+      row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, status, badge]);
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
-          ${currentValue ? `<span><b>${finalValue ? "Final" : "Baseline"}:</b> ${escapeHtml(currentValue)}</span>` : ""}
+          ${badge ? `<span class="rule-badge ${badge.indexOf("Considering") === 0 ? "rule-badge-considering" : ""}">${escapeHtml(badge)}</span>` : ""}
+          ${currentValue ? `<span>${escapeHtml(currentValue)}</span>` : ""}
           ${(proposed && !finalValue) ? `<span><b>Proposed:</b> ${escapeHtml(proposed)}</span>` : ""}
           ${notes ? `<em>${escapeHtml(notes)}</em>` : ""}
+          ${badge ? renderRuleVoteWidget_(key, feedback[key]) : ""}
         </div>
         <small>${escapeHtml(status)}</small>
       `;
@@ -2017,6 +2187,21 @@ function renderRules(rules) {
     card.appendChild(body);
     section.appendChild(card);
   });
+
+  const suggestCard = document.createElement("section");
+  suggestCard.className = "card rule-suggest-card";
+  suggestCard.innerHTML = `
+    <h3>Suggest a change</h3>
+    <p class="muted compact-note">Got a take on a rule that isn't flagged above? Drop it here - goes straight to the commissioner.</p>
+    <select id="ruleSuggestAreaInput">
+      ${Object.keys(grouped).map((area) => `<option value="${escapeHtml(area)}">${escapeHtml(area)}</option>`).join("")}
+      <option value="General">General</option>
+    </select>
+    <input type="text" id="ruleSuggestTextInput" placeholder="What should we change?" maxlength="1000">
+    <button type="button" id="ruleSuggestBtn" class="primary-btn compact-btn">Send suggestion</button>
+    <small id="ruleSuggestStatus" class="muted"></small>
+  `;
+  section.appendChild(suggestCard);
 
   const searchInput = document.getElementById("ruleSearchInput");
   const clearBtn = document.getElementById("ruleSearchClearBtn");
