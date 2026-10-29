@@ -1328,6 +1328,18 @@ select:focus {
   outline: none;
 }
 
+.rule-changes-link {
+  flex: 0 0 auto;
+  border: 0;
+  background: transparent;
+  color: var(--gold);
+  font-size: .72rem;
+  font-weight: 800;
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
 .rule-search-clear-btn {
   flex: 0 0 auto;
   width: 24px;
