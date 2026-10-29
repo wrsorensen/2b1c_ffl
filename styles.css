@@ -1402,22 +1402,25 @@ select:focus {
 }
 
 /* 2026 CHANGES / RULE VOTING */
-.rule-badge {
+.rule-row .rule-badge,
+.rules-change-item .rule-badge {
   display: inline-block;
-  margin-bottom: 4px;
-  padding: 2px 8px;
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border: 1px solid rgba(216,180,93,.4);
   border-radius: 999px;
-  background: rgba(216,180,93,.18);
-  color: var(--gold);
-  font-size: .62rem;
-  font-weight: 900;
+  background: transparent;
+  color: var(--gold-soft);
+  font-size: .6rem;
+  font-weight: 800;
   letter-spacing: .02em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .rule-badge-considering {
-  background: rgba(43,130,189,.18);
-  color: #6db6e8;
+  border-color: rgba(109,182,232,.45);
+  color: #a9d4ee;
 }
 
 .rules-changes-card {
@@ -1478,10 +1481,17 @@ select:focus {
   cursor: default;
 }
 
-.rule-vote-btn.voted {
+.rule-vote-btn.voted,
+.rule-vote-btn.pending {
   border-color: var(--gold);
   background: rgba(216,180,93,.18);
   color: var(--gold);
+}
+
+.rule-vote-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .rule-vote-comment {
@@ -1492,6 +1502,23 @@ select:focus {
   background: rgba(255,255,255,.04);
   color: var(--text);
   font-size: .78rem;
+}
+
+.rule-vote-submit-btn {
+  align-self: flex-start;
+  border: 1px solid var(--gold);
+  border-radius: 999px;
+  padding: 6px 14px;
+  background: rgba(216,180,93,.18);
+  color: var(--gold);
+  font-size: .76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.rule-vote-submit-btn:disabled {
+  opacity: .55;
+  cursor: default;
 }
 
 .rule-vote-comments {
