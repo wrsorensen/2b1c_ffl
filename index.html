@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.5.4 — Rules tab: badge+vote same row, subtler pill</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.1 — New home header</p>
     </section>
   </main>
 
@@ -84,7 +84,7 @@
       <section class="hero-card dashboard-hero">
         <div class="hero-copy">
           <span class="eyebrow">2026 League Headquarters</span>
-          <h2>Talk shit.<br><span>Win trophies.</span></h2>
+          <h2>No mercy.<br><span>No refunds.</span></h2>
         </div>
       </section>
 
@@ -145,7 +145,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.5.4</span>
+        <span class="home-version">v1.6.1</span>
       </section>
     </section>
 
@@ -316,6 +316,18 @@
             <button class="primary-btn compact-btn" id="addManagerBtn" type="button">Add Manager</button>
           </div>
           <p id="managerFormStatus" class="status-line"></p>
+        </div>
+      </article>
+
+      <article class="card" id="commishReleaseNotesCard">
+        <div class="card-head card-head-toggle" data-card-id="commishReleaseNotesCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Release Notes">
+          <div>
+            <h3>Release Notes</h3>
+            <p class="muted compact-note">Toggle which updates show in everyone's What's New. Add/edit rows in the ReleaseNotes sheet.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="commishReleaseNotesList"></div>
         </div>
       </article>
 
