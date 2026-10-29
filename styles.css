@@ -1408,23 +1408,36 @@ select:focus {
 /* 2026 CHANGES / RULE VOTING */
 .rule-row .rule-badge,
 .rules-change-item .rule-badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   flex: 0 0 auto;
-  padding: 2px 7px;
-  border: 1px solid rgba(216,180,93,.4);
-  border-radius: 999px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
-  color: var(--gold-soft);
-  font-size: .6rem;
+  color: var(--gold);
+  font-size: .68rem;
   font-weight: 800;
-  letter-spacing: .02em;
-  text-transform: uppercase;
+  letter-spacing: .01em;
   white-space: nowrap;
 }
 
+.rule-row .rule-badge::before,
+.rules-change-item .rule-badge::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+
 .rule-badge-considering {
-  border-color: rgba(109,182,232,.45);
-  color: #a9d4ee;
+  color: #6db6e8;
+}
+
+.rule-badge-considering::before {
+  background: #6db6e8;
 }
 
 .rules-changes-card {
@@ -1553,6 +1566,72 @@ select:focus {
   background: rgba(255,255,255,.04);
   color: var(--text);
   font-size: .82rem;
+}
+
+/* HELP DESK FAB */
+.help-desk-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 78px;
+  z-index: 70;
+  width: 52px;
+  height: 52px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #1a1206;
+  font-size: 1.4rem;
+  line-height: 1;
+  box-shadow: 0 6px 18px rgba(0,0,0,.4);
+  cursor: pointer;
+}
+
+@media (min-width: 784px) {
+  .help-desk-fab {
+    right: calc(50% - 364px);
+    bottom: 26px;
+  }
+}
+
+.help-desk-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.help-desk-kind-row {
+  display: flex;
+  gap: 8px;
+}
+
+.help-desk-kind-btn {
+  flex: 1 1 0;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 9px 6px;
+  background: rgba(255,255,255,.04);
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.help-desk-kind-btn.active {
+  border-color: var(--gold);
+  background: rgba(216,180,93,.18);
+  color: var(--gold);
+}
+
+.help-desk-body textarea {
+  width: 100%;
+  min-height: 90px;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: rgba(255,255,255,.04);
+  color: var(--text);
+  font-size: .82rem;
+  resize: vertical;
 }
 
 /* CHAMPIONS */
