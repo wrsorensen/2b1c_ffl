@@ -1,6 +1,6 @@
 /*
   2B1C FFL
-  v1.3.6 - What's New restyled: newest version shown expanded (version + date + summary), older entries collapsed behind a "Show older updates" toggle - closer to a real app changelog look
+  v1.4.0 - Hot Sheet overhaul: browsing a past week now shows that week's own Hot Sheet (recomputed live, no archive storage needed); 3 gated categories (Mercy Killing >20pt margin, Nail-Biter <=9pt margin, Upset City requires a 2+ win record gap) so they only fire when actually notable; new "Manager Malfunction" category (total bench points stranded, separate from Wasted Talent's single-player stat); category titles now rotate per week from a 4-option pool (OG name kept at the back); full raunchier/grittier line rewrite across all 8 categories, 5 variants each
 */
 const APPS_SCRIPT_API_URL = "https://script.google.com/macros/s/AKfycbx1r1DRzTOZj9wy1NRspGRc-Nq51oypZGl6upojMG4NUGmZMH7GMCPPWBClFRl08rAtaA/exec";
 const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
@@ -20,6 +20,7 @@ const AUTO_REFRESH_MS = 25000;
 // backend/Sheet involved. History starts at v1.3.5 (when this feature
 // shipped); earlier versions were not backfilled.
 const RELEASE_NOTES = [
+  { version: "v1.4.0", date: "Oct 29, 2026", summary: "Hot Sheet overhaul: past-week browsing now shows that week's own recap, a new Manager Malfunction category, rotating category titles, gated categories so they only fire when notable, and a grittier full rewrite." },
   { version: "v1.3.6", date: "Oct 2, 2026", summary: "What's New restyled: latest update shown front and center, older ones tucked behind a toggle." },
   { version: "v1.3.5", date: "Oct 2, 2026", summary: "Settings now has a What's New section showing recent updates." }
 ];
@@ -51,6 +52,7 @@ const state = {
   liveWeek: 1,
   totalWeeks: null,
   viewingWeek: null,
+  spotlightCard: "none",
   rosterWeek: null,
   rosterByTeamId: null,
   rosterLoading: false,
@@ -639,6 +641,7 @@ function renderApp() {
   renderHome(settings);
   renderCommissionerDesk_(data.activePoll || null);
   applySpotlight_(settings.spotlightCard || "none", Boolean(data.activePoll && data.activePoll.id));
+  state.spotlightCard = settings.spotlightCard || "none";
   renderSpotlightControl_(settings.spotlightCard || "none");
   renderRules(data.rules || data.ruleSettings || []);
   renderChampions(data.champions || [], data.leagueHistory || []);
@@ -1037,7 +1040,11 @@ function isHotSheetWindowActive_() {
 function updateHotSheetVisibility_(spotlightValue) {
   const card = document.getElementById("hotSheetCard");
   if (!card) return;
-  const shouldShow = isHotSheetWindowActive_() || spotlightValue === "hotSheet";
+  // Also auto-show when browsing a completed past week via the Scoreboard
+  // week-picker, regardless of the Tue-Thu clock window - that week's
+  // recap belongs with that week's view, not just the "last week" default.
+  const viewingPastWeek = Number.isFinite(state.viewingWeek) && state.viewingWeek < state.liveWeek;
+  const shouldShow = isHotSheetWindowActive_() || spotlightValue === "hotSheet" || viewingPastWeek;
   card.classList.toggle("hidden", !shouldShow);
 }
 
@@ -1235,6 +1242,17 @@ async function selectScoreboardWeek_(week) {
   state.viewingWeek = clamped === state.liveWeek ? null : clamped;
   setScoreboardStatus("Syncing", false);
   await loadWeekScoreboard_(clamped);
+
+  // Keep Hot Sheet in sync with whichever week is being browsed: a past
+  // completed week shows that week's own recap (outside the normal Tue-Thu
+  // window); returning to the live week reverts to the usual "last week"
+  // auto-window behavior.
+  updateHotSheetVisibility_(state.spotlightCard);
+  if (state.viewingWeek && state.viewingWeek < state.liveWeek) {
+    await loadHotSheet_(state.viewingWeek);
+  } else {
+    await loadHotSheet_();
+  }
 }
 
 function openWeekPicker_() {
@@ -1468,6 +1486,10 @@ function computeWeeklyHighlights_(games) {
     if (!blowout || margin > blowout.margin) blowout = entry;
   });
 
+  // Mercy Killing only fires above a real blowout threshold - a 10-point
+  // win isn't a mercy killing, it's just a normal week.
+  if (blowout && blowout.margin <= HOT_SHEET_BLOWOUT_MARGIN) blowout = null;
+
   return { top, bottom, blowout };
 }
 
@@ -1489,8 +1511,19 @@ function computeClosestGame_(games) {
     if (!closest || margin < closest.margin) closest = entry;
   });
 
+  // Nail-Biter only fires when the closest game is actually close - above
+  // this margin it's just a normal win, not a nail-biter.
+  if (closest && closest.margin > HOT_SHEET_NAIL_BITER_MARGIN) return null;
+
   return closest;
 }
+
+// Hot Sheet thresholds - categories below these don't fire that week, same
+// as the existing "no data" rows: they just drop out of the list rather
+// than forcing a weak/meaningless callout every single week.
+const HOT_SHEET_BLOWOUT_MARGIN = 20; // Mercy Killing: margin must exceed this
+const HOT_SHEET_NAIL_BITER_MARGIN = 9; // Nail-Biter: margin must be at or under this
+const HOT_SHEET_UPSET_GAP = 2; // Upset City: loser's win-record edge over winner must be at least this
 
 // Rotating snarky one-liners per category - picked at render time so the
 // card doesn't say the exact same thing every week for the same result type.
@@ -1502,45 +1535,77 @@ function hlTeam_(name) {
   return `<span class="hot-sheet-highlight">${escapeHtml(name || "")}</span>`;
 }
 
+// Category titles also rotate per week (deterministic, same mechanism as
+// the body lines below, but seeded separately so title and body don't
+// always land on the same index together). Each category's original name
+// is kept at the back of its own pool.
+const HOT_SHEET_TITLES = {
+  highRoller: ["Big Dick Energy", "Huevos Grandes", "Flex City", "High Roller"],
+  seriouslyWtf: ["🤮 Gag", "Dumpster Fire", "Shit the Bed", "Seriously? WTF."],
+  mercyKilling: ["Curb Stomped", "Body Bag", "Call the Morgue", "Mercy Killing"],
+  nailBiter: ["Sphincter Clencher", "Heart Attack Special", "By a Gnat's Ass", "Nail-Biter"],
+  wastedTalent: ["Dead Weight", "Bench Warmer", "Criminal Waste", "Wasted Talent"],
+  managerMalfunction: ["Brain Fart", "Dumbass Move", "Self-Inflicted", "Manager Malfunction"],
+  waiverWin: ["Dumpster Dive", "Trash to Treasure", "Degenerate Gambler", "Waiver Win"],
+  upsetOfWeek: ["Giant Killer", "Chaos Agent", "Bracket Buster", "Upset City"]
+};
+
 const HOT_SHEET_TEMPLATES = {
   highRoller: [
-    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} points like it was nothing. Show-off.`,
-    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} - somebody's feeling themselves.`,
-    (d) => `${hlTeam_(d.teamName)} went off for ${formatScore_(d.score)}. Somebody's getting cocky in the group chat tonight.`,
-    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} on everybody's face. Wipe it off.`
+    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} and is strutting around like he's got a 9-inch cock.`,
+    (d) => `${hlTeam_(d.teamName)} went for ${formatScore_(d.score)}. BJ worthy?`,
+    (d) => `${formatScore_(d.score)} points from ${hlTeam_(d.teamName)}. Cocky little bastard earned it.`,
+    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} and is already talking shit in the group chat. Deserved.`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)} is walking around the house naked right now, flexing in the mirror.`
   ],
   seriouslyWtf: [
-    (d) => `${hlTeam_(d.teamName)} mustered a pathetic ${formatScore_(d.score)} points. Seriously? WTF.`,
-    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Bench the whole roster and start over.`,
-    (d) => `${hlTeam_(d.teamName)} laid a ${formatScore_(d.score)}-point egg. Somebody check if they even set a lineup.`,
-    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)}, that's an embarrassment to the whole family.`
+    (d) => `${hlTeam_(d.teamName)} shit the actual bed for ${formatScore_(d.score)} points. Burn the jersey.`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)} should lose custody of this team.`,
+    (d) => `${hlTeam_(d.teamName)} laid a ${formatScore_(d.score)}-point turd. Did you even set a lineup?`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)}, that's a fireable offense.`,
+    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Absolute clown show - sell the team and take up knitting.`
   ],
   mercyKilling: [
-    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody call the ref, it's over.`,
-    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} out of their misery - ${formatScore_(d.margin)}-point mercy killing.`,
-    (d) => `${hlTeam_(d.winner)} bent ${hlTeam_(d.loser)} over the table by ${formatScore_(d.margin)}. No lube, no lotion, nothing.`,
-    (d) => `${hlTeam_(d.winner)} ran up ${formatScore_(d.margin)} on ${hlTeam_(d.loser)} like it owed them money.`
+    (d) => `${hlTeam_(d.winner)} curb-stomped ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody call it, he's dead.`,
+    (d) => `${hlTeam_(d.winner)} ran a train on ${hlTeam_(d.loser)} - ${formatScore_(d.margin)}-point gangbang, no consent needed.`,
+    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)}'s ass by ${formatScore_(d.margin)} and didn't pull out.`,
+    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} in a body bag, ${formatScore_(d.margin)}-point massacre.`,
+    (d) => `${hlTeam_(d.winner)} humiliated ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody check on him, that was brutal.`
   ],
   nailBiter: [
-    (d) => `${hlTeam_(d.winner)} survived ${hlTeam_(d.loser)} by a razor-thin ${formatScore_(d.margin)}.`,
-    (d) => `${hlTeam_(d.winner)} edged out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Heart-attack material.`,
-    (d) => `${hlTeam_(d.winner)} barely squeaked past ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. That's a hospital-visit kind of finish.`
+    (d) => `${hlTeam_(d.winner)} barely choked out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Change your shorts, bro.`,
+    (d) => `${hlTeam_(d.winner)} edged ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Literally edged him.`,
+    (d) => `${hlTeam_(d.winner)} squeaked past ${hlTeam_(d.loser)} by ${formatScore_(d.margin)} - somebody light a cigarette.`,
+    (d) => `${hlTeam_(d.winner)} survived ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. That's a goddamn heart attack.`,
+    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)} by a gnat's ass, ${formatScore_(d.margin)} points. Nut-tighteningly close.`
   ],
   wastedTalent: [
-    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Cold, honestly.`,
-    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points for ${hlTeam_(d.teamName)} - from the bench. Didn't matter one bit.`,
-    (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine for ${hlTeam_(d.teamName)}. All dressed up with nowhere to go.`,
-    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.playerName)}, who dropped ${formatScore_(d.points)} points doing nothing for them. Somebody get this manager a white cane.`
+    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Dumbass move.`,
+    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points doing jack shit for ${hlTeam_(d.teamName)}. Pure waste.`,
+    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.playerName)} and still has the balls to talk shit. Pathetic.`,
+    (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine. All dressed up, no action - like your sex life.`,
+    (d) => `${hlTeam_(d.teamName)} let ${formatScore_(d.points)} points rot on the bench. Incompetence at its finest.`
+  ],
+  managerMalfunction: [
+    (d) => `${hlTeam_(d.teamName)} left a combined ${formatScore_(d.points)} points stranded on the bench. Brutal roster management.`,
+    (d) => `${hlTeam_(d.teamName)}'s bench alone put up ${formatScore_(d.points)} points - more than some starting lineups. Get it together.`,
+    (d) => `${formatScore_(d.points)} points wasted on ${hlTeam_(d.teamName)}'s bench this week. Somebody needs a new strategy, or a new brain.`,
+    (d) => `${hlTeam_(d.teamName)} is sitting on ${formatScore_(d.points)} unused bench points. That's not a lineup, that's a hostage situation.`,
+    (d) => `${hlTeam_(d.teamName)} left ${formatScore_(d.points)} points on the pine total. Absolute managerial malpractice.`
   ],
   waiverWin: [
-    (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver-wire pickup) put up ${formatScore_(d.points)}. Free money.`,
-    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the wire and got ${formatScore_(d.points)} points for it. Nice find.`,
-    (d) => `${hlTeam_(d.teamName)} dumpster-dove for ${escapeHtml(d.playerName)} and came up with ${formatScore_(d.points)} points. Trash to treasure.`
+    (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver pickup) dropped ${formatScore_(d.points)}. Free money, no reach-around required.`,
+    (d) => `${hlTeam_(d.teamName)} dug ${escapeHtml(d.playerName)} out of the trash and got ${formatScore_(d.points)}. One man's garbage, another man's jackpot.`,
+    (d) => `${hlTeam_(d.teamName)} found ${escapeHtml(d.playerName)} in the gutter and he balled out for ${formatScore_(d.points)}. Degenerate gambler energy, paid off big.`,
+    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the scrap heap for ${formatScore_(d.points)}. Absolute daylight robbery.`,
+    (d) => `${escapeHtml(d.playerName)} was rotting in the waiver bin - until ${hlTeam_(d.teamName)} cashed in for ${formatScore_(d.points)}. Dumb luck or genius, who cares.`
   ],
   upsetOfWeek: [
-    (d) => `${hlTeam_(d.winner)} had no business beating ${hlTeam_(d.loser)}. Somebody check the standings.`,
-    (d) => `${hlTeam_(d.winner)} pulled off the upset over ${hlTeam_(d.loser)}. Didn't see that coming.`,
-    (d) => `${hlTeam_(d.winner)} snuck up on ${hlTeam_(d.loser)} and stole its lunch money. Nobody saw it coming, least of all ${hlTeam_(d.loser)}.`
+    (d) => `${hlTeam_(d.winner)} had no goddamn business beating ${hlTeam_(d.loser)}. Somebody's getting fired for this.`,
+    (d) => `${hlTeam_(d.winner)} straight-up mugged ${hlTeam_(d.loser)} in broad daylight.`,
+    (d) => `${hlTeam_(d.winner)} snuck up on ${hlTeam_(d.loser)} and stole his lunch money, his dignity, and his confidence.`,
+    (d) => `${hlTeam_(d.winner)} had zero business winning that - didn't matter, he still did it.`,
+    (d) => `${hlTeam_(d.winner)} robbed ${hlTeam_(d.loser)} blind. Check the standings, this can't be real.`
   ]
 };
 
@@ -1565,11 +1630,21 @@ function pickHotSheetLine_(key, data, week) {
   return templates[index](data);
 }
 
+// Seeded separately from the body-line pick (different key suffix) so the
+// title and the body don't always land on the same rotation together.
+function pickHotSheetTitle_(key, week) {
+  const titles = HOT_SHEET_TITLES[key] || [];
+  if (!titles.length) return "";
+  const index = hotSheetTemplateIndex_(week, `${key}-title`, titles.length);
+  return titles[index];
+}
+
 // text is trusted HTML assembled by the HOT_SHEET_TEMPLATES functions above
 // (every dynamic value already escaped at the point of interpolation) - do
 // not re-escape it here, that would show literal <span> tags.
-function hotSheetRow_(label, text) {
+function hotSheetRow_(key, week, text) {
   if (!text) return "";
+  const label = pickHotSheetTitle_(key, week);
   return `
     <p class="hot-sheet-row">
       <span class="hot-sheet-tag">${escapeHtml(label)}:</span> <span class="hot-sheet-text">${text}</span>
@@ -1594,7 +1669,20 @@ function computeHighestScoringBench_(rosterByTeamId) {
   return best && best.points > 0 ? best : null;
 }
 
-// Best-scoring started player who was picked up off waivers/free agency
+// Separate from Wasted Talent (single standout benched player) - this is
+// the whole team's combined bench total, so it reads as "worst overall
+// roster management" rather than "one guy you should've started."
+function computeManagerMalfunction_(rosterByTeamId) {
+  let worst = null;
+  Object.values(rosterByTeamId || {}).forEach((team) => {
+    const bench = (Array.isArray(team.roster) ? team.roster : []).filter((p) => p.lineupSlot === "Bench");
+    const total = bench.reduce((sum, p) => sum + Number(p.points || 0), 0);
+    if (total > 0 && (!worst || total > worst.points)) {
+      worst = { teamName: team.teamName, points: total };
+    }
+  });
+  return worst;
+}
 // (acquisitionType stays tagged this way for as long as they're rostered,
 // so this reads as "your waiver-wire guy" more than "this week's pickup" -
 // close enough for the callout, just don't read it as brand-new adds only).
@@ -1645,6 +1733,10 @@ function computeUpsetOfWeek_(games, standings) {
     }
   });
 
+  // Upset City only fires when the win-record gap is real - a 1-win edge
+  // isn't an upset in a 12-team league, just a normal result.
+  if (upset && upset.gap < HOT_SHEET_UPSET_GAP) return null;
+
   return upset;
 }
 
@@ -1652,8 +1744,10 @@ function computeUpsetOfWeek_(games, standings) {
 // whatever week the Scoreboard picker happens to be viewing - that's what
 // keeps this readable as "last week's recap" instead of resetting to blank
 // the moment a new week's games kick off.
-async function loadHotSheet_() {
-  const targetWeek = Math.max(1, Number(state.liveWeek || 1) - 1);
+async function loadHotSheet_(targetWeekOverride) {
+  const targetWeek = Number.isFinite(targetWeekOverride)
+    ? targetWeekOverride
+    : Math.max(1, Number(state.liveWeek || 1) - 1);
   const dateline = document.getElementById("hotSheetDateline");
   if (dateline) dateline.textContent = `Week ${targetWeek} Edition`;
 
@@ -1687,17 +1781,19 @@ function renderHotSheet_(week, games, rosterMap, standings) {
 
   const closest = computeClosestGame_(games);
   const wastedTalent = computeHighestScoringBench_(rosterMap);
+  const managerMalfunction = computeManagerMalfunction_(rosterMap);
   const waiverWin = computeWaiverWin_(rosterMap);
   const upset = computeUpsetOfWeek_(games, standings);
 
   const rows = [
-    hotSheetRow_("High Roller", pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score }, week)),
-    hotSheetRow_("Seriously? WTF.", pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score }, week)),
-    highlights.blowout ? hotSheetRow_("Mercy Killing", pickHotSheetLine_("mercyKilling", highlights.blowout, week)) : "",
-    closest ? hotSheetRow_("Nail-Biter", pickHotSheetLine_("nailBiter", closest, week)) : "",
-    wastedTalent ? hotSheetRow_("Wasted Talent", pickHotSheetLine_("wastedTalent", wastedTalent, week)) : "",
-    waiverWin ? hotSheetRow_("Waiver Win", pickHotSheetLine_("waiverWin", waiverWin, week)) : "",
-    upset ? hotSheetRow_("Upset City", pickHotSheetLine_("upsetOfWeek", upset, week)) : ""
+    hotSheetRow_("highRoller", week, pickHotSheetLine_("highRoller", { teamName: highlights.top.teamName, score: highlights.top.score }, week)),
+    hotSheetRow_("seriouslyWtf", week, pickHotSheetLine_("seriouslyWtf", { teamName: highlights.bottom.teamName, score: highlights.bottom.score }, week)),
+    highlights.blowout ? hotSheetRow_("mercyKilling", week, pickHotSheetLine_("mercyKilling", highlights.blowout, week)) : "",
+    closest ? hotSheetRow_("nailBiter", week, pickHotSheetLine_("nailBiter", closest, week)) : "",
+    wastedTalent ? hotSheetRow_("wastedTalent", week, pickHotSheetLine_("wastedTalent", wastedTalent, week)) : "",
+    managerMalfunction ? hotSheetRow_("managerMalfunction", week, pickHotSheetLine_("managerMalfunction", managerMalfunction, week)) : "",
+    waiverWin ? hotSheetRow_("waiverWin", week, pickHotSheetLine_("waiverWin", waiverWin, week)) : "",
+    upset ? hotSheetRow_("upsetOfWeek", week, pickHotSheetLine_("upsetOfWeek", upset, week)) : ""
   ].filter(Boolean);
 
   body.innerHTML = rows.length ? rows.join("") : `<p class="muted">No callouts for Week ${week} yet.</p>`;
