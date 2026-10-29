@@ -1,5 +1,10 @@
 /*
   2B1C FFL
+  v1.5.2 - Rules tab cleanup: killed the leftover "Confirmed"/"Final"/"Needs
+  review" status tag that was still sitting on the right of every rule row -
+  that was separate, older cruft from before the Badge system existed.
+  Untouched rules are blank now; the "Changed for '26"/"Considering for '27"
+  badge chip is the only tag, exactly as planned.
   v1.5.1 - Rules tab cleanup: the 2026 Changes list was crowding the page
   sitting inline above the rule search, so it's now a small "Changes from
   last year" link on the right side of the search row that opens a popout
@@ -32,6 +37,7 @@ const AUTO_REFRESH_MS = 25000;
 // backend/Sheet involved. History starts at v1.3.5 (when this feature
 // shipped); earlier versions were not backfilled.
 const RELEASE_NOTES = [
+  { version: "v1.5.2", date: "Oct 29, 2026", summary: "Rules tab: killed the leftover Confirmed/Final status tag on every rule row - blank unless flagged, matching the original plan." },
   { version: "v1.5.1", date: "Oct 29, 2026", summary: "Rules tab: 2026 Changes list moved out of the main page into a \"Changes from last year\" popout link next to search - less crowded, same votes." },
   { version: "v1.5.0", date: "Oct 29, 2026", summary: "Rules tab: flagged \"Changed for '26\" / \"Considering for '27\" rules now show a 2026 Changes summary card, a 👍👎 vote (one locked vote, optional comment, public tallies), and a Suggest-a-change box for everything else." },
   { version: "v1.4.0", date: "Oct 29, 2026", summary: "Hot Sheet overhaul: past-week browsing now shows that week's own recap, a new Manager Malfunction category, rotating category titles, gated categories so they only fire when notable, and a grittier full rewrite." },
@@ -2202,10 +2208,8 @@ function renderRules(rules) {
       const baseline = rule.baselineValue || rule.baseline || "";
       const proposed = rule.proposedValue || rule.proposed || "";
       const finalValue = rule.finalValue || "";
-      const saved = rule.espnSaved || "";
       const notes = rule.notes || "";
       const badge = rule.badge || "";
-      const status = finalValue ? "Final" : (saved || "Needs review");
 
       // Display value: Final Value once a rule is finalized, falling back to
       // Baseline Value while it's still pending review. Only one "current"
@@ -2217,7 +2221,7 @@ function renderRules(rules) {
 
       const row = document.createElement("div");
       row.className = "rule-row";
-      row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, status, badge]);
+      row.dataset.search = buildSearchBlob_([area, setting, baseline, proposed, finalValue, notes, badge]);
       row.innerHTML = `
         <div>
           <strong>${escapeHtml(setting)}</strong>
@@ -2227,7 +2231,6 @@ function renderRules(rules) {
           ${notes ? `<em>${escapeHtml(notes)}</em>` : ""}
           ${badge ? renderRuleVoteWidget_(key, feedback[key]) : ""}
         </div>
-        <small>${escapeHtml(status)}</small>
       `;
       body.appendChild(row);
     });
