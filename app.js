@@ -1,5 +1,11 @@
 /*
   2B1C FFL
+  v1.6.6 - Settings drawer redesign: grouped into labeled sections
+  (Notifications / Support / Commissioner), action rows now a clean
+  list-row style (icon + label + chevron) instead of stacked pill buttons.
+  Renamed "Shit Show Notifications" to "Push Notifications" and fixed the
+  description - it's a single global OneSignal opt-in/out, not scoped to
+  just Shit Show, so the old label was misleading.
   v1.6.5 - Killed What's New entirely - gone from Settings. Code.gs's
   ReleaseNotes sheet/endpoints are left in place (harmless, unused) in case
   this comes back later; nothing to clean up on the backend for this one.
@@ -204,21 +210,44 @@ function openNotifSettingsDrawer_() {
         <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
       </div>
       <div class="notif-settings-body">
-        <div class="notif-toggle-row">
-          <div>
-            <strong>Shit Show Notifications</strong>
-            <p class="muted compact-note">Get pushed when someone posts or replies in The Shit Show.</p>
+        <div class="settings-section">
+          <p class="settings-section-label">Notifications</p>
+          <div class="notif-toggle-row">
+            <div>
+              <strong>Push Notifications</strong>
+              <p class="muted compact-note">Get notified about new Shit Show posts and commissioner announcements.</p>
+            </div>
+            <label class="notif-toggle-switch">
+              <input type="checkbox" id="notifToggleInput">
+              <span class="notif-toggle-slider"></span>
+            </label>
           </div>
-          <label class="notif-toggle-switch">
-            <input type="checkbox" id="notifToggleInput">
-            <span class="notif-toggle-slider"></span>
-          </label>
+          <p id="notifSettingsStatus" class="muted compact-note"></p>
         </div>
-        <p id="notifSettingsStatus" class="muted compact-note"></p>
 
-        <button class="secondary-btn compact-btn settings-helpdesk-btn" id="settingsHelpDeskBtn" type="button">💬 Suggest a change / Ask a question</button>
-        ${isCommissioner_() ? `<button class="secondary-btn compact-btn settings-commish-btn" id="settingsCommishBtn" type="button">⚑ Commish Tools</button>` : ""}
-        <button class="secondary-btn compact-btn settings-logout-btn" id="settingsLogoutBtn" type="button">Logout</button>
+        <div class="settings-section">
+          <p class="settings-section-label">Support</p>
+          <button class="settings-list-row" id="settingsHelpDeskBtn" type="button">
+            <span>💬 Suggest a change / Ask a question</span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
+
+        ${isCommissioner_() ? `
+        <div class="settings-section">
+          <p class="settings-section-label">Commissioner</p>
+          <button class="settings-list-row" id="settingsCommishBtn" type="button">
+            <span>⚑ Commish Tools</span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>` : ""}
+
+        <div class="settings-section">
+          <button class="settings-list-row settings-list-row-danger" id="settingsLogoutBtn" type="button">
+            <span>Logout</span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
       </div>
     </section>
   `;
