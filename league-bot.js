@@ -390,7 +390,10 @@
       return "Standings (Week " + (await liveWeek()) + "):\n" + lines.join("\n");
     }
 
-    if (q.indexOf("score") !== -1 || q.indexOf("matchup") !== -1 || q.indexOf("who am i playing") !== -1 || q.indexOf("my game") !== -1 || q.indexOf("this week") !== -1) {
+    // "this week" also appears in start/sit and waiver questions
+    // ("Who should I start this week?") — those must fall through to
+    // the honest start/sit limit message below, not the scoreboard.
+    if ((q.indexOf("score") !== -1 || q.indexOf("matchup") !== -1 || q.indexOf("who am i playing") !== -1 || q.indexOf("my game") !== -1 || q.indexOf("this week") !== -1) && q.indexOf("start") === -1 && q.indexOf("sit") === -1 && q.indexOf("waiver") === -1 && q.indexOf("free agent") === -1) {
       var wk = await liveWeek();
       var games = await fetchScoreboard(wk);
       if (!games.length) return "No Week " + wk + " scoreboard yet.";
