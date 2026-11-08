@@ -41,6 +41,7 @@ uses (`espnSettings`, `espnStandings`, `espnScoreboard`,
   (defaults $100 / 1st $800 / 2nd $300 / 3rd $100).
 - Rules, draft date/time.
 - "Any good trades with Will?" — see Trade suggestions below.
+- "What are my chances to make the playoffs?" — see Playoff chances below.
 
 ## How trade suggestions work
 
@@ -62,6 +63,149 @@ Every trade answer is labelled "Suggestion only" and says nothing was
 offered or sent. It is based on roster depth only — not projections,
 injuries or byes. The bot cannot do start/sit or waiver calls from
 local data alone, and it says so instead of inventing a projection.
+
+## Playoff chances
+
+- Ask: "What are my chances to make the playoffs?", "playoff odds",
+  "will I make the playoffs?", "my playoff chances" — for yourself or
+  any named team ("What are Berlin Bombers' chances to make the
+  playoffs?").
+- The answer gives the percentage, current record, remaining opponents
+  with their records, points for/against, and a one-line explanation of
+  how it was calculated. It never just lists the standings.
+- Primary source: odds synced into `fantasypros-sync.json` (teams
+  section) — see "FantasyPros sync" below. `playoff-odds.json` is
+  kept as a fallback for odds only. The static site cannot log in to
+  FantasyPros itself and no credentials ever go in the repo.
+- Fallback (only when no synced odds are on file for that team): an
+  internal Monte Carlo simulation, 2,000 runs, from league data only.
+  Each team's expected weekly score is its points-for average so far;
+  each game is simulated with an 18-point weekly spread; division
+  winners get in first, then wild cards by wins, then points for.
+  Playoff spots come from ESPN settings if present, else the rules
+  text, else an assumed 6 (stated in the answer). The RNG is seeded,
+  so the same league data gives the same percentage every time.
+- Presentation rule: a normal answer does NOT name where the number
+  came from. Source and as-of date live in `fantasypros-sync.json` /
+  `playoff-odds.json` and in the bot's in-memory `lastPlayoffSource`,
+  and are only revealed when the user asks "where did that come from?",
+  "what's the source?" or "how current is that?". The same rule applies
+  to other answers where practical: give the answer cleanly, source on
+  request only.
+
+## FantasyPros sync — everything the bot can answer from synced data
+
+One file, `fantasypros-sync.json` (schemaVersion 1), is the bot's
+source for everything FantasyPros provides. The bot reads
+`state.appData.fantasyProsSync` first if the Apps Script backend ever
+serves it, otherwise the file. It never logs in to FantasyPros and no
+credentials are in the repo.
+
+### Schema
+
+```json
+{
+  "schemaVersion": 1,
+  "source": "FantasyPros My Playbook",
+  "asOf": "2026-11-08",
+  "week": 9,
+  "league": "2B1C",
+  "coverage": { "seeded": ["..."], "pendingSync": ["..."], "notApplicable": ["..."] },
+  "teams": [
+    { "teamName": "Berlin Bombers", "manager": "Will",
+      "playoffPct": 99, "playoffGreaterThan": true,
+      "championshipPct": 45, "projectedRecord": "11-3",
+      "teamGrade": "A", "powerRank": 1,
+      "matchupOutlook": { "opponent": "Dominator", "projectedPoints": 118.5,
+        "opponentProjectedPoints": 105.2, "winPct": 68 },
+      "lineup": [{ "player": "Name", "position": "QB", "slot": "QB",
+        "projectedPoints": 21.5, "startSit": "start" }] }
+  ],
+  "rankings": {
+    "weekly": { "QB": [], "RB": [], "WR": [], "TE": [{ "rank": 1, "player": "Brock Bowers", "team": "LV", "ecr": 1 }], "K": [], "DST": [], "FLEX": [] },
+    "ros": { "QB": [], "RB": [], "WR": [], "TE": [], "K": [], "DST": [], "FLEX": [] }
+  },
+  "waivers": [{ "player": "Name", "position": "WR", "team": "MIA", "priority": 1, "reason": "..." }],
+  "trades": {
+    "values": [{ "player": "Name", "position": "WR", "value": 42 }],
+    "suggestions": [{ "fromTeam": "A", "toTeam": "B", "gives": "Player X", "receives": "Player Y", "reason": "..." }]
+  },
+  "news": [{ "player": "Name", "position": "QB", "team": "DAL", "status": "Healthy", "note": "..." }]
+}
+```
+
+### What the bot answers from the sync file (any manager/team, not just Will)
+
+- Playoff odds + championship odds + projected record (see above).
+- Start/sit: "Who should I start this week?", "Who should [team]
+  start?" — from a team's `lineup` (`startSit` + `projectedPoints`).
+- Waivers: "Who should I pick up?", "best waiver pickup" — from
+  `waivers`, in priority order.
+- Trade values / finder: "What is the trade value of [player]?",
+  "trade finder" — from `trades.values` / `trades.suggestions`.
+  The old depth-based trade look ("Any good trades with Will?") still
+  works from ESPN rosters and is labelled suggestion only.
+- Team grades / power rankings: "Rate my team", "power rankings" —
+  from `teamGrade` / `powerRank`.
+- Matchup outlook: "What is my matchup outlook?" — from
+  `matchupOutlook` (projected points + win %); falls back to the
+  scoreboard if a team has none on file.
+- Rankings: "Who is the top RB this week?", "ROS ranking for
+  [player]?", "Rank [player] vs [player] this week / ROS?" — from
+  `rankings.weekly` / `rankings.ros`, with ECR where present.
+- Player news / injury: "Is [player] injured?", "News on [player]?" —
+  from `news`.
+
+### Coverage as of 2026-11-08 (Week 9) — what is seeded, what is not
+
+- Seeded: Berlin Bombers playoff odds (>99%), championship odds
+  (45%), projected record (11-3). Week 9 TE rankings, top 12, with
+  ECR (Bowers, Kittle, McBride, LaPorta, Loveland, Fannin, Likely,
+  Warren, Kraft, Pitts, Hockenson, Kelce).
+- NOT yet synced (empty in the file, bot says so honestly instead of
+  guessing): weekly rankings for QB/RB/WR/K/DST/Flex, all ROS
+  rankings, start/sit lineups and projections for all 12 teams,
+  waiver targets, trade values and suggestions, team grades and power
+  rankings, matchup outlooks, player news/injuries, and playoff odds
+  for the other 11 teams.
+- Not applicable: dynasty rankings — this is a redraft league, so
+  they are not synced and the bot does not invent them.
+- Why not everything yet: the sync is a manual copy from FantasyPros
+  My Playbook (browser sign-in). The bot cannot pull it itself, and
+  no FantasyPros login can live in a public repo.
+
+### Sync step (commissioner or Muse, weekly)
+
+1. Sign in to FantasyPros in a browser, open My Playbook.
+2. Copy the week's numbers into `fantasypros-sync.json`: for each
+   2B1C team — playoff %, championship %, projected record, grade,
+   power rank, matchup outlook, lineup with projected points and
+   start/sit calls; plus weekly + ROS rankings by position, waiver
+   targets in priority order, trade values and suggestions, and player
+   news/injuries.
+3. Update `asOf` and `week` in the file, and update the `coverage`
+   lists (move items from `pendingSync` to `seeded`).
+4. Commit and push. GitHub Pages redeploys the site with the new data.
+   Refresh at least weekly — everything goes stale after each week's
+   games.
+
+## Voice: trash talk (with emojis, sparingly)
+
+- The bot talks like the app: "No mercy. No refunds." / Shit Show
+  tone. Playful, confident roasting based on fantasy performance only
+  — records, points, matchups. Examples: hyping a 6-2 team, teasing a
+  3-5 team, calling out a bad trade idea.
+- Trash talk goes on TOP of the facts, never instead of them. The
+  answer is accurate first, roast second.
+- Limits: fantasy / league performance only. No personal attacks
+  outside fantasy, no slurs, no harassment about real-life traits.
+- If a question is sensitive or the user asks for a straight answer
+  ("straight answer", "just the facts", "no trash talk", "be serious"),
+  give the straight answer with no roast.
+- Emojis: use them where they fit the trash-talk / league tone, one
+  to punctuate a roast or a win (a crown for a 6-2 team, a trophy for
+  championship chances, a skull for a dead season) — not on every
+  line. Keep answers readable on mobile.
 
 ## Read-only
 
