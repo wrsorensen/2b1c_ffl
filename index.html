@@ -12,6 +12,7 @@
   <link rel="icon" type="image/png" href="assets/2b1c-ffl-favicon-primary.png">
   <link rel="apple-touch-icon" href="assets/2b1c-ffl-app-icon-primary.png">
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="league-bot.css">
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
@@ -378,8 +379,35 @@
       </button>
       <button data-tab="commish" id="commishNavBtn" type="button" class="hidden"><span>⚑</span>Commish</button>
     </nav>
+
+    <!-- 2B1C Bot prototype: floating league chat. See league-bot.js / LEAGUE_BOT.md -->
+    <button class="league-bot-fab hidden" id="leagueBotFab" type="button" aria-label="Ask the 2B1C Bot" title="Ask the 2B1C Bot">?</button>
+    <section class="league-bot-panel hidden" id="leagueBotPanel" role="dialog" aria-label="2B1C Bot chat">
+      <div class="league-bot-head">
+        <div>
+          <h3>2B1C Bot</h3>
+          <p id="leagueBotSubtitle">Log in to ask as your team</p>
+        </div>
+        <button class="ghost-btn league-bot-close" id="leagueBotClose" type="button" aria-label="Close chat">&times;</button>
+      </div>
+      <div class="league-bot-chips">
+        <button class="league-bot-chip" type="button" data-q="What is my matchup this week?">My matchup</button>
+        <button class="league-bot-chip" type="button" data-q="Show the standings">Standings</button>
+        <button class="league-bot-chip" type="button" data-q="Any good trades with Will?">Trades with Will</button>
+        <button class="league-bot-chip" type="button" data-q="What are the payouts?">Payouts</button>
+        <button class="league-bot-chip" type="button" data-q="Who is on my team?">My roster</button>
+      </div>
+      <div class="league-bot-log" id="leagueBotLog" aria-live="polite"></div>
+      <p class="league-bot-typing hidden">2B1C Bot is thinking...</p>
+      <div class="league-bot-input-row">
+        <input id="leagueBotInput" type="text" maxlength="500" placeholder="Ask about the league..." autocomplete="off">
+        <button class="primary-btn compact-btn" id="leagueBotSend" type="button">Send</button>
+      </div>
+      <p class="league-bot-note">Suggestions only. The bot is read-only — it never makes trades, waivers or lineup changes.</p>
+    </section>
   </main>
 
   <script src="app.js"></script>
+  <script src="league-bot.js"></script>
 </body>
 </html>
