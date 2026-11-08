@@ -33,6 +33,20 @@
     aiEnabled: false,
     botName: "2B1C Bot",
     cacheMs: 60000,
+    // Verify-on-demand sync service. This is NOT FantasyPros itself and
+    // NOT this public site: it is a small backend the commissioner runs
+    // that holds Will's FantasyPros session server-side, scoped to 2B1C
+    // only. Empty + disabled = not connected yet; the bot then only
+    // answers from the last synced file and says so honestly.
+    // Endpoints the service must provide (see LEAGUE_BOT.md):
+    //   GET  {syncEndpoint}/verify?session=...&manager=...&team=...
+    //        Human check page (Cloudflare-style "Verify you are human").
+    //   POST {syncEndpoint}/verify-status { sessionId } -> { verified: true|false, failed: true|false }
+    //   POST {syncEndpoint}/refresh { sessionId, manager, teamName }
+    //        -> fresh fantasypros-sync.json (2B1C teams ONLY).
+    syncEndpoint: "",
+    syncEnabled: false,
+    verifySessionMinutes: 30,
   };
   window.LEAGUE_BOT_CONFIG = LEAGUE_BOT_CONFIG;
 
@@ -74,6 +88,78 @@
   // does NOT name its source in a normal answer; it only reveals it
   // when the user asks where a number came from / how current it is.
   var lastPlayoffSource = null;
+
+  /* ---------- verify-on-demand ----------
+   * Managers do NOT have their own FantasyPros accounts. The bot uses
+   * Will's account, pulled through the sync service above — never by
+   * logging in from this public site, and never with Will's password,
+   * session token or PIN in the repo or in the browser.
+   *
+   * When fresh numbers are needed, the CURRENT manager does a human
+   * "Verify you are human" check in their own session. That check
+   * unlocks one read-only pull, 2B1C only, for that session only.
+   * The verification lives in memory ONLY: it expires after
+   * verifySessionMinutes, on logout, and on browser close (in-memory
+   * state does not survive a reload). No token is stored anywhere. */
+
+  var verifySession = { id: null, verifiedAt: 0, expiresAt: 0 };
+  var SYNC_STALE_DAYS = 7;
+
+  function verifySessionValid() {
+    return !!verifySession.id && Date.now() < verifySession.expiresAt;
+  }
+  function clearVerifySession() {
+    verifySession = { id: null, verifiedAt: 0, expiresAt: 0 };
+  }
+  function newSessionId() {
+    return "v-" + Date.now().toString(36) + "-" + Math.floor(Math.random() * 1e9).toString(36);
+  }
+
+  // 2B1C ONLY. Will's other leagues must never reach the bot:
+  // Wichita Barn Burners (Sleeper) and Sloppy Seconds (MyFantasyLeague)
+  // are dropped by name, and any team carrying a league field that is
+  // not 2B1C is dropped too. A sync file for a different league is
+  // rejected outright. This is defence in depth on top of the sync
+  // service filtering to 2B1C before it ever writes the file.
+  var OTHER_LEAGUE_TEAMS = ["wichita barn burners", "sloppy seconds"];
+
+  function filterFantasySync(data) {
+    if (!data || typeof data !== "object") return null;
+    if (data.league && norm(data.league) !== "2b1c") return null;
+    if (!Array.isArray(data.teams)) return data;
+    var kept = [], dropped = 0;
+    data.teams.forEach(function (t) {
+      if (!t || !t.teamName) return;
+      if (OTHER_LEAGUE_TEAMS.indexOf(norm(t.teamName)) !== -1) { dropped++; return; }
+      if (t.league && norm(t.league) !== "2b1c") { dropped++; return; }
+      kept.push(t);
+    });
+    data.teams = kept;
+    data.filteredOutOtherLeagues = dropped;
+    return data;
+  }
+
+  function syncAgeDays(sync) {
+    if (!sync || !sync.asOf) return null;
+    var d = new Date(String(sync.asOf) + "T12:00:00");
+    if (isNaN(d.getTime())) return null;
+    return Math.floor((Date.now() - d.getTime()) / 86400000);
+  }
+  function syncIsStale(sync) {
+    var a = syncAgeDays(sync);
+    return a === null || a > SYNC_STALE_DAYS;
+  }
+  function syncFreshnessNote(sync) {
+    if (!sync) return "no synced numbers on file yet";
+    var a = syncAgeDays(sync);
+    if (a === null) return "synced numbers with no date on file";
+    if (a === 0) return "synced today";
+    if (a === 1) return "synced yesterday";
+    return "synced " + a + " days ago (" + sync.asOf + ")";
+  }
+  function verifyOfferLine() {
+    return "\n\nWant fresh numbers? Tap 'Verify to refresh' \u{1F504} — one human check unlocks a fresh pull for this session (2B1C only, expires when you log out).";
+  }
 
   /* ---------- identity: who is asking ---------- */
 
@@ -382,7 +468,7 @@
         if (res.ok) data = await res.json();
       } catch (e) { data = null; }
     }
-    syncCache.data = data || null;
+    syncCache.data = filterFantasySync(data);
     syncCache.at = now;
     return syncCache.data;
   }
@@ -426,7 +512,7 @@
   }
 
   function notSyncedYet(what) {
-    return "I do not have " + what + " in the synced data yet — it needs a fresh sync from My Playbook (see LEAGUE_BOT.md), and until then I would rather say so than guess. Ask me about standings, matchups, rosters, payouts, playoff chances or a trade idea instead.";
+    return "I do not have " + what + " in the synced data yet — and until then I would rather say so than guess. Ask me about standings, matchups, rosters, payouts, playoff chances or a trade idea instead." + verifyOfferLine();
   }
 
   async function answerRankings(q, rawQuestion) {
@@ -772,6 +858,7 @@
       if (found.entry.projectedRecord) lines.push("Projected final record: " + found.entry.projectedRecord + ".");
       lines.push("Remaining: " + oppLine + ".");
       lines.push("How I got that: it factors in your record, points scored, and remaining schedule.");
+      if (syncIsStale(syncForOdds)) lines.push("Heads up: those numbers are " + syncFreshnessNote(syncForOdds) + ". Tap 'Verify to refresh' \u{1F504} for a fresh pull.");
       if (!straightMode) lines.push(playoffRoast(pct, target));
       return lines.join("\n");
     }
@@ -838,6 +925,123 @@
     return (data && (data.answer || data.reply || data.text)) || null;
   }
 
+  /* ---------- verify-on-demand flow ----------
+   * Step by step, from the manager's side:
+   *   1. The bot needs fresh numbers (data is stale/missing, or the
+   *      manager asks to refresh). It shows the "Verify to refresh"
+   *      button and explains the check in one line.
+   *   2. The manager taps it. The bot opens the sync service's verify
+   *      page in a new tab: {syncEndpoint}/verify?session=... — a human
+   *      "Verify you are human" check, done by the CURRENT manager in
+   *      their own browser. That is the whole point: an automated
+   *      browser keeps failing this check, a human passes it.
+   *   3. The bot polls {syncEndpoint}/verify-status for up to 60s.
+   *      On "verified" it marks this session verified (in memory only)
+   *      and calls {syncEndpoint}/refresh. The service — the ONLY place
+   *      Will's FantasyPros session lives — does one read-only pull,
+   *      filters it to 2B1C teams only, and returns the fresh sync file.
+   *   4. The bot reloads its cache from that reply and answers from the
+   *      fresh numbers. The check expires after verifySessionMinutes
+   *      or on logout; after that the manager verifies again.
+   *   5. If verification fails, times out, or the sync service is not
+   *      connected, the bot falls back to the last synced numbers and
+   *      says so honestly, with the as-of date. It never blocks on a
+   *      failed check, never asks for a password, and never sends a PIN.
+   * What the service must NOT do: accept a FantasyPros password from
+   * the browser, store Will's session where the site can read it, or
+   * return any team outside 2B1C. The bot filters 2B1C-only a second
+   * time (filterFantasySync) as defence in depth. */
+
+  function syncBase() {
+    return String(LEAGUE_BOT_CONFIG.syncEndpoint || "").replace(/\/$/, "");
+  }
+
+  async function pollForVerification(sessionId, attempts, delayMs) {
+    for (var i = 0; i < attempts; i++) {
+      try {
+        var res = await fetch(syncBase() + "/verify-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: sessionId }),
+        });
+        if (res.ok) {
+          var data = await res.json();
+          if (data && data.verified) return true;
+          if (data && data.failed) return false;
+        }
+      } catch (e) {}
+      if (i < attempts - 1) await new Promise(function (r) { setTimeout(r, delayMs); });
+    }
+    return false;
+  }
+
+  async function refreshFromSyncService() {
+    var who = me();
+    var res = await fetch(syncBase() + "/refresh", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId: verifySession.id, manager: who.manager, teamName: who.teamName }),
+    });
+    if (!res.ok) throw new Error("sync service returned " + res.status);
+    var data = filterFantasySync(await res.json());
+    if (!data) throw new Error("sync service returned data for the wrong league");
+    syncCache.data = data;
+    syncCache.at = Date.now();
+    return data;
+  }
+
+  async function verifyAndRefresh() {
+    var who = me();
+    if (!LEAGUE_BOT_CONFIG.syncEnabled || !LEAGUE_BOT_CONFIG.syncEndpoint) {
+      var sync = await fetchFantasySync();
+      return "Fresh pull is not wired up yet — the sync service is not connected, so there is nothing to verify against right now. \u{1F605}\n" +
+        "What I do have: " + syncFreshnessNote(sync) + ". I will answer from that until the commissioner connects the sync service (see LEAGUE_BOT.md). No login or password is stored in the app, and your PIN is never involved.";
+    }
+    if (verifySessionValid()) {
+      try {
+        var fresh = await refreshFromSyncService();
+        return "Fresh numbers are in \u2705 — " + syncFreshnessNote(fresh) + ", 2B1C only. Ask me about playoff chances, start/sit, waivers or rankings and I will use the fresh pull.";
+      } catch (e) {
+        clearVerifySession();
+        return "The fresh pull failed (" + (e.message || "error") + ") — falling back to the last synced numbers (" + syncFreshnessNote(await fetchFantasySync()) + "). Try verifying again in a bit.";
+      }
+    }
+    var sessionId = newSessionId();
+    verifySession = { id: sessionId, verifiedAt: 0, expiresAt: 0 };
+    var url = syncBase() + "/verify?session=" + encodeURIComponent(sessionId) +
+      "&manager=" + encodeURIComponent(who.manager || "") +
+      "&team=" + encodeURIComponent(who.teamName || "");
+    try {
+      if (typeof window !== "undefined" && window.open) window.open(url, "_blank");
+    } catch (e) {}
+    var ok = await pollForVerification(sessionId, 12, 5000);
+    if (!ok) {
+      clearVerifySession();
+      var last = await fetchFantasySync();
+      return "Verification did not come through — no worries, nothing changed. \u{1F605} I will keep answering from the last synced numbers (" + syncFreshnessNote(last) + "). Tap 'Verify to refresh' again whenever you want to retry.";
+    }
+    verifySession.verifiedAt = Date.now();
+    verifySession.expiresAt = Date.now() + LEAGUE_BOT_CONFIG.verifySessionMinutes * 60000;
+    try {
+      var fresh2 = await refreshFromSyncService();
+      return "Verified \u2705 — fresh numbers are in, " + syncFreshnessNote(fresh2) + ", 2B1C only. This check lasts " + LEAGUE_BOT_CONFIG.verifySessionMinutes + " minutes or until you log out, then you verify again. Ask me about playoff chances, start/sit, waivers or rankings.";
+    } catch (e) {
+      clearVerifySession();
+      return "You verified, but the fresh pull failed (" + (e.message || "error") + ") — falling back to the last synced numbers. Try again in a bit.";
+    }
+  }
+
+  // Show the verify bar when the panel is open and the synced numbers
+  // are missing or stale; hide it when they are fresh or logged out.
+  async function updateVerifyBar() {
+    var bar = panel && panel.querySelector("#leagueBotVerify");
+    if (!bar) return;
+    if (!isLoggedIn()) { bar.classList.add("hidden"); return; }
+    var sync = null;
+    try { sync = await fetchFantasySync(); } catch (e) {}
+    bar.classList.toggle("hidden", !(!sync || syncIsStale(sync)));
+  }
+
   /* ---------- answering (local first) ---------- */
 
   async function answerLocally(rawQuestion) {
@@ -852,6 +1056,13 @@
     if (/^(hi|hey|hello|yo)\b/.test(q) || q.indexOf("what can you do") !== -1 || q.indexOf("help") !== -1) {
       return "Hey " + (who.manager || "manager") + " — I know your team (" + (who.teamName || "not set") + ") and I can see the league. Try:\n" +
         "• \"What is my matchup this week?\"\n• \"Show the standings\"\n• \"Who is on Will's team?\"\n• \"Any good trades with Will?\"\n• \"What are my chances to make the playoffs?\"\n• \"What are the payouts?\"\n\nNo mercy. No refunds. For start/sit and waiver advice I will need the AI backend connected — see LEAGUE_BOT.md.";
+    }
+
+    // Verify-on-demand: "Verify to refresh", "refresh the numbers",
+    // "get fresh data" — a human check that unlocks one fresh pull.
+    if (q.indexOf("verify") !== -1 || q.indexOf("refresh the numbers") !== -1 || q.indexOf("update the numbers") !== -1 ||
+        q.indexOf("fresh numbers") !== -1 || q.indexOf("fresh data") !== -1 || q.indexOf("get fresh") !== -1) {
+      return verifyAndRefresh();
     }
 
     if ((q.indexOf("who am i") !== -1 || q.indexOf("my team") !== -1) && q.indexOf("roster") === -1 && q.indexOf("matchup") === -1 && q.indexOf("record") === -1 && q.indexOf("who is on") === -1 && q.indexOf("who's on") === -1 && q.indexOf("rate") === -1 && q.indexOf("grade") === -1 && q.indexOf("power") === -1) {
@@ -934,7 +1145,20 @@
         if (!target && who.teamName) target = { teamName: who.teamName, teamId: null, manager: who.manager };
       } else {
         var pq = rawQuestion.replace(/.*(?:for|of|does|will|can)\s+/i, "").replace(/\s*(make|get in|get to|reach|win).*/i, "").replace(/[?.!]*$/, "");
-        target = findTeam(pq, standings) || findTeam(who.teamName, standings);
+        target = findTeam(pq, standings);
+        // A named team that is not in this league must NOT silently
+        // fall back to the asker's own team — that would answer the
+        // wrong team's chances. This is also the 2B1C-only guard for
+        // playoff questions: teams outside 2B1C are not answerable.
+        if (!target) {
+          // If anything is left after stripping the generic words, the
+          // question names a team — and it is not in this league.
+          var leftover = rawQuestion.replace(/\b(what|are|the|chances?|to|make|playoffs?|postseason|will|can|does|likely|odds|get|in|reach|win|my|i|we|is|it|for|of|do|a|an)\b/gi, "").replace(/[^A-Za-z ]/g, " ").replace(/\s+/g, " ").trim();
+          if (leftover) {
+            return "I could not find that team in 2B1C — I only have the 12 teams in this league. Try \"What are Berlin Bombers' chances to make the playoffs?\"";
+          }
+          target = findTeam(who.teamName, standings);
+        }
       }
       if (!target) return "Which team? Try \"What are my chances to make the playoffs?\" or \"What are Berlin Bombers' chances to make the playoffs?\"";
       return answerPlayoffChances(target, standings);
@@ -1100,6 +1324,11 @@
     }
     var show = isLoggedIn();
     if (fab) fab.classList.toggle("hidden", !show);
+    if (!show) {
+      clearVerifySession();
+      var bar0 = panel && panel.querySelector("#leagueBotVerify");
+      if (bar0) bar0.classList.add("hidden");
+    }
     if (panel && panel.classList.contains("hidden") === false && !show) panel.classList.add("hidden");
   }
 
@@ -1111,10 +1340,19 @@
     inputEl = panel.querySelector("#leagueBotInput");
     subEl = panel.querySelector("#leagueBotSubtitle");
 
+    var verifyBtn = panel.querySelector("#leagueBotVerifyBtn");
+    if (verifyBtn) verifyBtn.addEventListener("click", async function () {
+      setTyping(true);
+      var reply = await verifyAndRefresh();
+      setTyping(false);
+      addMessage(reply, "league-bot-bot");
+      updateVerifyBar();
+    });
     fab.addEventListener("click", function () {
       panel.classList.toggle("hidden");
       if (!panel.classList.contains("hidden")) {
         refreshIdentity();
+        updateVerifyBar();
         if (!logEl.dataset.greeted) {
           logEl.dataset.greeted = "1";
           var who = me();

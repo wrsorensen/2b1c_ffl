@@ -144,3 +144,29 @@
   color: var(--muted);
   font-size: 0.68rem;
 }
+
+.league-bot-verify {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px 0;
+  color: var(--gold-soft);
+  font-size: 0.75rem;
+}
+
+.league-bot-verify.hidden {
+  display: none;
+}
+
+.league-bot-verify-btn {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-gold);
+  border-radius: 999px;
+  background: rgba(216, 180, 93, 0.18);
+  color: var(--gold-soft);
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 6px 10px;
+  cursor: pointer;
+}

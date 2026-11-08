@@ -189,6 +189,102 @@ credentials are in the repo.
    Refresh at least weekly — everything goes stale after each week's
    games.
 
+
+## Verify-on-demand — how fresh numbers get pulled
+
+Managers do NOT have their own FantasyPros accounts. The bot uses
+Will's account, and only Will's account, to pull the numbers. The
+problem that made this necessary: an automated browser keeps failing
+FantasyPros' "Verify you are human" check, so a bot-driven sign-in
+does not work. A human passes that check. So the check is done by
+the CURRENT manager, in their own session, when fresh numbers are
+needed.
+
+### Step by step
+
+1. The bot needs fresh numbers — the synced file is missing or more
+   than 7 days old, or a question needs a category that is not synced
+   yet. The bot shows a "Verify to refresh" button (a chip in the
+   panel, and a bar under the chips) and explains the check in one
+   line. It never blocks on this: if the manager does nothing, the
+   bot keeps answering from the last synced numbers and says how old
+   they are.
+2. The manager taps "Verify to refresh". The bot opens the sync
+   service's verify page in a new tab:
+   `{syncEndpoint}/verify?session=...&manager=...&team=...`
+   That page shows a human "Verify you are human" check. The manager
+   completes it in their own browser. That is the whole point of the
+   flow — a human check, done by a human.
+3. The bot polls `{syncEndpoint}/verify-status` for up to 60 seconds.
+   On "verified" it marks this session verified and calls
+   `{syncEndpoint}/refresh` with `{ sessionId, manager, teamName }`.
+4. The sync service — the ONLY place Will's FantasyPros session
+   lives — does one read-only pull from FantasyPros, filters it to
+   2B1C teams only, and returns the fresh `fantasypros-sync.json`.
+   The bot filters 2B1C-only a second time before it trusts the
+   reply (see "2B1C only" below), reloads its cache, and answers
+   from the fresh numbers.
+5. The check expires after `verifySessionMinutes` (30 minutes) or on
+   logout. After that the manager verifies again. Closing the browser
+   clears it automatically — the verification lives in memory only.
+
+### What is NOT shared
+
+- The bot serves 2B1C ONLY. Will's other leagues — Wichita Barn
+  Burners (Sleeper) and Sloppy Seconds (MyFantasyLeague) — are never
+  included, shown, or reachable through the bot. The sync service
+  filters to 2B1C before writing the file, and the bot drops any
+  team named Wichita Barn Burners or Sloppy Seconds, any team with a
+  league field that is not 2B1C, and rejects a sync file for a
+  different league outright.
+- No FantasyPros password, session token, or PIN is ever in the repo,
+  in the browser, or sent by the bot. The bot never calls
+  `managerLogin` and never asks for a PIN. The manager's PIN logs
+  them into the 2B1C app only.
+- The verification is per-session only: no token is stored in the
+  app (no localStorage, no cookie set by the bot), and nothing
+  persists after logout or browser close.
+
+### If verification fails
+
+- The check fails, times out, or the manager cancels: the bot says
+  so, changes nothing, and keeps answering from the last synced
+  numbers, labelled with the as-of date ("synced 3 days ago
+  (2026-11-08)").
+- If the sync service is not connected yet (`syncEndpoint` empty /
+  `syncEnabled` false in `LEAGUE_BOT_CONFIG`): the bot says the
+  fresh pull is not wired up yet, gives the freshness of what it
+  has, and does not pretend a verify will work.
+
+### What the sync service still has to be (the remaining backend piece)
+
+The client side in this branch is built, but the live pull needs the
+sync service itself, which does not exist yet. It must:
+- Hold Will's FantasyPros session server-side (commissioner-managed),
+  scoped to read-only My Playbook data for the 2B1C league.
+- Host the verify page and the `/verify-status` + `/refresh`
+  endpoints described in `LEAGUE_BOT_CONFIG` in `league-bot.js`.
+- On refresh, pull the full FantasyPros set from the PR #2 schema
+  (playoff odds, projections, start/sit, waivers, trade values,
+  grades, power rankings, matchup outlook, weekly + ROS rankings,
+  news), filter to 2B1C teams only, and return it as
+  `fantasypros-sync.json` with `asOf` / `week` updated.
+- Never accept a FantasyPros password from the browser, never expose
+  Will's session to the site, and never return a team outside 2B1C.
+- Until that service exists, the weekly manual sync in "Sync step"
+  below is the way fresh numbers get in — the bot reads the same
+  file either way, so nothing in the bot changes when the service
+  lands.
+
+### Voice / presentation
+
+- The bot's normal answers do not name where a number came from.
+  Source and as-of date are only revealed when asked ("where did
+  that come from?", "how current is that?").
+- Trash talk stays on top of the facts, fantasy performance only,
+  emojis sparingly. A failed verification gets a light roast at most
+  ("no worries, nothing changed") — never blame the manager.
+
 ## Voice: trash talk (with emojis, sparingly)
 
 - The bot talks like the app: "No mercy. No refunds." / Shit Show
@@ -239,9 +335,18 @@ everyone.
 
 ## Testing
 
-1. Merge the PR, wait for GitHub Pages to publish, hard-refresh.
+Test locally BEFORE merging — merging is shipping, not testing.
+
+1. Check out the branch, serve it locally (`python3 -m http.server`),
+   open it in a browser.
 2. Log in with a team + PIN. The gold chat button appears bottom-right,
    above the bottom nav.
 3. Try: "What is my matchup this week?", "Show the standings",
-   "Any good trades with Will?", "What are the payouts?"
-4. Log out — the button disappears.
+   "Any good trades with Will?", "What are the payouts?",
+   "What are my chances to make the playoffs?"
+4. Verify flow: with the sync service not connected, tap "Verify to
+   refresh" — the bot must say the fresh pull is not wired up yet and
+   fall back to the last synced numbers. With a mock sync service,
+   verify must unlock a fresh pull, and the session must expire on
+   logout (button disappears, verify bar hides).
+5. Log out — the button disappears.
