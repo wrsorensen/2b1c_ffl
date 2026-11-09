@@ -1,5 +1,10 @@
 /*
   2B1C FFL
+  v1.6.8 - 2B1C Bot frontend. FAB button (bottom-right, above nav) opens a
+  chat drawer that calls the new askLeagueBot backend endpoint using the
+  existing logged-in manager/PIN. No new auth, no new storage - just a
+  drawer + a fetch, matching the existing drawer pattern (openRuleChangesDrawer_
+  etc). No FantasyPros data yet - bot answers from live ESPN standings only.
   v1.6.6 - Settings drawer redesign: grouped into labeled sections
   (Notifications / Support / Commissioner), action rows now a clean
   list-row style (icon + label + chevron) instead of stacked pill buttons.
@@ -170,6 +175,7 @@ document.getElementById("spotlightSelect")?.addEventListener("change", (event) =
 document.getElementById("shitShowUnreadBanner")?.addEventListener("click", () => showTab("trash"));
 
 document.getElementById("notifSettingsBtn")?.addEventListener("click", openNotifSettingsDrawer_);
+document.getElementById("botFabBtn")?.addEventListener("click", openBotDrawer_);
 document.getElementById("sendAnnounceBtn")?.addEventListener("click", sendAnnouncement_);
 
 // Runs any queued OneSignal call once the SDK is ready. Safe to call even
@@ -2295,6 +2301,105 @@ function openRuleChangesDrawer_() {
 function closeRuleChangesDrawer_() {
   const drawer = document.getElementById("ruleChangesDrawer");
   if (drawer) drawer.remove();
+}
+
+// 2B1C Bot - AI trash-talk/Q&A panel. Calls askLeagueBot on the backend,
+// which reasons only over live ESPN standings handed to it there (no
+// FantasyPros data yet). Manager/PIN come from the existing logged-in
+// session - same values already used for every other authenticated call.
+function openBotDrawer_() {
+  const existing = document.getElementById("botDrawer");
+  if (existing) existing.remove();
+
+  const drawer = document.createElement("div");
+  drawer.id = "botDrawer";
+  drawer.className = "drawer-backdrop";
+  drawer.innerHTML = `
+    <section class="drawer-panel bot-drawer-panel" role="dialog" aria-modal="true" aria-label="2B1C Bot">
+      <div class="drawer-head">
+        <div class="drawer-head-top">
+          <div class="drawer-head-title">
+            <span class="eyebrow">2B1C Bot</span>
+            <h3>Ask the League</h3>
+          </div>
+          <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
+        </div>
+      </div>
+      <div class="drawer-body bot-drawer-body">
+        <div id="botMessages" class="bot-messages" aria-live="polite">
+          <div class="bot-msg bot"><p>Ask me anything about the league - standings, records, who's winning, who's not. I only know what's actually live in 2B1C right now, not player rankings.</p></div>
+        </div>
+      </div>
+      <form id="botInputRow" class="bot-input-row">
+        <input id="botQuestionInput" type="text" placeholder="Ask the bot..." autocomplete="off" maxlength="300">
+        <button type="submit" class="primary-btn bot-send-btn" id="botSendBtn">Send</button>
+      </form>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) closeBotDrawer_();
+  });
+
+  document.body.appendChild(drawer);
+  drawer.querySelector(".drawer-close").addEventListener("click", closeBotDrawer_);
+  document.getElementById("botInputRow").addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendBotQuestion_();
+  });
+
+  document.getElementById("botQuestionInput")?.focus();
+}
+
+function closeBotDrawer_() {
+  const drawer = document.getElementById("botDrawer");
+  if (drawer) drawer.remove();
+}
+
+function appendBotMessage_(role, text) {
+  const list = document.getElementById("botMessages");
+  if (!list) return null;
+  const row = document.createElement("div");
+  row.className = "bot-msg " + role;
+  const p = document.createElement("p");
+  p.textContent = text;
+  row.appendChild(p);
+  list.appendChild(row);
+  list.scrollTop = list.scrollHeight;
+  return row;
+}
+
+async function sendBotQuestion_() {
+  const input = document.getElementById("botQuestionInput");
+  const sendBtn = document.getElementById("botSendBtn");
+  if (!input || !sendBtn) return;
+
+  const question = input.value.trim();
+  if (!question) return;
+
+  appendBotMessage_("user", question);
+  input.value = "";
+  input.disabled = true;
+  sendBtn.disabled = true;
+
+  const typingRow = appendBotMessage_("typing", "Thinking...");
+
+  try {
+    const res = await api("askLeagueBot", {
+      manager: state.manager,
+      pin: state.pin,
+      question
+    });
+    typingRow?.remove();
+    appendBotMessage_("bot", (res.data && res.data.answer) || "No answer came back. Try again.");
+  } catch (err) {
+    typingRow?.remove();
+    appendBotMessage_("error", (err && err.message) || "2B1C Bot is unavailable right now.");
+  } finally {
+    input.disabled = false;
+    sendBtn.disabled = false;
+    input.focus();
+  }
 }
 
 function refreshRuleChangesDrawerIfOpen_() {
