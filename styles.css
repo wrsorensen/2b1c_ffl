@@ -2861,8 +2861,10 @@ select:focus {
 
 .bot-send-btn {
   flex: 0 0 auto;
+  width: auto;
   min-height: var(--tap);
   padding: 0 18px;
+  white-space: nowrap;
 }
 
 .bot-send-btn:disabled {
