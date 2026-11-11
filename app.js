@@ -1,5 +1,8 @@
 /*
   2B1C FFL
+  v1.6.9 - Updated the bot drawer's intro message - it now has FantasyPros
+  rankings (Code.gs v0.6.7), so "not player rankings" was stale. No other
+  change.
   v1.6.8 - 2B1C Bot frontend. FAB button (bottom-right, above nav) opens a
   chat drawer that calls the new askLeagueBot backend endpoint using the
   existing logged-in manager/PIN. No new auth, no new storage - just a
@@ -2327,7 +2330,7 @@ function openBotDrawer_() {
       </div>
       <div class="drawer-body bot-drawer-body">
         <div id="botMessages" class="bot-messages" aria-live="polite">
-          <div class="bot-msg bot"><p>Ask me anything about the league - standings, records, who's winning, who's not. I only know what's actually live in 2B1C right now, not player rankings.</p></div>
+          <div class="bot-msg bot"><p>Ask me anything about the league - standings, records, overall player rankings. I don't know anyone's actual roster, so no lineup, trade, or waiver advice.</p></div>
         </div>
       </div>
       <form id="botInputRow" class="bot-input-row">
