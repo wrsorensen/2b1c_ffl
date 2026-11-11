@@ -1,5 +1,9 @@
 /*
   2B1C FFL
+  v1.6.10 - Renamed the bot "2B1C Bot" -> "The Oracle" everywhere in the
+  UI (FAB button, drawer title/label, error text), swapped the FAB icon
+  from a football emoji to a crystal ball, and rewrote the intro message
+  with some trash talk instead of a flat feature list.
   v1.6.9 - Updated the bot drawer's intro message - it now has FantasyPros
   rankings (Code.gs v0.6.7), so "not player rankings" was stale. No other
   change.
@@ -2306,10 +2310,12 @@ function closeRuleChangesDrawer_() {
   if (drawer) drawer.remove();
 }
 
-// 2B1C Bot - AI trash-talk/Q&A panel. Calls askLeagueBot on the backend,
-// which reasons only over live ESPN standings handed to it there (no
-// FantasyPros data yet). Manager/PIN come from the existing logged-in
-// session - same values already used for every other authenticated call.
+// The Oracle (formerly "2B1C Bot") - AI trash-talk/Q&A panel. Calls
+// askLeagueBot on the backend, which reasons over live ESPN standings,
+// the asking manager's own roster, FantasyPros rankings/projections,
+// league rules, and recent trash talk. Manager/PIN come from the
+// existing logged-in session - same values already used for every other
+// authenticated call.
 function openBotDrawer_() {
   const existing = document.getElementById("botDrawer");
   if (existing) existing.remove();
@@ -2318,23 +2324,23 @@ function openBotDrawer_() {
   drawer.id = "botDrawer";
   drawer.className = "drawer-backdrop";
   drawer.innerHTML = `
-    <section class="drawer-panel bot-drawer-panel" role="dialog" aria-modal="true" aria-label="2B1C Bot">
+    <section class="drawer-panel bot-drawer-panel" role="dialog" aria-modal="true" aria-label="The Oracle">
       <div class="drawer-head">
         <div class="drawer-head-top">
           <div class="drawer-head-title">
-            <span class="eyebrow">2B1C Bot</span>
-            <h3>Ask the League</h3>
+            <span class="eyebrow">THE ORACLE</span>
+            <h3>Ask The Oracle</h3>
           </div>
           <button class="ghost-btn drawer-close" type="button" aria-label="Close">&times;</button>
         </div>
       </div>
       <div class="drawer-body bot-drawer-body">
         <div id="botMessages" class="bot-messages" aria-live="polite">
-          <div class="bot-msg bot"><p>Ask me anything about the league - standings, records, overall player rankings. I don't know anyone's actual roster, so no lineup, trade, or waiver advice.</p></div>
+          <div class="bot-msg bot"><p>I see your standings, your roster, and your sad excuse for a waiver strategy. Ask me about the league - records, rankings, your own guys, the rules, whatever. Just don't ask who to start, I'm an oracle, not your lineup coach.</p></div>
         </div>
       </div>
       <form id="botInputRow" class="bot-input-row">
-        <input id="botQuestionInput" type="text" placeholder="Ask the bot..." autocomplete="off" maxlength="300">
+        <input id="botQuestionInput" type="text" placeholder="Ask The Oracle..." autocomplete="off" maxlength="300">
         <button type="submit" class="primary-btn bot-send-btn" id="botSendBtn">Send</button>
       </form>
     </section>
@@ -2397,7 +2403,7 @@ async function sendBotQuestion_() {
     appendBotMessage_("bot", (res.data && res.data.answer) || "No answer came back. Try again.");
   } catch (err) {
     typingRow?.remove();
-    appendBotMessage_("error", (err && err.message) || "2B1C Bot is unavailable right now.");
+    appendBotMessage_("error", (err && err.message) || "The Oracle is unavailable right now.");
   } finally {
     input.disabled = false;
     sendBtn.disabled = false;
