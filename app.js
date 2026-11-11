@@ -1,5 +1,12 @@
 /*
   2B1C FFL
+  v1.6.11 - Settings drawer redesign: every row now has an icon badge,
+  grouped under a new "League" section (Version History, Announcements)
+  alongside Notifications/Support/Commissioner. Version History is back
+  (fully removed at v1.6.5) - same ReleaseNotes backend, now newest-first.
+  New: Announcements History - lists past commissioner announcements
+  (Code.gs now persists every send to a new Announcements sheet tab), with
+  a local/browser-only unread dot same pattern as the Trash badge.
   v1.6.10 - Renamed the bot "2B1C Bot" -> "The Oracle" everywhere in the
   UI (FAB button, drawer title/label, error text), swapped the FAB icon
   from a football emoji to a crystal ball, and rewrote the intro message
@@ -76,6 +83,7 @@ const APP_DATA_CACHE_KEY = "2b1cAppDataCacheV1";
 const APP_DATA_CACHE_TIME_KEY = "2b1cAppDataCacheTimeV1";
 const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
+const ANNOUNCEMENTS_SEEN_KEY = "2b1cAnnouncementsSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
 const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
 const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard", "commishReleaseNotesCard"];
@@ -213,6 +221,8 @@ function openNotifSettingsDrawer_() {
   const supported = typeof Notification !== "undefined";
   const permission = supported ? Notification.permission : "denied";
 
+  const unreadAnnouncements = getUnreadAnnouncementCount_();
+
   const drawer = document.createElement("div");
   drawer.id = "notifSettingsDrawer";
   drawer.className = "drawer-backdrop week-picker-backdrop";
@@ -226,9 +236,12 @@ function openNotifSettingsDrawer_() {
         <div class="settings-section">
           <p class="settings-section-label">Notifications</p>
           <div class="notif-toggle-row">
-            <div>
-              <strong>Push Notifications</strong>
-              <p class="muted compact-note">Get notified about new Shit Show posts and commissioner announcements.</p>
+            <div class="settings-list-row-left">
+              <span class="settings-icon-badge">🔔</span>
+              <div>
+                <strong>Push Notifications</strong>
+                <p class="muted compact-note">Get notified about new Shit Show posts and commissioner announcements.</p>
+              </div>
             </div>
             <label class="notif-toggle-switch">
               <input type="checkbox" id="notifToggleInput">
@@ -239,9 +252,36 @@ function openNotifSettingsDrawer_() {
         </div>
 
         <div class="settings-section">
+          <p class="settings-section-label">League</p>
+          <button class="settings-list-row" id="settingsAnnouncementsBtn" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">📣</span>
+              <span>
+                Announcements
+                ${unreadAnnouncements ? `<span class="settings-unread-dot" aria-label="${unreadAnnouncements} new"></span>` : ""}
+              </span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+          <button class="settings-list-row" id="settingsVersionHistoryBtn" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">🗂️</span>
+              <span>
+                Version History
+                <span class="settings-list-sub">v1.6.11</span>
+              </span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
+
+        <div class="settings-section">
           <p class="settings-section-label">Support</p>
           <button class="settings-list-row" id="settingsHelpDeskBtn" type="button">
-            <span>💬 Suggest a change / Ask a question</span>
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">💬</span>
+              <span>Suggest a change / Ask a question</span>
+            </span>
             <span class="settings-list-chevron">›</span>
           </button>
         </div>
@@ -250,14 +290,20 @@ function openNotifSettingsDrawer_() {
         <div class="settings-section">
           <p class="settings-section-label">Commissioner</p>
           <button class="settings-list-row" id="settingsCommishBtn" type="button">
-            <span>⚑ Commish Tools</span>
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">⚑</span>
+              <span>Commish Tools</span>
+            </span>
             <span class="settings-list-chevron">›</span>
           </button>
         </div>` : ""}
 
         <div class="settings-section">
           <button class="settings-list-row settings-list-row-danger" id="settingsLogoutBtn" type="button">
-            <span>Logout</span>
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">🚪</span>
+              <span>Logout</span>
+            </span>
             <span class="settings-list-chevron">›</span>
           </button>
         </div>
@@ -277,6 +323,14 @@ function openNotifSettingsDrawer_() {
   drawer.querySelector("#settingsHelpDeskBtn").addEventListener("click", () => {
     drawer.remove();
     openHelpDeskDrawer_();
+  });
+  drawer.querySelector("#settingsVersionHistoryBtn").addEventListener("click", () => {
+    drawer.remove();
+    openVersionHistoryDrawer_();
+  });
+  drawer.querySelector("#settingsAnnouncementsBtn").addEventListener("click", () => {
+    drawer.remove();
+    openAnnouncementsDrawer_();
   });
   const commishBtn = drawer.querySelector("#settingsCommishBtn");
   if (commishBtn) {
@@ -321,6 +375,121 @@ function openNotifSettingsDrawer_() {
       status.textContent = "Notifications off.";
     }
   });
+}
+
+// Local/browser-only unread tracking for Announcements, same pattern as the
+// Trash unread badge (TRASH_SEEN_KEY) - not cross-device, just a nice-to-have
+// so the Settings row can show a dot when something new came in.
+function getAnnouncementsKey_(a) {
+  return `${a?.timestamp || ""}|${a?.title || ""}`;
+}
+
+function getUnreadAnnouncementCount_() {
+  const list = state.appData?.announcements || [];
+  if (!list.length) return 0;
+
+  let seenKey = null;
+  try {
+    seenKey = localStorage.getItem(ANNOUNCEMENTS_SEEN_KEY);
+  } catch (_) {
+    return 0;
+  }
+  if (!seenKey) return 0;
+
+  let count = 0;
+  for (const a of list) {
+    if (getAnnouncementsKey_(a) === seenKey) break;
+    count += 1;
+  }
+  return count;
+}
+
+function markAnnouncementsSeen_() {
+  const list = state.appData?.announcements || [];
+  if (!list.length) return;
+  try {
+    localStorage.setItem(ANNOUNCEMENTS_SEEN_KEY, getAnnouncementsKey_(list[0]));
+  } catch (_) {
+    // Local unread state is nice-to-have only.
+  }
+}
+
+function openAnnouncementsDrawer_() {
+  const existing = document.getElementById("announcementsHistoryDrawer");
+  if (existing) existing.remove();
+
+  const list = state.appData?.announcements || [];
+
+  const itemsHtml = list.length
+    ? list.map((a) => `
+        <div class="history-item">
+          <div class="history-item-top">
+            <strong class="history-item-title">${escapeHtml(a.title)}</strong>
+            <span class="history-item-date">${escapeHtml(a.timestamp)}</span>
+          </div>
+          <p class="history-item-message">${escapeHtml(a.message)}</p>
+        </div>
+      `).join("")
+    : `<p class="history-empty">No announcements yet.</p>`;
+
+  const drawer = document.createElement("div");
+  drawer.id = "announcementsHistoryDrawer";
+  drawer.className = "drawer-backdrop week-picker-backdrop";
+  drawer.innerHTML = `
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Announcements">
+      <div class="week-picker-head">
+        <h4>📣 Announcements</h4>
+        <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="history-list">${itemsHtml}</div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) drawer.remove();
+  });
+  document.body.appendChild(drawer);
+  drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
+
+  markAnnouncementsSeen_();
+}
+
+function openVersionHistoryDrawer_() {
+  const existing = document.getElementById("versionHistoryDrawer");
+  if (existing) existing.remove();
+
+  const list = state.appData?.whatsNew || [];
+
+  const itemsHtml = list.length
+    ? list.map((r) => `
+        <div class="history-item">
+          <div class="history-item-top">
+            <strong class="history-item-title">${escapeHtml(r.version)}</strong>
+            <span class="history-item-date">${escapeHtml(r.date)}</span>
+          </div>
+          <p class="history-item-message">${escapeHtml(r.summary)}</p>
+        </div>
+      `).join("")
+    : `<p class="history-empty">No version history yet.</p>`;
+
+  const drawer = document.createElement("div");
+  drawer.id = "versionHistoryDrawer";
+  drawer.className = "drawer-backdrop week-picker-backdrop";
+  drawer.innerHTML = `
+    <section class="week-picker-panel" role="dialog" aria-modal="true" aria-label="Version History">
+      <div class="week-picker-head">
+        <h4>🗂️ Version History</h4>
+        <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
+      </div>
+      <div class="history-list">${itemsHtml}</div>
+    </section>
+  `;
+
+  drawer.addEventListener("click", (event) => {
+    if (event.target === drawer) drawer.remove();
+  });
+  document.body.appendChild(drawer);
+  drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
 }
 
 async function sendAnnouncement_() {
