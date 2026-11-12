@@ -1,42 +1,47 @@
-[README.txt](https://github.com/user-attachments/files/34756384/README.txt)
-2B1C FFL — v1.6.19
+[Uploading README.txt…]()
+2B1C FFL — v1.6.24
 ===================
 
-Files in this package (replace these 3):
+Files (replace these 3):
 - index.html
 - app.js
 - styles.css
 
-No Code.gs change needed - this release only uses data that was already
-flowing from v1.6.18's diagnostic (confirmed live: ESPN sends real
-projected scores for every matchup).
+Covers everything built in the canvas, v1.6.21 through v1.6.24:
 
-What changed:
-Scoreboard card now shows each game's ESPN-projected score instead of 0-0
-until that specific game has a real score in. This is per game, not per
-week - Thursday night can go live while Sunday's games still show
-projected, automatically, with zero clock/timezone logic. Projected rows
-get a subtle gold tint + a small "Proj." tag. If every game in the week is
-still projected, the card title swaps from "Scoreboard" to "Projected" and
-the whole card gets the same tint; the moment any game goes live, both
-revert to normal.
+v1.6.21 - Scoreboard header redesign. Removed the collapse-toggle and the
+separate status chip. Whole header is now one centered, clickable title
+("Projected - Week N" / "Live Scoreboard - Week N" / "Scoreboard -
+Week N") that opens the week picker. Green live-week dot moved out of the
+card, up next to "Updated ..." at the top of Home.
+
+v1.6.22 - Added prev/next week arrows flanking the title - step one week
+at a time without opening the full picker. Tapping the title text itself
+still opens the picker for bigger jumps.
+
+v1.6.23 - Arrows moved to the outer edges of the header bar, dropped the
+circular button chrome - just the glyph now.
+
+v1.6.24 - Title and arrows vertically centered as a group.
+
+Builds on v1.6.19/v1.6.20 (projected scoreboard tint/data), already live.
 
 Not touched: Pay tab, dues tracking, Commish Tools, Version History,
 login/auth, Code.gs.
 
 Install:
-1. Replace index.html, app.js, styles.css in the repo with these 3.
+1. Replace index.html, app.js, styles.css.
 2. Commit + push to main, rebuild Pages if it doesn't auto-build.
 3. No Apps Script changes required.
 
 Test checklist:
-- Before any games kick off this week: Scoreboard card title reads
-  "Projected", card has a subtle gold tint, every row shows a projected
-  number with a small "Proj." tag.
-- After Thursday night kicks off (or any game goes live): that one row
-  switches to its real live score, tag/tint disappears from that row only;
-  other still-not-started games keep showing "Proj." Card title/tint
-  reverts to normal "Scoreboard" since the week's now mixed.
-- Browsing a past completed week (week picker): normal real scores, no
-  projected tint anywhere (all real scores are nonzero/final).
-- Mobile layout: projected tag doesn't break the row layout or wrap badly.
+- Scoreboard card: header is one row, centered title, small arrow on each
+  outer edge, everything vertically aligned.
+- Tap left/right arrow: steps one week, doesn't open the picker.
+- Tap the title text (middle): opens the full week picker.
+- Scoreboard card no longer collapses when tapped (that's intentional -
+  only week-browsing now, not collapse).
+- Green dot only shows next to "Updated ..." when viewing the live/current
+  week; disappears when browsing a past week.
+- Mobile: arrows are easy to tap without missegating onto the title tap
+  target.
