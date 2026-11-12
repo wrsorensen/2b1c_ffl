@@ -1,5 +1,11 @@
 /*
   2B1C FFL
+  v1.6.15 - Who's Paid list now shows one line per TEAM, not per manager.
+  A co-managed team (two manager rows sharing the same TeamName) only owes
+  one $100 buy-in, so it's grouped: team name + "Manager & Co-Manager",
+  single Paid/Unpaid badge (paid if EITHER manager's row is marked paid -
+  doesn't matter which one Commish toggles). Frontend-only - the toggle in
+  Commish Tools > Manager Info is unchanged, still one row per manager.
   v1.6.14 - Dues tracking (backlog item, Will chose to build it now instead
   of next season). New public "Who's Paid" card on the Pay tab, sorted
   unpaid-first. Commish Tools > Manager Info gets a Paid toggle next to the
@@ -1079,16 +1085,30 @@ function renderDuesStatus_(managers) {
     return;
   }
 
-  // Unpaid first - that's the point of a public dues list.
-  const sorted = [...managers].sort((a, b) => Number(Boolean(a.paid)) - Number(Boolean(b.paid)));
+  // One $100 buy-in per TEAM, not per manager - a co-managed team (two
+  // Manager/Co-Manager rows, same TeamName) still owes exactly one payment,
+  // so this groups by team for display. Doesn't matter which manager's row
+  // gets toggled paid in Commish Tools - if either one is marked paid, the
+  // whole team shows paid here.
+  const byTeam = new Map();
+  managers.forEach((m) => {
+    const team = String(m.teamName || "").trim() || String(m.manager || "Unknown Team");
+    if (!byTeam.has(team)) byTeam.set(team, { teamName: team, managerNames: [], paid: false });
+    const entry = byTeam.get(team);
+    if (m.manager) entry.managerNames.push(m.manager);
+    if (m.paid) entry.paid = true;
+  });
 
-  list.innerHTML = sorted.map((m) => `
+  // Unpaid first - that's the point of a public dues list.
+  const teams = [...byTeam.values()].sort((a, b) => Number(a.paid) - Number(b.paid));
+
+  list.innerHTML = teams.map((t) => `
     <div class="dues-status-row">
       <div class="dues-status-info">
-        <b>${escapeHtml(m.teamName || m.manager)}</b>
-        <span class="muted">${escapeHtml(m.manager)}</span>
+        <b>${escapeHtml(t.teamName)}</b>
+        <span class="muted">${escapeHtml(t.managerNames.join(" & "))}</span>
       </div>
-      <span class="dues-status-badge ${m.paid ? "dues-paid" : "dues-unpaid"}">${m.paid ? "✓ Paid" : "Unpaid"}</span>
+      <span class="dues-status-badge ${t.paid ? "dues-paid" : "dues-unpaid"}">${t.paid ? "✓ Paid" : "Unpaid"}</span>
     </div>
   `).join("");
 }
