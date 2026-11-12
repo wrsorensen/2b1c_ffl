@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.19 — The Oracle</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.24 — The Oracle</p>
     </section>
   </main>
 
@@ -89,6 +89,7 @@
       </section>
 
       <section class="home-utility-row" aria-label="Status">
+        <span id="heroLiveDot" class="status-chip-live-dot hidden" aria-hidden="true"></span>
         <span id="lastUpdatedText" class="hero-updated-text">Syncing league data…</span>
       </section>
 
@@ -111,13 +112,10 @@
         </article>
 
         <article class="card feature-card scoreboard-card" id="scoreboardCard">
-          <div class="card-head card-head-toggle" data-card-id="scoreboardCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Scoreboard">
-            <div>
-              <h3 id="scoreboardCardTitle">Scoreboard</h3>
-            </div>
-            <div class="card-head-actions">
-              <button type="button" id="scoreboardStatus" class="status-chip status-chip-btn" aria-label="Select week to view">Syncing</button>
-            </div>
+          <div class="card-head card-head-toggle scoreboard-card-head" id="scoreboardCardHead" role="button" tabindex="0" aria-label="Select week to view">
+            <button type="button" id="scoreboardPrevWeekBtn" class="scoreboard-week-nav-btn" aria-label="Previous week">‹</button>
+            <h3 id="scoreboardCardTitle">Syncing</h3>
+            <button type="button" id="scoreboardNextWeekBtn" class="scoreboard-week-nav-btn" aria-label="Next week">›</button>
           </div>
           <div id="scoreboardBody" class="card-body">
             <p class="big-placeholder">Loading ESPN scoreboard...</p>
@@ -145,7 +143,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.6.19</span>
+        <span class="home-version">v1.6.24</span>
       </section>
     </section>
 
