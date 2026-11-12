@@ -1,5 +1,12 @@
 /*
   2B1C FFL
+  v1.6.16 - Version History cleanup. Removed the separate Commish Tools >
+  Release Notes admin screen - it was a redundant extra click. The
+  commissioner now sees show/hide toggles right inside the same Version
+  History drawer (Settings) everyone uses; regular managers see the plain
+  list, no toggles, same as before. Backend endpoints unchanged
+  (getReleaseNotesAdmin/setReleaseNoteVisible), just called from a
+  different place in the UI.
   v1.6.15 - Who's Paid list now shows one line per TEAM, not per manager.
   A co-managed team (two manager rows sharing the same TeamName) only owes
   one $100 buy-in, so it's grouped: team name + "Manager & Co-Manager",
@@ -116,15 +123,18 @@ const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const ANNOUNCEMENTS_SEEN_KEY = "2b1cAnnouncementsSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
 const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
-const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard", "commishReleaseNotesCard"];
+const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
 
-// Release notes shown in Settings > What's New now live in the ReleaseNotes
+// Release notes shown in Settings > Version History live in the ReleaseNotes
 // Sheet tab (Version/Date/Summary/Visible), not hardcoded here - Will adds
-// and edits entries himself, and toggles what's public from the Commish
-// tab's Release Notes admin list. See getReleaseNotesPublic_ /
-// getReleaseNotesAdminPublic_ / setReleaseNoteVisiblePublic_ in Code.gs.
+// and edits entries himself. There's no separate Commish Tools admin screen
+// for this anymore (removed - redundant extra click): the commissioner sees
+// visibility toggles right inside the same Version History drawer everyone
+// uses, driven by isCommissioner_() in openVersionHistoryDrawer_() below.
+// See getReleaseNotesPublic_ / getReleaseNotesAdminPublic_ /
+// setReleaseNoteVisiblePublic_ in Code.gs.
 
 // Fallback only - the real list comes from Settings (key "reactionEmojis") so
 // Will can edit it without a code push. Kept in sync with Code.gs's default.
@@ -484,23 +494,40 @@ function openAnnouncementsDrawer_() {
   markAnnouncementsSeen_();
 }
 
-function openVersionHistoryDrawer_() {
+function renderVersionHistoryItems_(list, isAdmin) {
+  if (!Array.isArray(list) || !list.length) {
+    return `<p class="history-empty">No version history yet.</p>`;
+  }
+
+  return list.map((r) => `
+    <div class="history-item">
+      <div class="history-item-top">
+        <strong class="history-item-title">${escapeHtml(r.version)}</strong>
+        <span class="history-item-date">${escapeHtml(r.date)}</span>
+      </div>
+      <p class="history-item-message">${escapeHtml(r.summary)}</p>
+      ${isAdmin ? `
+        <label class="notif-toggle-switch history-item-admin-toggle">
+          <input type="checkbox" class="history-item-visible-toggle" data-version="${escapeHtml(r.version)}" ${r.visible ? "checked" : ""}>
+          <span class="notif-toggle-slider"></span>
+        </label>
+      ` : ""}
+    </div>
+  `).join("");
+}
+
+// Same drawer for everyone - the commissioner just gets a visibility toggle
+// on each entry, baked right in, instead of a separate Commish Tools screen
+// (that admin card was removed; this replaces it, one less click for Will).
+// Regular managers still get the plain public list (state.appData.whatsNew,
+// already visible-only + newest-first from getReleaseNotesPublic_).
+async function openVersionHistoryDrawer_() {
   const existing = document.getElementById("versionHistoryDrawer");
   if (existing) existing.remove();
 
-  const list = state.appData?.whatsNew || [];
-
-  const itemsHtml = list.length
-    ? list.map((r) => `
-        <div class="history-item">
-          <div class="history-item-top">
-            <strong class="history-item-title">${escapeHtml(r.version)}</strong>
-            <span class="history-item-date">${escapeHtml(r.date)}</span>
-          </div>
-          <p class="history-item-message">${escapeHtml(r.summary)}</p>
-        </div>
-      `).join("")
-    : `<p class="history-empty">No version history yet.</p>`;
+  const isAdmin = isCommissioner_();
+  const publicList = state.appData?.whatsNew || [];
+  const itemsHtml = renderVersionHistoryItems_(publicList, false);
 
   const drawer = document.createElement("div");
   drawer.id = "versionHistoryDrawer";
@@ -511,7 +538,7 @@ function openVersionHistoryDrawer_() {
         <h4>🗂️ Version History</h4>
         <button class="ghost-btn week-picker-close" type="button" aria-label="Close">&times;</button>
       </div>
-      <div class="history-list">${itemsHtml}</div>
+      <div class="history-list" id="versionHistoryList">${itemsHtml}</div>
     </section>
   `;
 
@@ -520,6 +547,30 @@ function openVersionHistoryDrawer_() {
   });
   document.body.appendChild(drawer);
   drawer.querySelector(".week-picker-close").addEventListener("click", () => drawer.remove());
+
+  if (!isAdmin) return;
+
+  const listEl = document.getElementById("versionHistoryList");
+  try {
+    const res = await api("getReleaseNotesAdmin", { manager: state.manager, pin: state.pin });
+    const adminList = res.data || [];
+    if (!document.getElementById("versionHistoryDrawer")) return; // closed before this resolved
+    if (listEl) listEl.innerHTML = renderVersionHistoryItems_(adminList, true);
+    wireVersionHistoryAdminToggles_(listEl);
+  } catch (err) {
+    // Admin fetch failing shouldn't take away the list the manager already
+    // sees - leave the public version up, just no toggles this time.
+  }
+}
+
+function wireVersionHistoryAdminToggles_(listEl) {
+  if (!listEl) return;
+  listEl.querySelectorAll(".history-item-visible-toggle").forEach((toggle) => {
+    toggle.addEventListener("change", () => {
+      const version = toggle.dataset.version;
+      setReleaseNoteVisible_(version, toggle.checked, toggle);
+    });
+  });
 }
 
 async function sendAnnouncement_() {
@@ -1174,49 +1225,6 @@ async function addManager_() {
 
 function isCommissioner_() {
   return String(state.role || "").trim().toLowerCase() === "commissioner";
-}
-
-async function loadReleaseNotesAdmin_() {
-  if (!isCommissioner_()) return;
-  const list = document.getElementById("commishReleaseNotesList");
-
-  try {
-    const res = await api("getReleaseNotesAdmin", { manager: state.manager, pin: state.pin });
-    renderCommishReleaseNotes_(res.data || []);
-  } catch (err) {
-    if (list) list.innerHTML = `<p class="muted">Could not load release notes: ${escapeHtml(err.message || String(err))}</p>`;
-  }
-}
-
-function renderCommishReleaseNotes_(notes) {
-  const list = document.getElementById("commishReleaseNotesList");
-  if (!list) return;
-
-  if (!Array.isArray(notes) || !notes.length) {
-    list.innerHTML = `<p class="muted">No release notes yet - add rows to the ReleaseNotes sheet.</p>`;
-    return;
-  }
-
-  list.innerHTML = "";
-  notes.forEach((note) => {
-    const row = document.createElement("div");
-    row.className = "manager-admin-row release-note-row";
-    row.innerHTML = `
-      <div class="manager-admin-info">
-        <b>${escapeHtml(note.version)}</b>
-        <span class="muted">${escapeHtml(note.date || "")}</span>
-        <span class="manager-admin-stats">${escapeHtml(note.summary || "")}</span>
-      </div>
-      <label class="notif-toggle-switch">
-        <input type="checkbox" class="release-note-visible-toggle" ${note.visible ? "checked" : ""}>
-        <span class="notif-toggle-slider"></span>
-      </label>
-    `;
-
-    const toggle = row.querySelector(".release-note-visible-toggle");
-    toggle.addEventListener("change", () => setReleaseNoteVisible_(note.version, toggle.checked, toggle));
-    list.appendChild(row);
-  });
 }
 
 async function setReleaseNoteVisible_(version, visible, toggleEl) {
@@ -3995,7 +4003,6 @@ function showTab(id) {
   if (id === "commish") {
     closeCommishTool_();
     loadManagersAdmin_();
-    loadReleaseNotesAdmin_();
   }
 
   window.scrollTo({ top: 0, behavior: "smooth" });
