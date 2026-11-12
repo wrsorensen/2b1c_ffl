@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.12 — The Oracle</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.14 — The Oracle</p>
     </section>
   </main>
 
@@ -171,9 +171,29 @@
         <p><b>Payouts:</b> <span id="payoutsText">1st $800 / 2nd $300 / 3rd $100</span></p>
       </section>
 
-      <section class="qr-grid">
-        <div class="qr-card" id="venmoBox">Venmo QR<br>coming soon</div>
-        <div class="qr-card" id="cashAppBox">Cash App QR<br>coming soon</div>
+      <section class="pay-method-grid">
+        <a class="pay-method-card" id="venmoPayBtn" href="https://venmo.com/u/wrsorensen" target="_blank" rel="noopener">
+          <span class="pay-method-icon pay-method-icon-venmo" aria-hidden="true">V</span>
+          <span class="pay-method-label">Pay with Venmo</span>
+          <span class="pay-method-handle" id="venmoHandleText">@wrsorensen</span>
+        </a>
+        <a class="pay-method-card" id="cashAppPayBtn" href="https://cash.app/$wrsorensen" target="_blank" rel="noopener">
+          <span class="pay-method-icon pay-method-icon-cashapp" aria-hidden="true">$</span>
+          <span class="pay-method-label">Pay with Cash App</span>
+          <span class="pay-method-handle" id="cashAppHandleText">$wrsorensen</span>
+        </a>
+      </section>
+
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h3>Who's Paid</h3>
+            <p class="muted compact-note">Dues status for the league. Commissioner updates this.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="duesStatusList"></div>
+        </div>
       </section>
     </section>
 
