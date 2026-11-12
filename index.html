@@ -58,7 +58,7 @@
         <button class="secondary-btn subtle-btn saved-login-btn hidden" id="clearBtn" type="button">Clear Saved Login</button>
       </div>
 
-      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.11 — The Oracle</p>
+      <p id="loginStatus" class="status-line" aria-live="polite">v1.6.12 — The Oracle</p>
     </section>
   </main>
 
@@ -145,7 +145,7 @@
 
       <section class="home-meta" aria-label="App status">
         <span id="espnSyncText">ESPN syncing...</span>
-        <span class="home-version">v1.6.11</span>
+        <span class="home-version">v1.6.12</span>
       </section>
     </section>
 
@@ -206,7 +206,74 @@
     </section>
 
     <section id="commish" class="page">
-      <article class="card" id="spotlightControlCard">
+      <div id="commishToolMenu">
+        <div class="settings-section">
+          <p class="settings-section-label">Communicate</p>
+          <button class="settings-list-row" data-commish-card="commishAnnounceCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">📣</span>
+              <span>Send Announcement</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+          <button class="settings-list-row" data-commish-card="commishPollsCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">🗳️</span>
+              <span>Manager Poll</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-label">Manage League</p>
+          <button class="settings-list-row" data-commish-card="commishManagersCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">👥</span>
+              <span>Manager Info</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+          <button class="settings-list-row" data-commish-card="commishReleaseNotesCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">📝</span>
+              <span>Release Notes</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
+
+        <div class="settings-section">
+          <p class="settings-section-label">Dashboard</p>
+          <button class="settings-list-row" data-commish-card="spotlightControlCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">🎯</span>
+              <span>Dashboard Spotlight</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+          <button class="settings-list-row" data-commish-card="commissionerDeskCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">🏛️</span>
+              <span>Commissioner Desk</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+          <button class="settings-list-row" data-commish-card="draftCentralCard" type="button">
+            <span class="settings-list-row-left">
+              <span class="settings-icon-badge">📅</span>
+              <span>Draft Central</span>
+            </span>
+            <span class="settings-list-chevron">›</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="commishToolBack" class="commish-tool-back hidden">
+        <button class="ghost-btn" id="commishToolBackBtn" type="button">‹ Commish Tools</button>
+      </div>
+
+      <article class="card commish-tool-card" id="spotlightControlCard">
         <div class="card-head">
           <div>
             <h3>Dashboard Spotlight</h3>
@@ -224,7 +291,7 @@
         </div>
       </article>
 
-      <article class="card" id="commishAnnounceCard">
+      <article class="card commish-tool-card" id="commishAnnounceCard">
         <div class="card-head card-head-toggle" data-card-id="commishAnnounceCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Send Announcement">
           <div>
             <h3>Send Announcement</h3>
@@ -246,7 +313,7 @@
         </div>
       </article>
 
-      <article class="card" id="commishPollsCard">
+      <article class="card commish-tool-card" id="commishPollsCard">
         <div class="card-head card-head-toggle" data-card-id="commishPollsCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Manager Poll">
           <div>
             <h3>Manager Poll</h3>
@@ -288,7 +355,7 @@
         </div>
       </article>
 
-      <article class="card" id="commishManagersCard">
+      <article class="card commish-tool-card" id="commishManagersCard">
         <div class="card-head card-head-toggle" data-card-id="commishManagersCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Manager Info">
           <div>
             <h3>Manager Info</h3>
@@ -319,7 +386,7 @@
         </div>
       </article>
 
-      <article class="card" id="commishReleaseNotesCard">
+      <article class="card commish-tool-card" id="commishReleaseNotesCard">
         <div class="card-head card-head-toggle" data-card-id="commishReleaseNotesCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Release Notes">
           <div>
             <h3>Release Notes</h3>
@@ -331,7 +398,7 @@
         </div>
       </article>
 
-      <section class="card preseason-card" id="commissionerDeskCard">
+      <section class="card preseason-card commish-tool-card" id="commissionerDeskCard">
         <div class="card-head card-head-toggle" data-card-id="commissionerDeskCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Commissioner Desk">
           <div>
             <span class="mini-label">Commissioner Desk</span>
@@ -348,7 +415,7 @@
         </div>
       </section>
 
-      <article class="card league-business-card" id="draftCentralCard">
+      <article class="card league-business-card commish-tool-card" id="draftCentralCard">
         <div class="card-head card-head-toggle" data-card-id="draftCentralCard" role="button" tabindex="0" aria-expanded="true" aria-label="Toggle Draft Central">
           <h3>Draft Central</h3>
           <span id="draftStatusChip" class="status-chip neutral hidden">Draft Complete</span>
