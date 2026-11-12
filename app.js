@@ -1,5 +1,15 @@
 /*
   2B1C FFL
+  v1.6.19 - Projected scoreboard. Scoreboard card now shows each game's
+  ESPN projected score (real data, confirmed live via testEspnProjectedPoints
+  in Code.gs) instead of 0-0 until that specific game has a real score -
+  per game, not per week, so Thursday night can go live while Sunday's
+  games still show projected. Projected rows get a subtle gold tint + a
+  small "Proj." tag; if the whole week is still projected the card title
+  swaps to "Projected" and the card itself gets the same tint. No clock or
+  timezone logic anywhere - purely driven by whether ESPN has a real score
+  yet. Frontend-only, no backend/Code.gs change needed (the projected
+  field was already being pulled, just unused).
   v1.6.16 - Version History cleanup. Removed the separate Commish Tools >
   Release Notes admin screen - it was a redundant extra click. The
   commissioner now sees show/hide toggles right inside the same Version
@@ -1839,12 +1849,25 @@ function setScoreboardWeekStatus_(week) {
   status.classList.toggle("neutral", false);
 }
 
+// A game is still "projected" (hasn't kicked off / no real stats in yet)
+// when ESPN's actual totals are both still 0 - the moment either side gets
+// a real point, it flips to live on its own. This is per-game, not
+// per-week, so Thursday night can go live while Sunday's games still show
+// projected, no clock/timezone logic needed anywhere.
+function isGameProjected_(game) {
+  return Number(game.awayScore || 0) === 0 && Number(game.homeScore || 0) === 0;
+}
+
 function renderEspnScoreboard(games, week) {
+  const card = document.getElementById("scoreboardCard");
   const body = document.getElementById("scoreboardBody");
+  const titleEl = document.getElementById("scoreboardCardTitle");
   if (!body) return;
 
   if (!games.length) {
     setScoreboardWeekStatus_(week);
+    if (titleEl) titleEl.textContent = "Scoreboard";
+    if (card) card.classList.remove("scoreboard-card-projected");
     body.innerHTML = `
       <p class="big-placeholder">No Week ${week} scoreboard yet.</p>
       <p class="muted">ESPN is connected. Matchups will fill once the schedule has games.</p>
@@ -1853,6 +1876,15 @@ function renderEspnScoreboard(games, week) {
   }
 
   setScoreboardWeekStatus_(week);
+
+  // Card title/tint only switch to "Projected" when NOTHING in the week
+  // has kicked off yet. The instant one game goes live, the card is a mix
+  // of real/projected rows, so both revert to normal - the per-row
+  // tint/tag still tells you which individual games are which.
+  const allProjected = games.every(isGameProjected_);
+  if (titleEl) titleEl.textContent = allProjected ? "Projected" : "Scoreboard";
+  if (card) card.classList.toggle("scoreboard-card-projected", allProjected);
+
   body.innerHTML = `
     <div class="scoreboard-list">
       ${games.map(renderScoreboardGame).join("")}
@@ -1861,13 +1893,18 @@ function renderEspnScoreboard(games, week) {
 }
 
 function renderScoreboardGame(game) {
+  const projected = isGameProjected_(game);
+  const awayValue = projected ? game.awayProjected : game.awayScore;
+  const homeValue = projected ? game.homeProjected : game.homeScore;
+
   return `
-    <div class="score-row">
+    <div class="score-row${projected ? " score-row-projected" : ""}">
       <span class="team-name-clickable" data-team-id="${escapeHtml(String(game.awayTeamId || ""))}" data-team-name="${escapeHtml(game.awayTeamName || "Away")}" role="button" tabindex="0">${escapeHtml(game.awayTeamName || "Away")}</span>
-      <strong>${formatScore_(game.awayScore)}</strong>
+      <strong>${formatScore_(awayValue)}</strong>
       <small>at</small>
       <span class="team-name-clickable" data-team-id="${escapeHtml(String(game.homeTeamId || ""))}" data-team-name="${escapeHtml(game.homeTeamName || "Home")}" role="button" tabindex="0">${escapeHtml(game.homeTeamName || "Home")}</span>
-      <strong>${formatScore_(game.homeScore)}</strong>
+      <strong>${formatScore_(homeValue)}</strong>
+      ${projected ? `<span class="score-row-projected-tag">Proj.</span>` : ""}
     </div>
   `;
 }
