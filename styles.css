@@ -894,7 +894,7 @@ select:focus {
 
 .manager-admin-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 84px auto;
+  grid-template-columns: minmax(0, 1fr) 46px 84px auto;
   align-items: center;
   gap: 8px;
   border: 1px solid rgba(255,255,255,.06);
@@ -902,6 +902,64 @@ select:focus {
   padding: 8px 10px;
   margin-bottom: 8px;
   background: rgba(255,255,255,.028);
+}
+
+/* Release Notes rows only have info + one toggle, not the Paid toggle too -
+   override back to 2 columns so they don't inherit Manager Info's 4. */
+.manager-admin-row.release-note-row {
+  grid-template-columns: minmax(0, 1fr) 46px;
+}
+
+.manager-admin-paid-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.manager-admin-col-label {
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.dues-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: rgba(255,255,255,.028);
+}
+
+.dues-status-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.dues-status-badge {
+  flex: 0 0 auto;
+  font-size: .78rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.dues-status-badge.dues-paid {
+  color: #7fd39a;
+  background: rgba(127,211,154,.14);
+}
+
+.dues-status-badge.dues-unpaid {
+  color: #e8a6a6;
+  background: rgba(232,166,166,.14);
 }
 
 .release-note-row {
@@ -1191,22 +1249,62 @@ select:focus {
   line-height: 1;
 }
 
-.qr-grid {
+.pay-method-grid {
   display: grid;
   gap: 11px;
 }
 
-.qr-card {
-  min-height: 145px;
-  border: 1px dashed rgba(216,180,93,.24);
+.pay-method-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-height: 110px;
+  justify-content: center;
+  border: 1px solid rgba(216,180,93,.28);
   border-radius: var(--radius);
-  display: grid;
-  place-items: center;
   padding: 16px;
-  color: var(--muted);
-  background: rgba(255,255,255,.035);
+  color: var(--text);
+  background: rgba(216,180,93,.06);
   text-align: center;
+  text-decoration: none;
+}
+
+.pay-method-card:active {
+  background: rgba(216,180,93,.12);
+}
+
+.pay-method-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pay-method-icon-venmo {
+  background: #3d95ce;
+  color: #fff;
+}
+
+.pay-method-icon-cashapp {
+  background: #00d632;
+  color: #0b0b0b;
+}
+
+.pay-method-label {
   font-weight: 850;
+  font-size: .92rem;
+}
+
+.pay-method-handle {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 600;
 }
 
 /* RULES */
@@ -3000,7 +3098,7 @@ select:focus {
     min-height: 0;
   }
 
-  .qr-grid {
+  .pay-method-grid {
     grid-template-columns: 1fr 1fr;
   }
 
