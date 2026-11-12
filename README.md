@@ -1,40 +1,36 @@
-[README.txt](https://github.com/user-attachments/files/34722844/README.txt)
-2B1C FFL — v1.6.16
+[README.txt](https://github.com/user-attachments/files/34723107/README.txt)
+2B1C FFL — v1.6.17
 ===================
 
-Files in this package (replace these 3 on GitHub):
-- index.html
-- app.js
-- styles.css
+Files in this package:
+- index.html (version string only)
+- Code.gs sent separately as a raw file (Apps Script editor, not this repo)
 
-What changed:
-Removed the separate Commish Tools > Release Notes admin screen (was an
-extra click). The commissioner now sees show/hide toggles for each version
-note right inside the same Version History drawer (Settings) everyone
-already uses. Regular managers still see the plain list, no toggles.
+Real bug, not a frontend issue: both getReleaseNotesPublic_ and
+getReleaseNotesAdminPublic_ just did .reverse() on sheet row order,
+assuming rows were always appended oldest-to-newest. They weren't, so
+order was already unreliable. Fixed by sorting on the actual version
+number instead (v1.6.X parsed and compared numerically) - immune to row
+order from here on.
 
-Backend: no Code.gs changes needed for this — it reuses the existing
-getReleaseNotesAdmin / setReleaseNoteVisible actions, just called from a
-different spot in the UI.
-
-Also fixed in passing: the small home-screen version badge was stuck on
-v1.6.12 (several releases stale) — synced to v1.6.16.
-
-Not touched: Pay tab, dues tracking, Commish Tools (other cards), ESPN
-integration, login/auth.
+Separately: the ReleaseNotes sheet had zero rows past v1.6.10 - six real
+shipped versions (v1.6.11-v1.6.16) just had no entry at all, which is why
+"the newest ones aren't even listed." Backfilled those 6 rows directly in
+the Sheet (dates are approximate - "Nov 2026" - since exact per-version
+ship dates weren't tracked; edit the Date cells yourself if you want exact
+days). Visibility defaults: anything player-facing (Settings redesign, Pay
+tab buttons, dues tracking) set TRUE; pure Commish-Tools-internal changes
+set FALSE. Flip any of them with the toggle in Settings > Version History.
 
 Install:
-1. Replace index.html, app.js, styles.css in the repo with these 3 files.
-2. Commit + push to main, rebuild GitHub Pages if it doesn't auto-build.
-3. No Apps Script / Code.gs changes required for this release.
+1. Replace index.html in the repo with this one (only change: version
+   string, now v1.6.17).
+2. Paste the attached Code.gs into the Apps Script editor, deploy.
+3. ReleaseNotes sheet already updated - nothing to do there.
 
 Test checklist:
-- Settings > Version History opens for a regular manager: plain list,
-  newest-first, no toggles.
-- Settings > Version History opens for Will (commissioner): same list,
-  each entry now has a toggle switch; flipping one hides/shows it from
-  everyone else's list (refresh to confirm on a non-commish login).
-- Commish Tools menu: "Release Notes" row is gone; Manager Info, Send
-  Announcement, Manager Poll, Dashboard Spotlight, Commissioner Desk,
-  Draft Central all still work as before.
-- Home screen version badge reads v1.6.16.
+- Settings > Version History (any manager): now shows v1.6.11 through
+  v1.6.16 entries, newest-first by actual version number.
+- Same screen as Will (commissioner): toggles present, all rows visible
+  including the FALSE ones, same order.
+- Flip a toggle, confirm it sticks and the public list respects it.
