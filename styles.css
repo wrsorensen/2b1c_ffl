@@ -604,6 +604,49 @@ select:focus {
   align-items: center;
 }
 
+/* Scoreboard header is a single centered, clickable title now (opens the
+   week picker) - no collapse toggle, no separate status chip. The chip's
+   old "Week N" text and live dot both got folded into this one line; the
+   dot itself moved up to the global Updated-timestamp row instead. */
+.scoreboard-card-head {
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.scoreboard-card-head h3 {
+  margin: 0;
+  text-align: center;
+  line-height: 1;
+  flex: 1 1 auto;
+}
+
+/* Step one week at a time without opening the full picker - stopPropagation
+   on click keeps these from also firing the header's own click (which
+   opens the picker). No pill/circle chrome - just the glyph, sized and
+   padded for a real phone tap target. */
+.scoreboard-week-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 6px 8px;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 1.3rem;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.scoreboard-week-nav-btn:hover,
+.scoreboard-week-nav-btn:focus-visible {
+  color: var(--gold-soft);
+}
+
 .section-head p {
   margin: 4px 0 0;
 }
@@ -810,25 +853,13 @@ select:focus {
   margin: -4px -8px;
 }
 
-.score-row-projected-tag {
-  grid-column: 1 / -1;
-  justify-self: end;
-  margin-top: -2px;
-  font-size: .58rem;
-  font-weight: 800;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-  color: var(--gold-soft);
-  opacity: .85;
-}
-
 /* Whole-card tint/title only kick in when every game in the week is still
-   projected - see renderEspnScoreboard in app.js. */
+   projected - see renderEspnScoreboard in app.js. Deliberately bold/obvious
+   (not a subtle corner gradient like the other feature-card accents) - the
+   whole point is you can tell at a glance without reading any row. */
 .scoreboard-card.scoreboard-card-projected {
-  border-color: rgba(234,212,154,.25);
-  background:
-    linear-gradient(145deg, rgba(234,212,154,.10), transparent 48%),
-    var(--panel);
+  border-color: rgba(234,212,154,.45);
+  background: rgba(234,212,154,.13);
 }
 
 .placeholder-rows {
