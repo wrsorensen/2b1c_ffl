@@ -1,5 +1,37 @@
 /*
   2B1C FFL
+  v1.6.24 - Scoreboard header tweak: title and arrows now vertically
+  centered as a group (zeroed the title's default top margin that was
+  throwing it slightly off-center against the arrows).
+  v1.6.23 - Scoreboard header tweak: arrows pushed to the outer edges of
+  the header bar (was hugging the title) and dropped the circular
+  pill/button chrome around them - just the glyph now, no visible
+  button-looking box.
+  v1.6.22 - Scoreboard header: added prev/next week arrows flanking the
+  title (step one week at a time) since hover tooltips don't exist on
+  phones, where this app mostly lives - a visible, obviously-tappable
+  affordance beats a hidden one. Tapping the title text itself still opens
+  the full week picker for jumping further than one week. Arrows stop
+  their click from also firing the header's own click-opens-picker
+  handler.
+  v1.6.21 - Scoreboard header redesign. Removed the separate status chip
+  and the card's collapse-toggle behavior - the whole header is now one
+  centered, clickable title that opens the week picker (was previously
+  only a small chip button, with the header itself doing collapse/expand
+  like every other Home card). Title text now carries everything that
+  used to be split across chip + pill: "Projected - Week N" / "Live
+  Scoreboard - Week N" / "Scoreboard - Week N" for a past week you're
+  browsing. The green live-week dot moved out of the card entirely, up
+  next to the "Updated ..." timestamp at the top of Home.
+  v1.6.20 - Projected scoreboard visual pass (v1.6.19 feedback - the
+  per-row "Proj." tag on every single line was cluttered/redundant once
+  the whole card already reads as projected). Removed the per-row tag
+  entirely. Card background tint is now bold/obvious (flat gold wash, not
+  a subtle corner gradient) when the whole week is still projected, and
+  the title itself becomes a highlighted gold pill badge reading
+  "Projected" instead of plain text. Per-row tint for the mixed-week case
+  (some games live, some not) is unchanged - still there, just without
+  the text tag.
   v1.6.19 - Projected scoreboard. Scoreboard card now shows each game's
   ESPN projected score (real data, confirmed live via testEspnProjectedPoints
   in Code.gs) instead of 0-0 until that specific game has a real score -
@@ -132,7 +164,7 @@ const LAST_LOADING_LINE_KEY = "2b1cLastLoadingLineV1";
 const TRASH_SEEN_KEY = "2b1cTrashSeenKeyV1";
 const ANNOUNCEMENTS_SEEN_KEY = "2b1cAnnouncementsSeenKeyV1";
 const CARD_COLLAPSE_KEY_PREFIX = "2b1cCardCollapsedV1";
-const HOME_CARD_IDS = ["scoreboardCard", "standingsCard", "hotSheetCard"];
+const HOME_CARD_IDS = ["standingsCard", "hotSheetCard"];
 const COMMISH_CARD_IDS = ["commishAnnounceCard", "commishPollsCard", "commishManagersCard"];
 
 const AUTO_REFRESH_MS = 25000;
@@ -228,9 +260,19 @@ document.querySelectorAll("[data-tab]").forEach((button) => {
   button.addEventListener("click", () => showTab(button.dataset.tab));
 });
 
-document.getElementById("scoreboardStatus")?.addEventListener("click", (event) => {
-  event.stopPropagation();
+document.getElementById("scoreboardCardHead")?.addEventListener("click", () => openWeekPicker_());
+document.getElementById("scoreboardCardHead")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
   openWeekPicker_();
+});
+document.getElementById("scoreboardPrevWeekBtn")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  stepScoreboardWeek_(-1);
+});
+document.getElementById("scoreboardNextWeekBtn")?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  stepScoreboardWeek_(1);
 });
 
 document.getElementById("spotlightSelect")?.addEventListener("change", (event) => {
@@ -1694,6 +1736,18 @@ async function loadWeekScoreboard_(week) {
   }
 }
 
+// Steps one week at a time via the header arrows (no picker needed for a
+// single-week move). selectScoreboardWeek_ already clamps the low end at
+// 1; this also clamps the high end against state.totalWeeks when it's
+// known, so the "next" arrow can't walk past the end of the season.
+function stepScoreboardWeek_(delta) {
+  const current = state.viewingWeek || state.liveWeek || 1;
+  let target = current + delta;
+  if (state.totalWeeks) target = Math.min(target, state.totalWeeks);
+  if (target === current) return;
+  selectScoreboardWeek_(target);
+}
+
 async function selectScoreboardWeek_(week) {
   const clamped = Math.max(1, Number(week) || 1);
   state.viewingWeek = clamped === state.liveWeek ? null : clamped;
@@ -1834,19 +1888,12 @@ function renderEspnStandings(standings, week, divisions) {
   `).join("");
 }
 
-function scoreboardWeekLabel_(week) {
-  return week === state.liveWeek ? `Week ${week}` : `Week ${week} · Viewing`;
-}
-
-// Sets the Scoreboard pill's text for a given week, adding a small green dot
-// when it's the live week - a visual anchor so it's obvious you're on the
-// current week even without reading "Viewing" on the others.
+// The green live dot now lives up by the global "Updated ..." timestamp
+// (home-utility-row), not inside the Scoreboard card itself - this just
+// shows/hides it based on whether the week being viewed is the live one.
 function setScoreboardWeekStatus_(week) {
-  const status = document.getElementById("scoreboardStatus");
-  if (!status) return;
-  const dot = week === state.liveWeek ? '<span class="status-chip-live-dot" aria-hidden="true"></span>' : "";
-  status.innerHTML = `${dot}${escapeHtml(scoreboardWeekLabel_(week))}`;
-  status.classList.toggle("neutral", false);
+  const dot = document.getElementById("heroLiveDot");
+  if (dot) dot.classList.toggle("hidden", week !== state.liveWeek);
 }
 
 // A game is still "projected" (hasn't kicked off / no real stats in yet)
@@ -1858,6 +1905,18 @@ function isGameProjected_(game) {
   return Number(game.awayScore || 0) === 0 && Number(game.homeScore || 0) === 0;
 }
 
+// Builds the single consolidated header label - title text now carries
+// both the live/projected state AND the week number, since the separate
+// status chip is gone (whole header is one clickable week-picker target
+// now). "Live" only ever shows on the actual current week; a past week
+// you're browsing just reads "Scoreboard - Week N", no Live/Projected
+// prefix, since those only mean something for the week in progress.
+function scoreboardHeaderLabel_(week, allProjected) {
+  if (allProjected) return `Projected — Week ${week}`;
+  if (week === state.liveWeek) return `Live Scoreboard — Week ${week}`;
+  return `Scoreboard — Week ${week}`;
+}
+
 function renderEspnScoreboard(games, week) {
   const card = document.getElementById("scoreboardCard");
   const body = document.getElementById("scoreboardBody");
@@ -1866,7 +1925,7 @@ function renderEspnScoreboard(games, week) {
 
   if (!games.length) {
     setScoreboardWeekStatus_(week);
-    if (titleEl) titleEl.textContent = "Scoreboard";
+    if (titleEl) titleEl.textContent = scoreboardHeaderLabel_(week, false);
     if (card) card.classList.remove("scoreboard-card-projected");
     body.innerHTML = `
       <p class="big-placeholder">No Week ${week} scoreboard yet.</p>
@@ -1879,10 +1938,10 @@ function renderEspnScoreboard(games, week) {
 
   // Card title/tint only switch to "Projected" when NOTHING in the week
   // has kicked off yet. The instant one game goes live, the card is a mix
-  // of real/projected rows, so both revert to normal - the per-row
-  // tint/tag still tells you which individual games are which.
+  // of real/projected rows, so both revert to normal - the per-row tint
+  // still tells you which individual games are which.
   const allProjected = games.every(isGameProjected_);
-  if (titleEl) titleEl.textContent = allProjected ? "Projected" : "Scoreboard";
+  if (titleEl) titleEl.textContent = scoreboardHeaderLabel_(week, allProjected);
   if (card) card.classList.toggle("scoreboard-card-projected", allProjected);
 
   body.innerHTML = `
@@ -1904,7 +1963,6 @@ function renderScoreboardGame(game) {
       <small>at</small>
       <span class="team-name-clickable" data-team-id="${escapeHtml(String(game.homeTeamId || ""))}" data-team-name="${escapeHtml(game.homeTeamName || "Home")}" role="button" tabindex="0">${escapeHtml(game.homeTeamName || "Home")}</span>
       <strong>${formatScore_(homeValue)}</strong>
-      ${projected ? `<span class="score-row-projected-tag">Proj.</span>` : ""}
     </div>
   `;
 }
@@ -2316,11 +2374,14 @@ function renderShitShowUnreadBanner_(posts) {
   banner.classList.remove("hidden");
 }
 
-function setScoreboardStatus(text, isLive) {
-  const status = document.getElementById("scoreboardStatus");
-  if (!status) return;
-  status.textContent = text;
-  status.classList.toggle("neutral", !isLive);
+// Transient states (Syncing / error) - the status chip this used to write
+// into is gone, so this writes straight into the header title instead.
+// isLive is unused now (was only ever the chip's styling toggle) but left
+// in the signature so call sites don't need touching.
+function setScoreboardStatus(text) {
+  const titleEl = document.getElementById("scoreboardCardTitle");
+  if (!titleEl) return;
+  titleEl.textContent = text;
 }
 
 function setStandingsStatus(text, isLive) {
