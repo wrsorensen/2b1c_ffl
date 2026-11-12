@@ -1,5 +1,16 @@
 /*
   2B1C FFL
+  v1.6.12 - Commish Tools cleanup: the 7 stacked cards (Spotlight,
+  Announcement, Poll, Manager Info, Release Notes, Commissioner Desk,
+  Draft Central) are no longer all dumped on one scrolling page. Commish
+  tab now opens to a Settings-style row menu (icon + label), grouped into
+  Communicate/Manage League/Dashboard; tapping a row focuses just that one
+  card full-page with a "‹ Commish Tools" back row. Cards themselves are
+  untouched (same ids, same JS, same spotlight/reorder logic) - this is
+  pure show/hide via a new .commish-tool-active class, no DOM reparenting,
+  so it can't fight the existing spotlightCardToTop_/restoreCommishOrder_
+  logic that moves Commissioner Desk/Draft Central onto Home. Re-entering
+  the Commish tab always resets back to the menu view.
   v1.6.11 - Settings drawer redesign: every row now has an icon badge,
   grouped under a new "League" section (Version History, Announcements)
   alongside Notifications/Support/Commissioner. Version History is back
@@ -1322,6 +1333,37 @@ function applySpotlight_(spotlightValue, hasActivePoll) {
   applyDeskDefaultCollapse_();
   updateHotSheetVisibility_(spotlightValue);
 }
+
+// Commish tab menu/focus toggle. Deliberately does NOT move cards in the
+// DOM (no reparenting) - it only toggles a class - because
+// restoreCommishOrder_/spotlightCardToTop_ above already reparent
+// commissionerDeskCard/draftCentralCard onto Home on every refresh, and a
+// second reparenting scheme here would fight that one. Cards keep their
+// real ids/listeners exactly as before; this just shows/hides them.
+function openCommishTool_(cardId) {
+  const card = document.getElementById(cardId);
+  if (!card) return;
+  document.querySelectorAll(".commish-tool-card.commish-tool-active").forEach((el) => {
+    el.classList.remove("commish-tool-active");
+  });
+  card.classList.add("commish-tool-active");
+  document.getElementById("commishToolMenu")?.classList.add("hidden");
+  document.getElementById("commishToolBack")?.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+function closeCommishTool_() {
+  document.querySelectorAll(".commish-tool-card.commish-tool-active").forEach((el) => {
+    el.classList.remove("commish-tool-active");
+  });
+  document.getElementById("commishToolMenu")?.classList.remove("hidden");
+  document.getElementById("commishToolBack")?.classList.add("hidden");
+}
+
+document.querySelectorAll("#commishToolMenu [data-commish-card]").forEach((btn) => {
+  btn.addEventListener("click", () => openCommishTool_(btn.dataset.commishCard));
+});
+document.getElementById("commishToolBackBtn")?.addEventListener("click", closeCommishTool_);
 
 // Hot Sheet auto-shows Tuesday 12:00 AM through Thursday 12:00 PM (local
 // time) - the window when last week's results are freshest and next week's
@@ -3852,6 +3894,7 @@ function showTab(id) {
   }
 
   if (id === "commish") {
+    closeCommishTool_();
     loadManagersAdmin_();
     loadReleaseNotesAdmin_();
   }
@@ -4004,4 +4047,3 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
- 
