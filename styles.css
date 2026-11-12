@@ -2808,6 +2808,12 @@ select:focus {
   color: var(--muted);
 }
 
+/* Commissioner-only show/hide toggle, inline in the same Version History
+   drawer everyone uses - no separate admin screen. */
+.history-item-admin-toggle {
+  margin-top: 8px;
+}
+
 .notif-toggle-row {
   display: flex;
   align-items: center;
