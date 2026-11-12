@@ -1,35 +1,29 @@
-[README.txt](https://github.com/user-attachments/files/34721757/README.txt)
-2B1C FFL - v1.6.14 - Pay tab tap-to-pay + dues tracking
+[README.txt](https://github.com/user-attachments/files/34722109/README.txt)
+2B1C FFL - v1.6.15 - Who's Paid grouped by team
 
 FILES IN THIS PACKAGE (frontend-only, replace in GitHub repo root):
 - index.html
 - app.js
-- styles.css
+(styles.css unchanged this release - don't need to replace it)
 
 WHAT CHANGED:
-- Pay tab: real Venmo/Cash App tap-to-pay buttons (brand-color badges), no QR
-- New "Who's Paid" list on Pay tab - public, unpaid managers shown first
-- Commish Tools > Manager Info: Paid toggle per manager, saves instantly
-- Fixed: addManagerPublic_ (backend) was writing new managers into the wrong
-  sheet columns - see Code.gs delivered separately, paste into Apps Script
-  editor (not part of this zip - Code.gs lives in Apps Script, not the repo)
+- Who's Paid list on the Pay tab now shows ONE line per TEAM, not per
+  manager. A co-managed team (two manager rows sharing the same TeamName)
+  only owes one $100 buy-in - it's grouped as "Team Name / Manager &
+  Co-Manager" with a single Paid/Unpaid badge. Paid shows true if EITHER
+  manager's row is marked paid in Commish Tools - doesn't matter which one
+  gets toggled.
+- No backend/Sheet change - the Commish Tools > Manager Info toggle is
+  unchanged, still one row per manager. This is a display-only grouping.
 
 INSTALL:
-1. Upload/replace these 3 files at the root of the wrsorensen/2b1c_ffl repo,
-   main branch.
+1. Replace index.html and app.js at the root of the wrsorensen/2b1c_ffl
+   repo, main branch. Leave styles.css as-is.
 2. Commit.
-3. Confirm GitHub Pages rebuilds and the live footer shows v1.6.14.
-
-BACKEND (separate, not in this zip):
-- Code.gs full file was sent separately - paste into the Apps Script editor,
-  then Deploy > Manage deployments > pencil icon > New version > Deploy.
-- Managers sheet already has its new "Paid" column added (done directly,
-  defaulted to FALSE for all current managers).
+3. Confirm GitHub Pages rebuilds and the live footer shows v1.6.15.
 
 TEST CHECKLIST:
-- Pay tab buttons open Venmo/Cash App correctly on your phone
-- Who's Paid list shows all managers, unpaid sorted first
-- Toggle a manager's Paid status in Commish Tools, confirm it flips on the
-  public list
-- Add a new test manager, confirm PIN/Phone/Team land in the right columns
-- Existing stuff (login, standings, Oracle, Shit Show) still works
+- Pay tab: co-managed teams (if any) show as one line, not two
+- Toggling either manager's Paid checkbox in Commish Tools flips that
+  team's line on the public list
+- Solo-manager teams still show correctly (team name + manager name)
