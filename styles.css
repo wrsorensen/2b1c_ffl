@@ -3148,4 +3148,21 @@ select:focus {
 }
 
 /* v0.5.0 branded league dashboard */
- 
+
+/* v1.6.12 Commish Tools menu/focus view */
+.commish-tool-card {
+  display: none;
+}
+
+.commish-tool-card.commish-tool-active {
+  display: block;
+}
+
+.commish-tool-back {
+  margin-bottom: 10px;
+}
+
+.commish-tool-back .ghost-btn {
+  width: 100%;
+  text-align: left;
+}
