@@ -1,36 +1,42 @@
-[README.txt](https://github.com/user-attachments/files/34723107/README.txt)
-2B1C FFL — v1.6.17
+[README.txt](https://github.com/user-attachments/files/34756384/README.txt)
+2B1C FFL — v1.6.19
 ===================
 
-Files in this package:
-- index.html (version string only)
-- Code.gs sent separately as a raw file (Apps Script editor, not this repo)
+Files in this package (replace these 3):
+- index.html
+- app.js
+- styles.css
 
-Real bug, not a frontend issue: both getReleaseNotesPublic_ and
-getReleaseNotesAdminPublic_ just did .reverse() on sheet row order,
-assuming rows were always appended oldest-to-newest. They weren't, so
-order was already unreliable. Fixed by sorting on the actual version
-number instead (v1.6.X parsed and compared numerically) - immune to row
-order from here on.
+No Code.gs change needed - this release only uses data that was already
+flowing from v1.6.18's diagnostic (confirmed live: ESPN sends real
+projected scores for every matchup).
 
-Separately: the ReleaseNotes sheet had zero rows past v1.6.10 - six real
-shipped versions (v1.6.11-v1.6.16) just had no entry at all, which is why
-"the newest ones aren't even listed." Backfilled those 6 rows directly in
-the Sheet (dates are approximate - "Nov 2026" - since exact per-version
-ship dates weren't tracked; edit the Date cells yourself if you want exact
-days). Visibility defaults: anything player-facing (Settings redesign, Pay
-tab buttons, dues tracking) set TRUE; pure Commish-Tools-internal changes
-set FALSE. Flip any of them with the toggle in Settings > Version History.
+What changed:
+Scoreboard card now shows each game's ESPN-projected score instead of 0-0
+until that specific game has a real score in. This is per game, not per
+week - Thursday night can go live while Sunday's games still show
+projected, automatically, with zero clock/timezone logic. Projected rows
+get a subtle gold tint + a small "Proj." tag. If every game in the week is
+still projected, the card title swaps from "Scoreboard" to "Projected" and
+the whole card gets the same tint; the moment any game goes live, both
+revert to normal.
+
+Not touched: Pay tab, dues tracking, Commish Tools, Version History,
+login/auth, Code.gs.
 
 Install:
-1. Replace index.html in the repo with this one (only change: version
-   string, now v1.6.17).
-2. Paste the attached Code.gs into the Apps Script editor, deploy.
-3. ReleaseNotes sheet already updated - nothing to do there.
+1. Replace index.html, app.js, styles.css in the repo with these 3.
+2. Commit + push to main, rebuild Pages if it doesn't auto-build.
+3. No Apps Script changes required.
 
 Test checklist:
-- Settings > Version History (any manager): now shows v1.6.11 through
-  v1.6.16 entries, newest-first by actual version number.
-- Same screen as Will (commissioner): toggles present, all rows visible
-  including the FALSE ones, same order.
-- Flip a toggle, confirm it sticks and the public list respects it.
+- Before any games kick off this week: Scoreboard card title reads
+  "Projected", card has a subtle gold tint, every row shows a projected
+  number with a small "Proj." tag.
+- After Thursday night kicks off (or any game goes live): that one row
+  switches to its real live score, tag/tint disappears from that row only;
+  other still-not-started games keep showing "Proj." Card title/tint
+  reverts to normal "Scoreboard" since the week's now mixed.
+- Browsing a past completed week (week picker): normal real scores, no
+  projected tint anywhere (all real scores are nonzero/final).
+- Mobile layout: projected tag doesn't break the row layout or wrap badly.
