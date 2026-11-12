@@ -800,6 +800,37 @@ select:focus {
   text-align: center;
 }
 
+/* Per-game projected state - a game still shows this until it has any real
+   score, independent of every other game in the week (Thursday night can
+   go live while Sunday's games are still projected). */
+.score-row-projected {
+  background: rgba(234,212,154,.08);
+  border-radius: 8px;
+  padding: 4px 8px;
+  margin: -4px -8px;
+}
+
+.score-row-projected-tag {
+  grid-column: 1 / -1;
+  justify-self: end;
+  margin-top: -2px;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--gold-soft);
+  opacity: .85;
+}
+
+/* Whole-card tint/title only kick in when every game in the week is still
+   projected - see renderEspnScoreboard in app.js. */
+.scoreboard-card.scoreboard-card-projected {
+  border-color: rgba(234,212,154,.25);
+  background:
+    linear-gradient(145deg, rgba(234,212,154,.10), transparent 48%),
+    var(--panel);
+}
+
 .placeholder-rows {
   display: grid;
   gap: 7px;
