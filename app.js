@@ -1,5 +1,18 @@
 /*
   2B1C FFL
+  v1.6.14 - Dues tracking (backlog item, Will chose to build it now instead
+  of next season). New public "Who's Paid" card on the Pay tab, sorted
+  unpaid-first. Commish Tools > Manager Info gets a Paid toggle next to the
+  PIN field (same pattern as PIN save, instant on change rather than a
+  Save click). Backend: new "Paid" column on the Managers sheet + new
+  setManagerPaid action (Code.gs v1.6.14) - see that file's own changelog.
+  v1.6.13 - Pay tab: replaced the never-built "QR coming soon" placeholders
+  with real tap-to-pay buttons - Venmo (venmo.com/u/wrsorensen) and Cash App
+  (cash.app/$wrsorensen), Will's real handles. No QR code - useless once
+  you're already looking at this on your phone, which is the normal case.
+  Optional settings.venmoUsername/settings.cashAppTag let this be changed
+  from the Settings sheet later without a code push; falls back to the
+  real handles hardcoded here if those aren't set.
   v1.6.12 - Commish Tools cleanup: the 7 stacked cards (Spotlight,
   Announcement, Poll, Manager Info, Release Notes, Commissioner Desk,
   Draft Central) are no longer all dumped on one scrolling page. Commish
@@ -901,6 +914,7 @@ function renderApp() {
   renderShitShowUnreadBanner_(data.trash || []);
   renderCommishNav_(data.activePoll || null);
   renderClosedPolls_(data.closedPolls || []);
+  renderDuesStatus_(data.managers || []);
   populateTeamSelect_();
   HOME_CARD_IDS.forEach(applyCardCollapseState_);
   COMMISH_CARD_IDS.forEach((id) => applyCardCollapseState_(id, { defaultCollapsed: false }));
@@ -1017,15 +1031,66 @@ function renderCommishManagers_(managers) {
         <span class="muted">${escapeHtml(m.teamName || "")}</span>
         <span class="manager-admin-stats">${lastLoginText} · ${m.loginCount || 0} logins · ${m.postCount || 0} posts · ${m.voteCount || 0} votes</span>
       </div>
+      <div class="manager-admin-paid-cell">
+        <span class="manager-admin-col-label">Paid</span>
+        <label class="notif-toggle-switch manager-admin-paid-toggle" title="Paid dues">
+          <input type="checkbox" class="manager-admin-paid" ${m.paid ? "checked" : ""}>
+          <span class="notif-toggle-slider"></span>
+        </label>
+      </div>
       <input type="text" inputmode="numeric" maxlength="12" class="manager-admin-pin" value="${escapeHtml(m.pin || "")}">
       <button type="button" class="secondary-btn compact-btn manager-admin-save">Save</button>
     `;
 
     const input = row.querySelector(".manager-admin-pin");
     const saveBtn = row.querySelector(".manager-admin-save");
+    const paidToggle = row.querySelector(".manager-admin-paid");
     saveBtn.addEventListener("click", () => saveManagerPin_(m.manager, input, saveBtn));
+    paidToggle.addEventListener("change", () => saveManagerPaid_(m.manager, paidToggle));
     list.appendChild(row);
   });
+}
+
+async function saveManagerPaid_(targetManager, toggle) {
+  const paid = toggle.checked;
+  toggle.disabled = true;
+  try {
+    await api("setManagerPaid", { manager: state.manager, pin: state.pin, targetManager, paid: paid ? "TRUE" : "FALSE" });
+    // Keep the public Who's Paid list in sync without waiting for the next
+    // full refresh - update state.appData in place and re-render it.
+    const managers = state.appData?.managers || [];
+    const target = managers.find((x) => x.manager === targetManager);
+    if (target) target.paid = paid;
+    renderDuesStatus_(managers);
+  } catch (err) {
+    toggle.checked = !paid;
+    alert("Could not update paid status: " + (err.message || err));
+  } finally {
+    toggle.disabled = false;
+  }
+}
+
+function renderDuesStatus_(managers) {
+  const list = document.getElementById("duesStatusList");
+  if (!list) return;
+
+  if (!Array.isArray(managers) || !managers.length) {
+    list.innerHTML = `<p class="muted">No managers found.</p>`;
+    return;
+  }
+
+  // Unpaid first - that's the point of a public dues list.
+  const sorted = [...managers].sort((a, b) => Number(Boolean(a.paid)) - Number(Boolean(b.paid)));
+
+  list.innerHTML = sorted.map((m) => `
+    <div class="dues-status-row">
+      <div class="dues-status-info">
+        <b>${escapeHtml(m.teamName || m.manager)}</b>
+        <span class="muted">${escapeHtml(m.manager)}</span>
+      </div>
+      <span class="dues-status-badge ${m.paid ? "dues-paid" : "dues-unpaid"}">${m.paid ? "✓ Paid" : "Unpaid"}</span>
+    </div>
+  `).join("");
 }
 
 async function saveManagerPin_(targetManager, input, saveBtn) {
@@ -1203,8 +1268,22 @@ function renderHome(settings) {
   document.getElementById("draftLocationText").textContent = draftLocation;
   document.getElementById("buyInText").textContent = buyIn;
   document.getElementById("payoutsText").textContent = payouts;
-  document.getElementById("venmoBox").innerHTML = escapeHtml(settings.venmoLabel || "Venmo QR coming soon").replace(/\n/g, "<br>");
-  document.getElementById("cashAppBox").innerHTML = escapeHtml(settings.cashAppLabel || "Cash App QR coming soon").replace(/\n/g, "<br>");
+  // Tap-to-pay links, not QR - on a phone (the normal case here) a QR
+  // code is useless since you can't scan your own screen. venmoUsername/
+  // cashAppTag are optional Settings-sheet overrides; fall back to Will's
+  // real handles hardcoded here so this works with zero Sheet setup.
+  const venmoUsername = String(settings.venmoUsername || "wrsorensen").trim().replace(/^@/, "");
+  const cashAppTag = String(settings.cashAppTag || "wrsorensen").trim().replace(/^\$/, "");
+
+  const venmoBtn = document.getElementById("venmoPayBtn");
+  if (venmoBtn) venmoBtn.href = `https://venmo.com/u/${encodeURIComponent(venmoUsername)}`;
+  const venmoHandle = document.getElementById("venmoHandleText");
+  if (venmoHandle) venmoHandle.textContent = `@${venmoUsername}`;
+
+  const cashAppBtn = document.getElementById("cashAppPayBtn");
+  if (cashAppBtn) cashAppBtn.href = `https://cash.app/$${encodeURIComponent(cashAppTag)}`;
+  const cashAppHandle = document.getElementById("cashAppHandleText");
+  if (cashAppHandle) cashAppHandle.textContent = `$${cashAppTag}`;
 
   const espnBtn = document.getElementById("espnBtn");
   if (settings.espnUrl) {
