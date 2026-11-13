@@ -1,5 +1,5 @@
-[Uploading README.txt…]()
-2B1C FFL — v1.6.24
+[README.txt](https://github.com/user-attachments/files/34781581/README.txt)
+2B1C FFL — v1.6.25
 ===================
 
 Files (replace these 3):
@@ -7,41 +7,39 @@ Files (replace these 3):
 - app.js
 - styles.css
 
-Covers everything built in the canvas, v1.6.21 through v1.6.24:
+Three fixes from live testing:
 
-v1.6.21 - Scoreboard header redesign. Removed the collapse-toggle and the
-separate status chip. Whole header is now one centered, clickable title
-("Projected - Week N" / "Live Scoreboard - Week N" / "Scoreboard -
-Week N") that opens the week picker. Green live-week dot moved out of the
-card, up next to "Updated ..." at the top of Home.
+1. Real bug: loadEspnDashboard() called loadHotSheet_() with no week arg
+   on every refresh, including the 25s auto-refresh timer - so while you
+   were reading a past week's Hot Sheet, it would silently snap back to
+   the live week's recap on the next auto-refresh. Fixed to respect
+   whichever week you're actually viewing, same rule the week picker
+   already used.
 
-v1.6.22 - Added prev/next week arrows flanking the title - step one week
-at a time without opening the full picker. Tapping the title text itself
-still opens the picker for bigger jumps.
+2. Header logo (top-left brand area) is now tappable.
 
-v1.6.23 - Arrows moved to the outer edges of the header bar, dropped the
-circular button chrome - just the glyph now.
-
-v1.6.24 - Title and arrows vertically centered as a group.
-
-Builds on v1.6.19/v1.6.20 (projected scoreboard tint/data), already live.
+3. Tapping the header logo OR the bottom-nav Home button now resets
+   Scoreboard back to the live/current week - previously Home just
+   switched tabs and left you on whatever past week you'd arrowed/picked
+   to.
 
 Not touched: Pay tab, dues tracking, Commish Tools, Version History,
 login/auth, Code.gs.
 
 Install:
 1. Replace index.html, app.js, styles.css.
-2. Commit + push to main, rebuild Pages if it doesn't auto-build.
-3. No Apps Script changes required.
+2. Commit + push, rebuild Pages if needed.
 
 Test checklist:
-- Scoreboard card: header is one row, centered title, small arrow on each
-  outer edge, everything vertically aligned.
-- Tap left/right arrow: steps one week, doesn't open the picker.
-- Tap the title text (middle): opens the full week picker.
-- Scoreboard card no longer collapses when tapped (that's intentional -
-  only week-browsing now, not collapse).
-- Green dot only shows next to "Updated ..." when viewing the live/current
-  week; disappears when browsing a past week.
-- Mobile: arrows are easy to tap without missegating onto the title tap
-  target.
+- Arrow back to a past week's Hot Sheet, wait ~30s (or longer) without
+  touching anything - Hot Sheet should still show that past week, not
+  snap back to current.
+- Tap the header logo from any tab (Rules, Champs, Pay, Shit Show) -
+  lands on Home.
+- Arrow back a few weeks on Scoreboard, then tap the header logo - should
+  land on Home AND Scoreboard should be back on the live/current week,
+  not wherever you'd arrowed to.
+- Same test, but tap the bottom-nav Home button instead of the logo -
+  same result.
+- Normal refresh/auto-refresh while already on the live week - no change,
+  still just works as before.
