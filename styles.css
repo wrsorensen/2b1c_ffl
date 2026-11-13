@@ -471,6 +471,18 @@ select:focus {
   display: flex;
   align-items: center;
   gap: 10px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.brand:hover,
+.brand:focus-visible {
+  background: rgba(255,255,255,.04);
+}
+
+.brand:focus-visible {
+  outline: 2px solid rgba(216, 180, 93, .45);
+  outline-offset: 2px;
 }
 
 .brand-icon {
