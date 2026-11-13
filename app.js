@@ -1,5 +1,16 @@
 /*
   2B1C FFL
+  v1.6.25 - Three fixes from live testing:
+  (1) Real bug, not just a week-arrows side effect: loadEspnDashboard
+  called loadHotSheet_() with no args on every refresh (including the 25s
+  auto-refresh), ignoring state.viewingWeek - so Hot Sheet silently
+  snapped back to the live week's recap while you were mid-read on a past
+  week. Now respects viewingWeek the same way selectScoreboardWeek_
+  already did.
+  (2) Header logo (brand area, top left) is now tappable - jumps to Home.
+  (3) Both the header logo AND the bottom-nav Home button now also reset
+  Scoreboard back to the live/current week (goHomeDefault_) - previously
+  Home just switched tabs and left you wherever you'd arrowed/picked to.
   v1.6.24 - Scoreboard header tweak: title and arrows now vertically
   centered as a group (zeroed the title's default top margin that was
   throwing it slightly off-center against the arrows).
@@ -257,8 +268,32 @@ document.querySelectorAll(".card-head-toggle[data-card-id]").forEach((head) => {
 });
 
 document.querySelectorAll("[data-tab]").forEach((button) => {
-  button.addEventListener("click", () => showTab(button.dataset.tab));
+  button.addEventListener("click", () => {
+    // Home is special-cased: it's also the "take me back to right now"
+    // button, same as the header logo - see goHomeDefault_.
+    if (button.dataset.tab === "home") {
+      goHomeDefault_();
+    } else {
+      showTab(button.dataset.tab);
+    }
+  });
 });
+
+document.getElementById("brandHomeBtn")?.addEventListener("click", goHomeDefault_);
+document.getElementById("brandHomeBtn")?.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  goHomeDefault_();
+});
+
+// Tapping the header logo or the bottom-nav Home button always resets back
+// to the live/current week's Scoreboard, not wherever you'd arrowed/picked
+// to - a past week you were browsing doesn't silently stick once you've
+// navigated away from it.
+function goHomeDefault_() {
+  showTab("home");
+  if (state.liveWeek) selectScoreboardWeek_(state.liveWeek);
+}
 
 document.getElementById("scoreboardCardHead")?.addEventListener("click", () => openWeekPicker_());
 document.getElementById("scoreboardCardHead")?.addEventListener("keydown", (event) => {
@@ -1703,7 +1738,17 @@ async function loadEspnDashboard() {
   }
 
   const scoreboardOk = await loadWeekScoreboard_(week);
-  loadHotSheet_();
+
+  // Same rule selectScoreboardWeek_ uses: a past week being browsed keeps
+  // showing that week's own Hot Sheet. Without this, the 25s auto-refresh
+  // (or any refresh while viewing a past week) silently snapped Hot Sheet
+  // back to the live week's recap out from under whoever was reading it -
+  // real bug, not just the week-arrows exposing it.
+  if (state.viewingWeek && state.viewingWeek < state.liveWeek) {
+    await loadHotSheet_(state.viewingWeek);
+  } else {
+    await loadHotSheet_();
+  }
 
   state.espnDashboardLoadedAt = new Date();
 
