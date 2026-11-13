@@ -1,5 +1,12 @@
 /*
   2B1C FFL
+  v1.6.27 - Historic weeks now auto-collapse the Hot Sheet card when you
+  arrow/pick your way to a past week, so you land on the week's scoreboard
+  without the recap taking up the whole screen first. One-time nudge on
+  the DOM, not a saved preference - doesn't touch the live week's own
+  collapse state, and doesn't re-fight you if you reopen it while still
+  browsing that same past week.
+
   v1.6.25 - Three fixes from live testing:
   (1) Real bug, not just a week-arrows side effect: loadEspnDashboard
   called loadHotSheet_() with no args on every refresh (including the 25s
@@ -1806,9 +1813,23 @@ async function selectScoreboardWeek_(week) {
   updateHotSheetVisibility_(state.spotlightCard);
   if (state.viewingWeek && state.viewingWeek < state.liveWeek) {
     await loadHotSheet_(state.viewingWeek);
+    autoCollapseHistoricHotSheet_();
   } else {
     await loadHotSheet_();
   }
+}
+
+// Historic weeks start the Hot Sheet collapsed - a per-visit nudge, not a
+// saved preference, so it: (a) doesn't fight the user if they reopen it
+// while still browsing that same week (auto-refresh doesn't re-run this,
+// only an actual week change via the arrows/picker does), and (b) doesn't
+// touch the live week's own collapse state, which is a real saved
+// preference and stays exactly as the user left it.
+function autoCollapseHistoricHotSheet_() {
+  const card = document.getElementById("hotSheetCard");
+  const head = document.querySelector('.card-head-toggle[data-card-id="hotSheetCard"]');
+  if (card) card.classList.add("collapsed");
+  if (head) head.setAttribute("aria-expanded", "false");
 }
 
 function openWeekPicker_() {
