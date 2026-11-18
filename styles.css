@@ -1273,6 +1273,14 @@ select:focus {
   color: #17110a;
 }
 
+/* Manager name in parens next to a team - lighter weight so the joke team
+   name (bold, above) stays the visual lead and this just clarifies who
+   actually owns it. */
+.hot-sheet-owner {
+  font-weight: 400;
+  color: #6b1712;
+}
+
 .home-meta {
   display: flex;
   align-items: center;
