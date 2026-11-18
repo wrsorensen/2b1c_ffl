@@ -1,13 +1,5 @@
 /*
   2B1C FFL
-  v1.6.28 - Every Hot Sheet dig now tags the manager, not just the joke
-  team name - "TeamName (Manager)" via a new hlTeamWithOwner_, looked up
-  live against state.appData.teamsDivisions (already live-corrected for
-  in-season ESPN renames, same source the Teams/Standings pages use - no
-  new staleness risk). Applies to all 8 categories. Depends on the
-  ESPN.gs v1.6.9.23 roster-points fix for Wasted Talent/Manager
-  Malfunction/Waiver Win to actually populate, same as before.
-
   v1.6.27 - Historic weeks now auto-collapse the Hot Sheet card when you
   arrow/pick your way to a past week, so you land on the week's scoreboard
   without the recap taking up the whole screen first. One-time nudge on
@@ -2151,27 +2143,6 @@ function hlTeam_(name) {
   return `<span class="hot-sheet-highlight">${escapeHtml(name || "")}</span>`;
 }
 
-// Team name -> manager(s), via the already live-corrected teamsDivisions
-// list (state.appData, loaded at startup) - same source the Teams/Standings
-// pages use, so this never drifts out of sync with an in-season ESPN
-// rename the way matching against the Managers sheet's own stale TeamName
-// column would. Returns "" (not found/not loaded yet) rather than guessing.
-function managerNameForTeam_(teamName) {
-  const divisions = state.appData?.teamsDivisions || [];
-  const match = divisions.find((t) => t.teamName === teamName);
-  if (!match) return "";
-  return [match.manager, match.coManager].filter(Boolean).join(" & ");
-}
-
-// Hot Sheet-only variant of hlTeam_ that also tags the manager in parens -
-// team names are joke names and can be genuinely unclear about who actually
-// owns the team, so every dig names the real owner too.
-function hlTeamWithOwner_(name) {
-  const owner = managerNameForTeam_(name);
-  const ownerHtml = owner ? ` <span class="hot-sheet-owner">(${escapeHtml(owner)})</span>` : "";
-  return `<span class="hot-sheet-highlight">${escapeHtml(name || "")}</span>${ownerHtml}`;
-}
-
 // Category titles also rotate per week (deterministic, same mechanism as
 // the body lines below, but seeded separately so title and body don't
 // always land on the same index together). Each category's original name
@@ -2189,60 +2160,60 @@ const HOT_SHEET_TITLES = {
 
 const HOT_SHEET_TEMPLATES = {
   highRoller: [
-    (d) => `${hlTeamWithOwner_(d.teamName)} dropped ${formatScore_(d.score)} and is strutting around like he's got a 9-inch cock.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} went for ${formatScore_(d.score)}. BJ worthy?`,
-    (d) => `${formatScore_(d.score)} points from ${hlTeamWithOwner_(d.teamName)}. Cocky little bastard earned it.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} put up ${formatScore_(d.score)} and is already talking shit in the group chat. Deserved.`,
-    (d) => `${formatScore_(d.score)} points. ${hlTeamWithOwner_(d.teamName)} is walking around the house naked right now, flexing in the mirror.`
+    (d) => `${hlTeam_(d.teamName)} dropped ${formatScore_(d.score)} and is strutting around like he's got a 9-inch cock.`,
+    (d) => `${hlTeam_(d.teamName)} went for ${formatScore_(d.score)}. BJ worthy?`,
+    (d) => `${formatScore_(d.score)} points from ${hlTeam_(d.teamName)}. Cocky little bastard earned it.`,
+    (d) => `${hlTeam_(d.teamName)} put up ${formatScore_(d.score)} and is already talking shit in the group chat. Deserved.`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)} is walking around the house naked right now, flexing in the mirror.`
   ],
   seriouslyWtf: [
-    (d) => `${hlTeamWithOwner_(d.teamName)} shit the actual bed for ${formatScore_(d.score)} points. Burn the jersey.`,
-    (d) => `${formatScore_(d.score)} points. ${hlTeamWithOwner_(d.teamName)} should lose custody of this team.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} laid a ${formatScore_(d.score)}-point turd. Did you even set a lineup?`,
-    (d) => `${formatScore_(d.score)} points. ${hlTeamWithOwner_(d.teamName)}, that's a fireable offense.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} scored ${formatScore_(d.score)}. Absolute clown show - sell the team and take up knitting.`
+    (d) => `${hlTeam_(d.teamName)} shit the actual bed for ${formatScore_(d.score)} points. Burn the jersey.`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)} should lose custody of this team.`,
+    (d) => `${hlTeam_(d.teamName)} laid a ${formatScore_(d.score)}-point turd. Did you even set a lineup?`,
+    (d) => `${formatScore_(d.score)} points. ${hlTeam_(d.teamName)}, that's a fireable offense.`,
+    (d) => `${hlTeam_(d.teamName)} scored ${formatScore_(d.score)}. Absolute clown show - sell the team and take up knitting.`
   ],
   mercyKilling: [
-    (d) => `${hlTeamWithOwner_(d.winner)} curb-stomped ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)}. Somebody call it, he's dead.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} ran a train on ${hlTeamWithOwner_(d.loser)} - ${formatScore_(d.margin)}-point gangbang, no consent needed.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} beat ${hlTeamWithOwner_(d.loser)}'s ass by ${formatScore_(d.margin)} and didn't pull out.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} put ${hlTeamWithOwner_(d.loser)} in a body bag, ${formatScore_(d.margin)}-point massacre.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} humiliated ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)}. Somebody check on him, that was brutal.`
+    (d) => `${hlTeam_(d.winner)} curb-stomped ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody call it, he's dead.`,
+    (d) => `${hlTeam_(d.winner)} ran a train on ${hlTeam_(d.loser)} - ${formatScore_(d.margin)}-point gangbang, no consent needed.`,
+    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)}'s ass by ${formatScore_(d.margin)} and didn't pull out.`,
+    (d) => `${hlTeam_(d.winner)} put ${hlTeam_(d.loser)} in a body bag, ${formatScore_(d.margin)}-point massacre.`,
+    (d) => `${hlTeam_(d.winner)} humiliated ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Somebody check on him, that was brutal.`
   ],
   nailBiter: [
-    (d) => `${hlTeamWithOwner_(d.winner)} barely choked out ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)}. Change your shorts, bro.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} edged ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)}. Literally edged him.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} squeaked past ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)} - somebody light a cigarette.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} survived ${hlTeamWithOwner_(d.loser)} by ${formatScore_(d.margin)}. That's a goddamn heart attack.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} beat ${hlTeamWithOwner_(d.loser)} by a gnat's ass, ${formatScore_(d.margin)} points. Nut-tighteningly close.`
+    (d) => `${hlTeam_(d.winner)} barely choked out ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Change your shorts, bro.`,
+    (d) => `${hlTeam_(d.winner)} edged ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. Literally edged him.`,
+    (d) => `${hlTeam_(d.winner)} squeaked past ${hlTeam_(d.loser)} by ${formatScore_(d.margin)} - somebody light a cigarette.`,
+    (d) => `${hlTeam_(d.winner)} survived ${hlTeam_(d.loser)} by ${formatScore_(d.margin)}. That's a goddamn heart attack.`,
+    (d) => `${hlTeam_(d.winner)} beat ${hlTeam_(d.loser)} by a gnat's ass, ${formatScore_(d.margin)} points. Nut-tighteningly close.`
   ],
   wastedTalent: [
-    (d) => `${hlTeamWithOwner_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Dumbass move.`,
-    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points doing jack shit for ${hlTeamWithOwner_(d.teamName)}. Pure waste.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} benched ${escapeHtml(d.playerName)} and still has the balls to talk shit. Pathetic.`,
+    (d) => `${hlTeam_(d.teamName)} left ${escapeHtml(d.playerName)} (${formatScore_(d.points)}) glued to the bench. Dumbass move.`,
+    (d) => `${escapeHtml(d.playerName)} dropped ${formatScore_(d.points)} points doing jack shit for ${hlTeam_(d.teamName)}. Pure waste.`,
+    (d) => `${hlTeam_(d.teamName)} benched ${escapeHtml(d.playerName)} and still has the balls to talk shit. Pathetic.`,
     (d) => `${escapeHtml(d.playerName)} put up ${formatScore_(d.points)} riding pine. All dressed up, no action - like your sex life.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} let ${formatScore_(d.points)} points rot on the bench. Incompetence at its finest.`
+    (d) => `${hlTeam_(d.teamName)} let ${formatScore_(d.points)} points rot on the bench. Incompetence at its finest.`
   ],
   managerMalfunction: [
-    (d) => `${hlTeamWithOwner_(d.teamName)} left a combined ${formatScore_(d.points)} points stranded on the bench. Brutal roster management.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)}'s bench alone put up ${formatScore_(d.points)} points - more than some starting lineups. Get it together.`,
-    (d) => `${formatScore_(d.points)} points wasted on ${hlTeamWithOwner_(d.teamName)}'s bench this week. Somebody needs a new strategy, or a new brain.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} is sitting on ${formatScore_(d.points)} unused bench points. That's not a lineup, that's a hostage situation.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} left ${formatScore_(d.points)} points on the pine total. Absolute managerial malpractice.`
+    (d) => `${hlTeam_(d.teamName)} left a combined ${formatScore_(d.points)} points stranded on the bench. Brutal roster management.`,
+    (d) => `${hlTeam_(d.teamName)}'s bench alone put up ${formatScore_(d.points)} points - more than some starting lineups. Get it together.`,
+    (d) => `${formatScore_(d.points)} points wasted on ${hlTeam_(d.teamName)}'s bench this week. Somebody needs a new strategy, or a new brain.`,
+    (d) => `${hlTeam_(d.teamName)} is sitting on ${formatScore_(d.points)} unused bench points. That's not a lineup, that's a hostage situation.`,
+    (d) => `${hlTeam_(d.teamName)} left ${formatScore_(d.points)} points on the pine total. Absolute managerial malpractice.`
   ],
   waiverWin: [
-    (d) => `${escapeHtml(d.playerName)} (${hlTeamWithOwner_(d.teamName)}'s waiver pickup) dropped ${formatScore_(d.points)}. Free money, no reach-around required.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} dug ${escapeHtml(d.playerName)} out of the trash and got ${formatScore_(d.points)}. One man's garbage, another man's jackpot.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} found ${escapeHtml(d.playerName)} in the gutter and he balled out for ${formatScore_(d.points)}. Degenerate gambler energy, paid off big.`,
-    (d) => `${hlTeamWithOwner_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the scrap heap for ${formatScore_(d.points)}. Absolute daylight robbery.`,
-    (d) => `${escapeHtml(d.playerName)} was rotting in the waiver bin - until ${hlTeamWithOwner_(d.teamName)} cashed in for ${formatScore_(d.points)}. Dumb luck or genius, who cares.`
+    (d) => `${escapeHtml(d.playerName)} (${hlTeam_(d.teamName)}'s waiver pickup) dropped ${formatScore_(d.points)}. Free money, no reach-around required.`,
+    (d) => `${hlTeam_(d.teamName)} dug ${escapeHtml(d.playerName)} out of the trash and got ${formatScore_(d.points)}. One man's garbage, another man's jackpot.`,
+    (d) => `${hlTeam_(d.teamName)} found ${escapeHtml(d.playerName)} in the gutter and he balled out for ${formatScore_(d.points)}. Degenerate gambler energy, paid off big.`,
+    (d) => `${hlTeam_(d.teamName)} grabbed ${escapeHtml(d.playerName)} off the scrap heap for ${formatScore_(d.points)}. Absolute daylight robbery.`,
+    (d) => `${escapeHtml(d.playerName)} was rotting in the waiver bin - until ${hlTeam_(d.teamName)} cashed in for ${formatScore_(d.points)}. Dumb luck or genius, who cares.`
   ],
   upsetOfWeek: [
-    (d) => `${hlTeamWithOwner_(d.winner)} had no goddamn business beating ${hlTeamWithOwner_(d.loser)}. Somebody's getting fired for this.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} straight-up mugged ${hlTeamWithOwner_(d.loser)} in broad daylight.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} snuck up on ${hlTeamWithOwner_(d.loser)} and stole his lunch money, his dignity, and his confidence.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} had zero business winning that - didn't matter, he still did it.`,
-    (d) => `${hlTeamWithOwner_(d.winner)} robbed ${hlTeamWithOwner_(d.loser)} blind. Check the standings, this can't be real.`
+    (d) => `${hlTeam_(d.winner)} had no goddamn business beating ${hlTeam_(d.loser)}. Somebody's getting fired for this.`,
+    (d) => `${hlTeam_(d.winner)} straight-up mugged ${hlTeam_(d.loser)} in broad daylight.`,
+    (d) => `${hlTeam_(d.winner)} snuck up on ${hlTeam_(d.loser)} and stole his lunch money, his dignity, and his confidence.`,
+    (d) => `${hlTeam_(d.winner)} had zero business winning that - didn't matter, he still did it.`,
+    (d) => `${hlTeam_(d.winner)} robbed ${hlTeam_(d.loser)} blind. Check the standings, this can't be real.`
   ]
 };
 
